@@ -116,7 +116,7 @@ Základní smyčka pro každou osobu:
    3. výřez: `python3 -I tools/vyrez.py pracovni/<stránka>.jpg <klíč> x0,y0,x1,y1` (velkoryse – celý zápis s hlavičkou sloupců a okrajovými poznámkami),
    4. rámeček čteného místa: `python3 -I tools/ramecek.py <klíč> x0,y0,x1,y1` a **prohlédni si** `pracovni/ramecek_<klíč>.jpg`,
    5. přepis originálu a český překlad do `data/prepisy.json` (nejistá místa „(?)“, nečitelná „[…]“),
-   6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`.
+   6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence, jejich partnery a děti do `RODINA`, nejisté příbuzné jen jako poznámku do `SIDE`.
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
    Narazíš-li po cestě na **zjevně související výskyt** (vzácné příjmení rodu, stejný dům, jméno z rodinného
    vyprávění), zapiš ho do výsledku v deníku se snímkem – je to jen stopa, ne doklad. Když se hledání zasekne,
@@ -219,7 +219,7 @@ Nedělej to pořád. Postup:
 | Cesta | K čemu |
 |---|---|
 | `data/STAV.md` | vstupní bod: pro koho, pravidla, rozpracované věci |
-| `data/osoby.py` | předci (Kekulého čísla), rody `LINES`, boční příbuzní `SIDE`, otázky `ISSUES`, `HYPOTEZY`, `SAME` |
+| `data/osoby.py` | předci (Kekulého čísla), rody `LINES`, další osoby `RODINA`, poznámky `SIDE`, otázky `ISSUES`, `HYPOTEZY`, `SAME` |
 | `data/zaznamy.json`, `data/svazky.json` | zápisy z matrik a svazky, ze kterých jsou |
 | `data/prepisy.json`, `data/zvyrazneni.json` | přepisy s překlady, rámečky čteného místa |
 | `data/research_log.md` | deník všech hledání |

@@ -32,7 +32,14 @@ P = {
 - `r` klíče zápisů ze `zaznamy.json`. `st` viz `matriky.md`: `doc` přečteno v matrice, `prob` pravděpodobné,
   `fam` od rodiny (i strom, který si rodina vede sama, např. GEDCOM z jejího MyHeritage), `mh` cizí strom z internetu, `unk`.
 - `LINES = {8: ("Novákové", "Kováři z Holic…"), …}` – jen čísla 8–15; název rodu = příjmení v množném čísle.
-- `SIDE` – sourozenci a další příbuzní: `dict(k=<číslo předka>, n="Josef Novák (1865–1920)", t="text", r=[klíče])`.
+- `RODINA` – osoby mimo přímou linii (sourozenci předků, jejich partneři a děti, předci partnerů):
+  `"zkratka": dict(n="Marie Nováková", y="1892–1970", sex="F", otec=16, matka=17, partner=[...], st="doc", f=[...], r=[...], note="…")`.
+  `otec`/`matka` = číslo přímého předka nebo zkratka jiné osoby z RODINA; sourozenec předka 8 má `otec=16, matka=17`
+  i když 16/17 ještě neznáme. `partner` jen pro partnery bez společného dítěte. Stromový graf (`/strom/`) z nich skládá
+  rozklikávací větve – od sourozence předka třeba až do 20. století; na stránce osoby se ukážou jako příbuzní.
+  Žijící jen jménem a rokem narození. U předka v `P` lze zapsat `sour="hotovo"` / `"částečně"` (stav hledání sourozenců).
+- `SIDE` – jen poznámky, které do RODINA nejdou (nejistý vztah, celá větev jednou větou):
+  `dict(k=<číslo předka>, n="…", v="příbuzný (?)", y="…", t="text", r=[klíče])` – ve stromu jako „pozn.“ u předka.
 - `ISSUES` – dvojice `("Otázka", "Vyřešeno: … / Hypotéza: … / Otevřené: …")` → stránka „Co hledáme“ (vyřešené se skryjí).
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.

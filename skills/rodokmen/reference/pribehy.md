@@ -42,7 +42,7 @@ Má vlastní položku v menu a je hlavní věcí na úvodní stránce.
 jde později doplnit. `kontrola.py` na to upozorní. Uživateli to nabídni, i když dřív řekl „až bude víc dat“.
 
 **Postup:**
-1. Sesbírej materiál: fakta a poznámky osob hlavního rodu, `SIDE`, zajímavosti, `udaje_od_rodiny.md`,
+1. Sesbírej materiál: fakta a poznámky osob hlavního rodu, `RODINA`, `SIDE`, zajímavosti, `udaje_od_rodiny.md`,
    rodinné paměti a dokumenty, novinové výstřižky.
 2. Napiš **koncept do chatu** a nech si ho schválit (délka, tón, co ano/ne). Pod koncept připiš, co je z matrik
    a co od rodiny, a co jsi vynechal jako citlivé. Teprve po schválení ho ulož.
