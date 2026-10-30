@@ -5,11 +5,12 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka]
   --ukazka   nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
-a .claude/launch.json (náhled v Claude desktop).
+vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – Claude Code, Codex i OMP),
+.gitignore, .gitattributes (konce řádků LF i na Windows) a .claude/launch.json (náhled v Claude desktop).
 Existující data nepřepisuje.
 Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ se přepíše vždy a soubory webu,
 které se liší od nové šablony, taky – jejich staré verze se nejdřív uloží do pracovni/zaloha_web_<datum>/.
+Starý CLAUDE.md se přejmenuje na AGENTS.md (obsah zůstane).
 """
 import filecmp, os, shutil, sys, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -47,7 +48,7 @@ def copy_tree(src, dst, backup=None):
 
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1].startswith("-"):   # i --help: jinak by vznikl projekt ve složce „--help“
         sys.exit(__doc__)
     dst = os.path.abspath(os.path.expanduser(sys.argv[1]))
     demo = "--ukazka" in sys.argv
@@ -74,7 +75,11 @@ def main():
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+    old, agents = os.path.join(dst, "CLAUDE.md"), os.path.join(dst, "AGENTS.md")
+    if os.path.isfile(old) and not os.path.islink(old) and not os.path.lexists(agents):
+        os.replace(old, agents)   # projekt ze starší verze: pokyny zůstanou, jen pod univerzálním názvem
+        print("CLAUDE.md přejmenován na AGENTS.md.")
+    for name in ("AGENTS.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
