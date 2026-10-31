@@ -85,6 +85,10 @@ Stáhněte repozitář (zelené tlačítko **Code → Download ZIP** na GitHubu,
 
 Pak Claude Code restartujte.
 
+V **Cursoru** složku `skills/rodokmen` zkopírujte do `~/.cursor/skills/rodokmen/` (na Windows `C:\Users\<jméno>\.cursor\skills\rodokmen\`).
+Přes Customize → From GitHub Repository to nejde: ten postup chce `.cursor-plugin/marketplace.json` a tento repozitář má manifest pro Claude Code.
+Podrobnosti jsou v `skills/rodokmen/reference/cursor.md`.
+
 ## První spuštění
 1. Spusťte Claude Code (klidně v domovské složce) a napište třeba:
    > Chci udělat rodokmen své rodiny.

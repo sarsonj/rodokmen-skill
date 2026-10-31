@@ -1,7 +1,7 @@
 # Formát dat projektu
 
 Všechna data jsou v `data/`. Web se z nich generuje (`npm run data`), nikdy needituj `web/src/data/site.json` ručně.
-Po změnách spusť `python3 -I tools/kontrola.py`. Ukázku vyplněných dat má `SKILL_DIR/template/ukazka/`.
+Po změnách spusť `python3 -I tools/kontrola.py`. Ukázku vyplněných dat má `<složka skillu>/template/ukazka/` (složka, ve které je `SKILL.md`).
 Položky do JSON souborů přidávej a měň přes `python3 -I tools/zapis.py` (zachová formát souboru, viz SKILL.md).
 
 ## `osoby.py` – předci
