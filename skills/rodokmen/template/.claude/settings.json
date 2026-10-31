@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py=python3; python3 -c '' 2>/dev/null || py=python; \"$py\" -I -X utf8 \"$CLAUDE_PROJECT_DIR/scripts/slusne_hook.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

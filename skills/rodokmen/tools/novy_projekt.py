@@ -5,10 +5,11 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka]
   --ukazka   nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
-a .claude/launch.json (náhled v Claude desktop).
+scripts/ (wrapper slusne.py s limitem dotazů na archivy a jeho hook), vyrezy/, zdroje/, dokumenty/, pracovni/,
+CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows), .claude/launch.json (náhled v Claude desktop)
+a .claude/settings.json (hook, který síťové příkazy pustí jen přes wrapper).
 Existující data nepřepisuje.
-Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ se přepíše vždy a soubory webu,
+Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ a scripts/ se přepíšou vždy a soubory webu,
 které se liší od nové šablony, taky – jejich staré verze se nejdřív uloží do pracovni/zaloha_web_<datum>/.
 """
 import filecmp, os, shutil, sys, time
@@ -71,13 +72,23 @@ def main():
                 data = open(p, "rb").read()
                 if b"\r\n" in data:
                     open(p, "wb").write(data.replace(b"\r\n", b"\n"))
+    scripts = os.path.join(dst, "scripts")
+    os.makedirs(scripts, exist_ok=True)
+    for f in os.listdir(os.path.join(SKILL, "scripts")):
+        if f.endswith(".py"):
+            copy(os.path.join(SKILL, "scripts", f), os.path.join(scripts, f))   # wrapper a hook vždy aktualizovat
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json"),
+                 os.path.join(".claude", "settings.json")):
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
+    with open(os.path.join(dst, ".claude", "settings.json"), encoding="utf-8") as f:
+        if "slusne_hook" not in f.read():
+            print("POZOR: .claude/settings.json projektu nemá hook slusne_hook.py – doplň ho ze šablony skillu "
+                  "(template/.claude/settings.json), jinak síťové příkazy nikdo nehlídá.")
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)

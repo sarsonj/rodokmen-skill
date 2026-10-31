@@ -121,9 +121,13 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
   zmenšené na 1900 px (dvoustrana je jinak nečitelná).
 - Výřez pro web (`vyrez.py`) dělej jen na **čtený zápis** (případně s hlavičkou sloupců), ne na celou dvoustranu –
   na webu by byl nečitelně malý. Celá stránka je v `zdroje/` a na portálu přes odkaz.
+- Na síť jen přes wrapper: `python3 -I scripts/slusne.py tools/<nástroj>.py …` (i vlastní skripty a `curl`, skripty `.sh`
+  přes `… slusne.py bash tools/…`). Hlídá 1 dotaz za 2 s na web, společně pro všechny pomocníky. Když ohlásí zablokovaný
+  web (kód 75), nic dalšího nezkoušej a ohlas to. V prohlížeči nejvýš 1 dotaz za 2 s, žádné `Promise.all` (SKILL.md).
 
 ## Technické pasti (Windows) – napiš je i pomocníkům do zadání
-(Nahrazují první dva body macOS sekce; body o `overit.py` a výřezu platí i tady.)
+(Nahrazují první dva body macOS sekce; body o `overit.py`, výřezu a wrapperu platí i tady – wrapper jako
+`python -I -X utf8 scripts/slusne.py …`.)
 - Python: `python -I -X utf8 tools/<nástroj>.py` (ne `python3` – bývá to nefunkční alias z Microsoft Store). Bez `-X utf8`
   je výstup do roury v cp1250: čeština se rozbije a skripty spadnou na „≈“ a „→“ (nástroje skillu si výstup přepnou
   do UTF-8 samy, vlastní jednorázové skripty ne – `-X utf8` proto používej vždy). Totéž platí při
