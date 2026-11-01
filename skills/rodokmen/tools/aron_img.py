@@ -8,10 +8,12 @@ Použití:
   aron_img.py <apu_id> info          -> název svazku a počet snímků
   aron_img.py <apu_id> link <n>      -> trvalý odkaz na snímek n v prohlížeči ARON (pole "odkaz" v zaznamy.json)
   aron_img.py <apu_id> svazek        -> zapíše svazek do data/svazky.json (klíč = prvních 8 znaků apu_id)
+  aron_img.py odkazy [--opravit]     -> najde v data/ odkazy z dřívějšího `link`, které otevřou knihu na prvním
+                                        snímku (id souboru PUBLISHED); s --opravit je přepíše na správný snímek (TILE)
 
 Popis svazků se ukládá do pracovni/.cache_aron/<apu_id>.json (ve složce projektu).
 """
-import glob, json, math, os, shutil, subprocess, sys, tempfile, time, urllib.request
+import glob, json, math, os, re, shutil, subprocess, sys, tempfile, time, urllib.request
 import concurrent.futures as cf
 import xml.etree.ElementTree as ET
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -120,7 +122,55 @@ def fetch_image(dzi_url, level_offset=1, out="page.jpg", crop=None):
     return out, (W, H)
 
 
+ODKAZ = re.compile(r"aron\.vychodoceskearchivy\.cz/apu/([0-9a-f-]{36})/dao/([0-9a-f-]{36})/file/([0-9a-f-]{36})")
+
+
+def oprav_odkazy(opravit):
+    """Odkazy na snímek v data/*.json a data/*.md s id souboru PUBLISHED (dřívější `link`) otevřou knihu na prvním
+    snímku. Nahradí to id za id souboru TILE téhož snímku; zbytek souborů zůstane beze změny."""
+    soubory = sorted(glob.glob(os.path.join(ROOT, "data", "*.json")) + glob.glob(os.path.join(ROOT, "data", "*.md")))
+    texty = {}
+    for p in soubory:
+        with open(p, encoding="utf-8", newline="") as f:   # newline="": konce řádků zůstanou, jak jsou
+            texty[p] = f.read()
+    nahrady, nezname, dobre = {}, [], 0
+    for apu, dao_id, file_id in sorted({m.groups() for t in texty.values() for m in ODKAZ.finditer(t)}):
+        dao = next((d for d in volume(apu).get("digitalObjects", []) if d["id"] == dao_id), {})
+        f = next((f for f in dao.get("files", []) if f["id"] == file_id), None)
+        tile = f and next((t for t in dao["files"] if t["type"] == "TILE" and t["order"] == f["order"]), None)
+        if f and f["type"] == "TILE":
+            dobre += 1
+        elif tile:
+            nahrady[file_id] = tile["id"]
+        else:
+            nezname.append(f"…/apu/{apu}/dao/{dao_id}/file/{file_id}")
+    zmenene = {}
+    for p, t in texty.items():
+        nove = t
+        for stare, tile_id in nahrady.items():
+            nove = nove.replace(stare, tile_id)
+        if nove != t:
+            zmenene[p] = (nove, sum(t.count(stare) for stare in nahrady))
+    print(f"odkazy na snímky ARON: {dobre + len(nahrady) + len(nezname)} různých, správně {dobre}, "
+          f"na první snímek {len(nahrady)}" + (f", nenalezeno ve svazku {len(nezname)}" if nezname else ""))
+    for p, (_, kolik) in zmenene.items():
+        print(f"  {os.path.relpath(p, ROOT)}: {kolik}× {'opraveno' if opravit else 'k opravě'}")
+    for o in nezname:
+        print("  nenalezeno:", o)
+    if opravit:
+        for p, (nove, _) in zmenene.items():
+            with open(p, "w", encoding="utf-8", newline="") as f:
+                f.write(nove)
+        if zmenene:
+            print("Hotovo. Web: cd web && npm run data && npm run build")
+    elif nahrady:
+        print("Opravíš je: python3 -I tools/aron_img.py odkazy --opravit")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["odkazy"]:
+        oprav_odkazy("--opravit" in sys.argv[2:])
+        sys.exit(0)
     apu = sys.argv[1]
     vol = volume(apu)
     tiles = tiles_by_order(vol)
@@ -143,8 +193,9 @@ if __name__ == "__main__":
     if sys.argv[2] == "link":
         n = int(sys.argv[3])
         dao = vol["digitalObjects"][0]
-        pub = [f for f in dao["files"] if f["type"] == "PUBLISHED" and f["order"] == n][0]
-        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{pub['id']}")
+        # prohlížeč ARON pozná snímek podle id souboru TILE; s id souboru PUBLISHED otevře knihu vždy na prvním snímku
+        tile = [f for f in dao["files"] if f["type"] == "TILE" and f["order"] == n][0]
+        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{tile['id']}")
         sys.exit(0)
     n = int(sys.argv[2])
     lo = int(sys.argv[3]) if len(sys.argv) > 3 else 1
