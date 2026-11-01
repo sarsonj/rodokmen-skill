@@ -51,7 +51,8 @@ def copy_tree(src, dst, backup=None):
 
 SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
 # Hlídač spustit, jen když soubor existuje: chybějící skript by Python ukončil kódem 2 a ten by zablokoval každý příkaz.
-PY = sys.executable if os.name == "nt" else "python3"   # mimo Windows ne cestu s číslem verze (po aktualizaci Pythonu by zmizela)
+# mimo Windows ne cestu s číslem verze (po aktualizaci Pythonu by zmizela); na Windows lomítka (projdou Git Bash i cmd)
+PY = sys.executable.replace("\\", "/") if os.name == "nt" else "python3"
 HLIDAC = (f'"{PY}" -I -c "import os,runpy;p=os.path.join(os.environ.get(\'CLAUDE_PROJECT_DIR\',\'.\'),'
           f'\'tools\',\'hlidac_site.py\');os.path.isfile(p) and runpy.run_path(p,run_name=\'__main__\')"')
 

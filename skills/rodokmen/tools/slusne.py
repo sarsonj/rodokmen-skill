@@ -36,6 +36,28 @@ OBRAZEK_RE = re.compile(r"\.(jpe?g|png|gif|webp|tiff?|jp2|bmp)(\?|$)|_files/|/ti
 STAV = os.environ.get("SLUSNE_STAV") or os.path.join(
     os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), ".cache"), "rodokmen_slusne")
 KOD = 3
+_slozka_ = []
+
+
+def _slozka():
+    """Složka stavu. Když do ní nejde psát (sandbox Claude Code), zkusí dočasnou složku systému; když ani to,
+    platí brzda jen uvnitř tohoto procesu (None)."""
+    if not _slozka_:
+        for d in dict.fromkeys([STAV, os.path.join(tempfile.gettempdir(), "rodokmen_slusne")]):
+            try:
+                os.makedirs(d, exist_ok=True)
+                t = os.path.join(d, f".zkouska_{os.getpid()}")
+                open(t, "w").close()
+                os.remove(t)
+                _slozka_.append(d)
+                break
+            except OSError:
+                continue
+        else:
+            _slozka_.append(None)
+            print(f"slusne: do {STAV} ani do dočasné složky nejde zapisovat – brzda platí jen pro tento proces, "
+                  "ne pro ostatní. Spouštěj proto stahování po jednom.", file=sys.stderr)
+    return _slozka_[0]
 
 
 class Zastaveno(SystemExit):
@@ -65,8 +87,14 @@ class _Zamek:
 
     def __enter__(self):
         self._vlakna.acquire()
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        self.f = open(self.path, "a+b")
+        self.f = None
+        if self.path.startswith("pamet:"):
+            return self
+        try:
+            self.f = open(self.path, "a+b")
+        except OSError:
+            self._vlakna.release()
+            raise
         if os.name == "nt":
             import msvcrt
             while True:
@@ -83,20 +111,27 @@ class _Zamek:
 
     def __exit__(self, *exc):
         try:
-            if os.name == "nt":
+            if self.f and os.name == "nt":
                 import msvcrt
                 self.f.seek(0)
                 msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
-            self.f.close()
+            if self.f:
+                self.f.close()
         finally:
             self._vlakna.release()
 
 
 def _cesta(skupina):
-    return os.path.join(STAV, re.sub(r"[^a-z0-9.-]", "_", skupina) + ".json")
+    d = _slozka()
+    return os.path.join(d, re.sub(r"[^a-z0-9.-]", "_", skupina) + ".json") if d else "pamet:" + skupina
+
+
+_pamet = {}
 
 
 def _nacti(path):
+    if path.startswith("pamet:"):
+        return dict(_pamet.get(path, {}))
     try:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
@@ -105,6 +140,9 @@ def _nacti(path):
 
 
 def _uloz(path, data):
+    if path.startswith("pamet:"):
+        _pamet[path] = dict(data)
+        return
     tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f)
@@ -229,6 +267,32 @@ _zapni()
 
 
 # --- obal pro skripty, curl a bash ---------------------------------------------------------------------------------
+def _curl_umi_stderr(real):
+    try:
+        v = subprocess.run([real, "--version"], capture_output=True, text=True).stdout
+        m = re.match(r"curl (\d+)\.(\d+)", v)
+        return bool(m) and (int(m.group(1)), int(m.group(2))) >= (7, 63)
+    except OSError:
+        return False
+
+
+def _bash_cesta():
+    """bash k spuštění skriptu; na Windows ne C:\\Windows\\System32\\bash.exe (to je WSL, jiný systém), ale Git Bash."""
+    if os.name != "nt":
+        return shutil.which("bash") or "bash"
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        b = os.path.join(d, "bash.exe")
+        if os.path.isfile(b) and "system32" not in b.lower() and "windowsapps" not in b.lower():
+            return b
+    git = shutil.which("git")
+    if git:
+        for b in (os.path.join(os.path.dirname(os.path.dirname(git)), "bin", "bash.exe"),
+                  os.path.join(os.path.dirname(git), "bash.exe")):
+            if os.path.isfile(b):
+                return b
+    return "bash"
+
+
 def _curl(args):
     real = os.environ.get("SLUSNE_CURL") or shutil.which("curl")
     if not real:
@@ -236,7 +300,7 @@ def _curl(args):
     urls = [a for a in args if re.match(r"https?://", a)]
     for u in urls:
         pockej(u)
-    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args)
+    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args) or not _curl_umi_stderr(real)
     extra = [] if vlastni_w else ["-w", "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"]
     p = subprocess.run([real, *args, *extra], stderr=subprocess.PIPE)
     err = p.stderr.decode("utf-8", "replace")
@@ -254,11 +318,12 @@ def _bash(args):
     try:
         me = os.path.abspath(__file__)
         with open(os.path.join(shim, "curl"), "w", encoding="utf-8", newline="\n") as f:
-            f.write(f'#!/bin/sh\nexec "{sys.executable}" -I "{me}" curl "$@"\n')
+            py, me_ = sys.executable.replace("\\", "/"), me.replace("\\", "/")   # Git Bash: lomítka místo zpětných
+            f.write(f'#!/bin/sh\nexec "{py}" -I "{me_}" curl "$@"\n')
         os.chmod(os.path.join(shim, "curl"), 0o755)
         env = dict(os.environ, SLUSNE_CURL=os.environ.get("SLUSNE_CURL") or shutil.which("curl") or "",
                    PATH=shim + os.pathsep + os.environ.get("PATH", ""))
-        return subprocess.run([shutil.which("bash") or "bash", *args], env=env).returncode
+        return subprocess.run([_bash_cesta(), *args], env=env).returncode
     finally:
         shutil.rmtree(shim, ignore_errors=True)
 
@@ -278,11 +343,12 @@ def _skript(args):
 def _stav():
     print(f"Limity: dotaz 1 za {DOTAZ:g} s, obrázek 1 za {OBRAZEK:g} s; zvlášť: " +
           ", ".join(f"{k} {v[0]:g}/{v[1]:g} s" for k, v in LIMITY.items()))
-    print("Stav:", STAV)
+    d = _slozka()
+    print("Stav:", d or "jen v paměti procesu (do složky nejde zapisovat)")
     nic = True
-    for f in sorted(os.listdir(STAV)) if os.path.isdir(STAV) else []:
+    for f in sorted(os.listdir(d)) if d else []:
         if f.endswith(".json"):
-            st = _nacti(os.path.join(STAV, f))
+            st = _nacti(os.path.join(d, f))
             if st.get("stop", 0) > time.time():
                 nic = False
                 print(f"  ZASTAVENO {f[:-5]} do {time.strftime('%H:%M', time.localtime(st['stop']))} – "
@@ -292,9 +358,10 @@ def _stav():
 
 
 def _odblokuj(web=None):
-    for f in os.listdir(STAV) if os.path.isdir(STAV) else []:
+    d = _slozka()
+    for f in os.listdir(d) if d else []:
         if f.endswith(".json") and (not web or f[:-5] in (web, _skupina(web)[0])):
-            path = os.path.join(STAV, f)
+            path = os.path.join(d, f)
             with _Zamek(path + ".lock"):
                 st = _nacti(path)
                 if st.pop("stop", None):
