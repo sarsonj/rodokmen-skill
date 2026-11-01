@@ -1,5 +1,6 @@
 # pracovní soubory a stažené stránky (nejdou na web ani do historie)
 pracovni/
+dokumenty/originaly/
 __pycache__/
 .DS_Store
 Thumbs.db

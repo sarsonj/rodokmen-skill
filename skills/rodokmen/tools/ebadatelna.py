@@ -72,11 +72,18 @@ def get(path, referer=None, binary=False, data=None, ajax_base=None):
             if e.code == 429 and attempt < 3:   # moc požadavků – počkat (podle Retry-After) a zkusit znovu
                 ra = e.headers.get("Retry-After", "")
                 wait = min(int(ra), 120) if ra.isdigit() else 30 * (attempt + 1)
+                print(f"eBadatelna: HTTP 429; další pokus za {wait or PAUZA} s "
+                      f"({attempt + 2}/4).", file=sys.stderr, flush=True)
             elif e.code < 500 or attempt == 3:
                 raise Chyba(f"portál vrátil chybu HTTP {e.code} ({url}).{udrzba()}")
+            else:
+                print(f"eBadatelna: HTTP {e.code}; další pokus za {wait} s "
+                      f"({attempt + 2}/4).", file=sys.stderr, flush=True)
         except (OSError, http.client.HTTPException) as e:   # i useknutý přenos (IncompleteRead)
             if attempt == 3:
                 raise Chyba(f"portál neodpovídá ({e}).{udrzba() or ' Zkus to za chvíli znovu.'}")
+            print(f"eBadatelna: portál neodpovídá ({e}); další pokus za {wait} s "
+                  f"({attempt + 2}/4).", file=sys.stderr, flush=True)
 
 
 def text(s):

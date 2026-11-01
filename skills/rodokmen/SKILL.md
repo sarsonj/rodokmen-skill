@@ -70,7 +70,10 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - Ptej se postupně (ne dotazníkem naráz): výchozí osoba (pro koho rodokmen je – on sám, partner, dítě?), rodiče,
   prarodiče, pradědečci: **jména, rodná příjmení žen, roky a místa narození, sňatky, úmrtí (a kde jsou pohřbeni), řemesla, domy (čísla popisná!)**.
 - Požádej o dokumenty: rodné a oddací listy, domovské listy, parte, fotky (i náhrobků), rodinné kroniky, paměti, staré dopisy,
-  výpisy z MyHeritage/Geni od příbuzných. Ať je dá do `dokumenty/`. Přečti je celé (PDF/fotky) a vytěž.
+  výpisy z MyHeritage/Geni od příbuzných. Originály ukládej lokálně do `dokumenty/originaly/` (je ignorované gitem),
+  pracovní převody do `pracovni/`; na web patří jen samostatně schválené výřezy. Přečti dokumenty celé (PDF/fotky) a vytěž.
+  Soubor `.doc` nejdřív zkontroluj lokálně: pokud začíná RTF hlavičkou `{\rtf`, otevři nebo převeď ho ve Wordu či
+  LibreOffice. Nepoužívej online převodníky a originál ani pracovní převod neposílej na web.
 - Doporuč zeptat se nejstarších žijících příbuzných – teď, dokud to jde. Nabídni seznam otázek.
 - **Příbuzenství ber doslova, jak ho rodina řekla** („pradědeček babičky“ ≠ „otec babičky“) – nikdy ho neopravuj podle
   toho, co se ti hodí do dat. Při nejasnosti se zeptej. Ztotožnění jen podle křestního jména veď jako `prob` s poznámkou.

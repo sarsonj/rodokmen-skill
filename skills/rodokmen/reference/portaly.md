@@ -77,6 +77,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   dané vsi (číslo strany je nahoře na snímku). Takové knihy bývají řazené po vsích, ne chronologicky – je-li rejstřík,
   začni jím.
 - `ebadatelna.py snimek <matrikaId> <snímek> pracovni/x.jpg [nahled] [x0,y0,x1,y1]`; `link`, `svazek` (klíč `ebad_<id>`).
+- Při přechodné chybě nástroj vypíše, že čeká na další pokus; konečné nedostupnosti odpovídá chybové hlášení,
+  nikoli prázdný výsledek hledání.
 - **Archiválie** (urbáře, gruntovní a pozemkové knihy velkostatků – most přes 17. století): `a-info <archivalieId>`,
   `a-snimek`, `a-link`, `a-svazek` (klíč `ebad_a_<id>`). Archiválii nástroj nehledá – najdi ji na portálu v prohlížeči;
   id je v adrese `…/pages/ArchivaliePage/archivalieId/<id>`.
@@ -102,35 +104,20 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 
 ## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – `tools/soal_zoomify.py`
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
-- **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
-  má ochranu proti robotům – curl ani WebFetch se nedostanou ani na hledání. Potřebuješ připojený prohlížeč (Claude in
-  Chrome – uživatel ho připojí příkazem `/chrome` – nebo Playwright); jinak ať knihu najde a snímky uloží uživatel.
-  Úvodní ověření projde samo, ale hledání často skončí **CAPTCHou: tu vyřeší uživatel** v okně prohlížeče, ty nikdy.
-- Hledej obec a vyfiltruj Matriky (ikona, potom znovu lupa). Hledání vrací i civilní matriky (u obce stovky svazků) –
-  filtr „Datum od – do“ (podle začátku svazku, např. 1680–1873) nechá jen církevní. Knihy bývají řazené po obcích
-  a na konci mají rejstřík. Vedle farních knih bývají i **druhopisy** („T“ v signatuře, viz `matriky.md`).
-- **Seznam svazků a ID snímků si hned ulož** do `pracovni/<svazek>/` – relace po pár hodinách vyprší a výsledky
-  hledání platí jen v ní. Na detailu svazku: entita `document.querySelector('[entityuuid]').getAttribute('entityuuid')`
-  (u svazků uložených v jiném archivu nemá tvar UUID – nehledej ji regexem), ID snímků jsou hodnoty
-  `select.getScanSelect option` (tvar „N%20uuid“). Snímek pak otevřeš kdykoli bez hledání:
-  `/da/showZoomifySeparate?imageNumberSeparate=N&myEntityUuid=<entita>&myImageUuid=<uuid>`.
-- Adresa obrázku: `fetch('/da/showZoomify/<id svazku z URL>/<část option.value za „%20“>')` vrátí HTML s cestou
-  `…/images/<složka>/<uuid>.jpg`. Cesta se u svazků liší (`…/CZ-217000010/NAD-165/dao/images/…`, `…/zao/matriky/dao/images/…`)
-  a přípona bývá i `.JPG` – nástroji dej vždy **celou adresu z HTML**:
-  `python3 -I tools/soal_zoomify.py "<adresa>" 2 pracovni/x.jpg` (2 = čtvrtinové rozlišení na orientaci podle záhlaví
-  stránek, 0 = plné jen u nalezeného zápisu). Obrázkový server images.archives.cz neomezuje a cookies nepotřebuje.
-- **POZOR na blokování** (jen stránky aplikace, obrázky ne): rychlé dotazy → CAPTCHA, „operace vyhodnoceny jako
-  nestandardní“ nebo „Access blocked“ na 30 minut; po desítkách dotazů za den vrací showZoomify „Server Exception“
-  (denní limit – pokračuj až další den). Pauza 3–6 s mezi stránkami, dávky do ~80 stránek, žádné rychlé `fetch` hned
-  po hledání a stránky výsledků neprocházej za sebou. Delší smyčku pusť v prohlížeči na pozadí, výsledky ukládej do
-  `window` nebo `localStorage` a vyzvedávej po částech (nástroj pro JavaScript má limit asi 45 s). Pomocníkům to napiš do zadání.
+- Portál `https://digi.archives.cz/da/` zobrazuj běžným způsobem v prohlížeči. Pokud žádá ověření nebo CAPTCHA,
+  vyřeší ji uživatel; neobcházej ochranu a nepokračuj automatizovanými požadavky.
+- Katalogová obec sama o sobě nedokládá, že je online příslušná matrika ani že pokrývá hledanou dobu. Ověř konkrétní
+  svazek a jeho popis v portálu.
+- `soal_zoomify.py` umí zpracovat celou adresu `https://` obrázku na serveru archivu. Použij přesnou adresu
+  konkrétního snímku, pokud ji portál zpřístupní; URL neskládej ani neodvozuj z jiné stránky či snímku.
+  Úroveň `2` je pro orientaci, `0` pro čtení nalezeného zápisu. Snímky otevírej jednotlivě; žádné hromadné stahování
+  ani obcházení chyb 403, limitů nebo jiných ochran.
 
 ## MZA Brno (jižní Morava, Acta Publica) – bez nástroje
-- Portál `https://www.mza.cz/actapublica/`, bez přihlášení. Adresa actapublica.eu bývá za Cloudflare zablokovaná
-  („Sorry, you have been blocked“ – podle IP, i v běžném prohlížeči); když blokuje i mza.cz, ať uživatel vypne VPN
-  nebo zkusí jinou síť.
-- Knihu najdi v prohlížeči podle obce nebo fary. Snímky jsou IIIF: adresu obrázku najdi v síťovém provozu a stáhni ji
-  přes `curl` (Python dostane HTTP 426). Dál podle „Ostatní portály“ níže.
+- Použij aktuální odkaz na portál MZA. Pokud je nedostupný, nepokoušej se obcházet blokaci; zkus to později nebo
+  se obrať na archiv.
+- Poznámky o DZI/JSON a lokálním browser bridge jsou pouze výzkumný nápad, ne ověřené stabilní rozhraní.
+  Neimplementuj na jejich základě downloader, bridge ani automatizaci; před případnou změnou ověř oficiální rozhraní.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.
