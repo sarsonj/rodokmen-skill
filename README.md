@@ -11,7 +11,7 @@ Vznikl při skutečném hledání předků jedné rodiny.
 
 **Autor a správce:** Jindřich Šaršon ([sarsonj@gmail.com](mailto:sarsonj@gmail.com), [GitHub](https://github.com/sarsonj))
 
-**Aktuální verze: 0.5.0 (říjen 2026).** Skill se průběžně vyvíjí – opravuji chyby a doplňuji postupy pro další archivy
+**Aktuální verze: 0.6.0 (listopad 2026).** Skill se průběžně vyvíjí – opravuji chyby a doplňuji postupy pro další archivy
 podle toho, na co narazíte vy. Jak aktualizovat, najdete v části [Instalace](#instalace), seznam změn
 v [historii repozitáře](https://github.com/sarsonj/rodokmen-skill/commits/main).
 
@@ -61,7 +61,7 @@ s přepisem a překladem, „Co hledáme“ a deník hledání. **[Podívejte se
 AI se vyvíjí rychle a za pár měsíců může skill dávat lepší, nebo jen jiné výsledky. Proto je tu uvedeno, s čím byl
 vyzkoušený.
 
-- **Stav k říjnu 2026 (verze 0.5.0):** Claude Code s hlavním modelem **Claude Opus 5.5**. Pomocníci, kteří hledají
+- **Stav k listopadu 2026 (verze 0.6.0):** Claude Code s hlavním modelem **Claude Opus 5.5**. Pomocníci, kteří hledají
   a čtou matriky jako první, běží na **Claude Sonnet 5.5**. Každý jejich nález pak hlavní model ověřuje na snímku.
 - Vyzkoušeno na několika skutečných rodokmenech (největší má 243 předků v 11 generacích a 192 matričních zápisů).
   Výsledek se porovnával s větví, kterou jsme léta dělali ručně.
