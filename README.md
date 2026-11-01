@@ -53,7 +53,7 @@ s přepisem a překladem, „Co hledáme“ a deník hledání. **[Podívejte se
   Po dokončení můžete předplatné zase snížit nebo zrušit, web i data vám zůstanou.
 - **Počítač s macOS nebo Windows** (obojí vyzkoušeno; Windows 11 s Pythonem z python.org a Git Bashem).
   Linux by měl fungovat, ale vyzkoušený není.
-- Programy **Python 3, Node.js, ImageMagick a git**. Nemusíte je instalovat předem – Claude zkontroluje, co chybí,
+- Programy **Python 3, Node.js 22.19.0 nebo novější, ImageMagick a git**. Nemusíte je instalovat předem – Claude zkontroluje, co chybí,
   a pomůže s instalací (na Macu přes [Homebrew](https://brew.sh), na Windows přes winget).
 - Volitelně účet na [Netlify](https://www.netlify.com) (zdarma), pokud chcete web zveřejnit pro rodinu.
 

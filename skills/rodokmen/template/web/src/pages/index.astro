@@ -9,6 +9,7 @@ import { frontmatter as pribeh } from '../generated/pribeh.md';
 const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
 const uvod = config.uvod ?? {};
 const cards = config.zajimavosti_na_uvodu ?? [];
+const defaultStoryButton = config.maVicePribehu ? 'Prohlédnout příběhy' : 'Přečíst příběh';
 ---
 <Base title="" wide>
   <h1>{config.nazev || 'Rodokmen'}</h1>
@@ -18,7 +19,7 @@ const cards = config.zajimavosti_na_uvodu ?? [];
       <div>
         {uvod.nadpis && <h2>{uvod.nadpis}</h2>}
         {(uvod.odstavce ?? []).map((t) => <p>{t}</p>)}
-        {config.maPribeh && <a class="btn" href="/pribehy/">{config.pribeh?.tlacitko || `Přečíst: ${pribeh.title}`} →</a>}
+        {config.maPribeh && <a class="btn" href="/pribehy/">{config.pribeh?.tlacitko || (config.maVicePribehu ? defaultStoryButton : `Přečíst: ${pribeh.title}`)} →</a>}
       </div>
       {uvod.foto && (
         <a href={config.maPribeh ? '/pribehy/' : `/img/${uvod.foto}.jpg`}><img src={`/img/${uvod.foto}.jpg`} alt={uvod.foto_popis || ''} /></a>
@@ -31,7 +32,7 @@ const cards = config.zajimavosti_na_uvodu ?? [];
       <div>
         <h2>{pribeh.title}</h2>
         {pribeh.lead && <p>{pribeh.lead}</p>}
-        <a class="btn" href="/pribehy/">{config.pribeh?.tlacitko || 'Přečíst příběh'} →</a>
+        <a class="btn" href="/pribehy/">{config.pribeh?.tlacitko || defaultStoryButton} →</a>
       </div>
     </section>
   )}

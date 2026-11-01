@@ -85,7 +85,7 @@ def main():
         print(f"Web aktualizován na novou šablonu ({len(changed)} souborů). Původní verze jsou v {backup}:")
         for f in changed:
             print("  web/" + f)
-        print("Pokud jste vzhled webu upravovali, převezměte úpravy ze zálohy. Pak `npm install` a `npm run data` ve web/.")
+        print("Pokud jste vzhled webu upravovali, převezměte úpravy ze zálohy. Pak `npm ci`, `npm run data` a `npm run build` ve web/ (s Node.js >=22.19.0).")
 
 
 if __name__ == "__main__":

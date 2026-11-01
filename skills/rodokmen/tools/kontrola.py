@@ -126,8 +126,16 @@ def main():
         texty.append((f"osoba {k}", text + (f" {hranice}" if roky and min(roky) >= 1870 or k < 8 else "")))
     texty += [(f"boční příbuzný {s.get('n')}", s.get("n", "") + " " + s.get("t", "")) for s in SIDE]
     for f in ("zajimavosti.md", "pribeh.md"):
-        if os.path.exists(os.path.join(DATA, f)):
-            texty += [(f, odst) for odst in open(os.path.join(DATA, f), encoding="utf-8").read().split("\n\n")]
+        path = os.path.join(DATA, f)
+        if os.path.exists(path):
+            texty += [(f, odst) for odst in open(path, encoding="utf-8").read().split("\n\n")]
+    story_dir = os.path.join(DATA, "pribehy")
+    if os.path.isdir(story_dir):
+        for name in sorted(os.listdir(story_dir)):
+            if name.endswith(".md"):
+                path = os.path.join(story_dir, name)
+                texty += [(f"pribehy/{name}", odst)
+                          for odst in open(path, encoding="utf-8").read().split("\n\n")]
     for kde, text in texty:
         if not recent(text):
             continue
@@ -137,7 +145,10 @@ def main():
                         f"zeptej se uživatele, jestli to tam smí být (reference/soukromi.md); když ano, "
                         f"přidej úryvek textu s tím slovem do web.json „citlive_schvaleno“")
 
-    if not os.path.exists(os.path.join(DATA, "pribeh.md")) and LINES:
+    has_story = os.path.exists(os.path.join(DATA, "pribeh.md"))
+    if os.path.isdir(story_dir):
+        has_story = has_story or any(name.endswith(".md") for name in os.listdir(story_dir))
+    if not has_story and LINES:
         hlavni = min(LINES)
         n = max((k.bit_length() for k in P if k >= 8 and k >> (k.bit_length() - 4) == hlavni), default=0)
         if n >= 6:

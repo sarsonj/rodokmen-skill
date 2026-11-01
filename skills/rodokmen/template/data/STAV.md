@@ -17,13 +17,13 @@ pak konec `research_log.md` a sekci „Rozpracováno“.
 | `data/zvyrazneni.json` | Rámečky – které místo výřezu čteme. |
 | `data/research_log.md` | Deník VŠECH hledání, i neúspěšných. |
 | `data/udaje_od_rodiny.md` | Co řekla rodina, rodinné dokumenty. |
-| `data/zajimavosti.md`, `data/pribeh.md` | Texty na web. |
+| `data/zajimavosti.md`, `data/pribeh.md`, `data/pribehy/*.md` | Texty na web. |
 | `data/archivni_dotazy.md` | Co by šlo zjistit jen v archivu. |
 | `data/mista.json`, `data/dokumenty.json`, `data/web.json` | Mapa, rodinné fotky a dokumenty, nastavení webu. |
 | `vyrezy/`, `zdroje/` | Výřezy zápisů pro web (1800 px) a v plném rozlišení. |
 | `dokumenty/` | Rodinné dokumenty a fotky od uživatele (originály). |
 | `pracovni/` | Pracovní soubory (stažené stránky, kontrolní obrázky) – nejdou na web. |
-| `web/` | Rodinný web. `cd web && npm run data && npm run build`, náhled `npm run preview`. |
+| `web/` | Rodinný web. `cd web && npm ci && npm run data && npm run build`, náhled `npm run preview`. |
 
 ## Pravidla
 1. Než něco ohlásím jako nové, prohledám `osoby.py`, `zaznamy.json` a `research_log.md` (jméno, místo, rok).

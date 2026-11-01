@@ -65,6 +65,48 @@ def strip_comments(md):
     return re.sub(r"<!--.*?-->\n?", "", md, flags=re.S)
 
 
+def story_frontmatter(path, slug, require_rod=True):
+    """Načte omezené skalární frontmatter pro příběhy bez další Python závislosti."""
+    text = open(path, encoding="utf-8").read()
+    match = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)", text, re.S)
+    if not match:
+        sys.exit(f"CHYBA: {path}: chybí YAML frontmatter.")
+    fields = {}
+    for line in match.group(1).splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        item = re.fullmatch(r"(title|lead|rod):\s*(.*?)\s*", line)
+        if not item:
+            sys.exit(f"CHYBA: {path}: očekávám pouze skalární pole title, lead a rod.")
+        key, value = item.groups()
+        if key in fields:
+            sys.exit(f"CHYBA: {path}: pole {key} je uvedené vícekrát.")
+        if value.startswith('"'):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError as ex:
+                sys.exit(f"CHYBA: {path}: neplatná hodnota {key}: {ex}")
+            if not isinstance(value, str):
+                sys.exit(f"CHYBA: {path}: {key} musí být text.")
+        elif value.startswith("'"):
+            if len(value) < 2 or not value.endswith("'"):
+                sys.exit(f"CHYBA: {path}: neuzavřená hodnota {key}.")
+            value = value[1:-1].replace("''", "'")
+        fields[key] = value
+    for key in ("title", "lead") + (("rod",) if require_rod else ()):
+        if key not in fields:
+            sys.exit(f"CHYBA: {path}: ve frontmatter chybí pole {key}.")
+    if not fields["title"].strip():
+        sys.exit(f"CHYBA: {path}: title nesmí být prázdný.")
+    rod = fields.get("rod")
+    if require_rod and not re.fullmatch(r"(?:[8-9]|1[0-5])", rod or ""):
+        sys.exit(f"CHYBA: {path}: rod musí být číslo 8 až 15.")
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
+        sys.exit(f"CHYBA: {path}: název souboru musí být bezpečný slug z malých písmen, číslic a pomlček.")
+    return dict(slug=slug, title=fields["title"], lead=fields["lead"],
+                rod=int(rod) if require_rod else None, text=text)
+
+
 def slugify(text):
     t = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z0-9]+", "-", t).strip("-")
@@ -326,9 +368,46 @@ def main():
                        items=[dict(name=a, text=b) for a, b in h.get("polozky", [])],
                        records=[r for r in h.get("zaznamy", []) if r in recs]) for h in ns["HYPOTEZY"]]
 
-    has_story = os.path.exists(os.path.join(DATA, "pribeh.md"))
+    story_dir = os.path.join(DATA, "pribehy")
+    story_files = sorted(
+        os.path.join(story_dir, name) for name in os.listdir(story_dir)
+        if name.endswith(".md")
+    ) if os.path.isdir(story_dir) else []
+    stories = [story_frontmatter(path, os.path.splitext(os.path.basename(path))[0])
+               for path in story_files]
+    multi_stories = bool(stories)
+    configured_order = cfg.get("pribehy", [])
+    if not isinstance(configured_order, list) or any(not isinstance(slug, str) for slug in configured_order):
+        sys.exit("CHYBA: web.json → pribehy musí být seznam slugů příběhů.")
+    if multi_stories:
+        slugs_in_files = [story["slug"] for story in stories]
+        if len(set(slugs_in_files)) != len(slugs_in_files):
+            sys.exit("CHYBA: názvy souborů příběhů se po převodu na slug opakují.")
+        if configured_order:
+            if len(set(configured_order)) != len(configured_order) or set(configured_order) != set(slugs_in_files):
+                sys.exit("CHYBA: web.json → pribehy musí obsahovat každý slug v data/pribehy/ právě jednou.")
+            by_slug = {story["slug"]: story for story in stories}
+            stories = [by_slug[slug] for slug in configured_order]
+    elif configured_order:
+        sys.exit("CHYBA: web.json → pribehy odkazuje na příběhy, ale data/pribehy/ neobsahuje žádné Markdown soubory.")
+    legacy_story = os.path.join(DATA, "pribeh.md")
+    if not multi_stories and os.path.exists(legacy_story):
+        legacy_text = open(legacy_story, encoding="utf-8").read()
+        legacy_match = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)", legacy_text, re.S)
+        legacy_fields = {}
+        if legacy_match:
+            for line in legacy_match.group(1).splitlines():
+                item = re.fullmatch(r"(title|lead):\s*(.*?)\s*", line)
+                if item:
+                    legacy_fields[item.group(1)] = item.group(2)
+        stories = [dict(slug="", title=legacy_fields.get("title", "Příběh"),
+                        lead=legacy_fields.get("lead", ""), rod=cfg.get("pribeh", {}).get("rod"),
+                        text=legacy_text)]
+    has_story = bool(stories)
     public_cfg = {k: v for k, v in cfg.items() if k != "prihlaseni"}
     public_cfg["maPribeh"] = has_story
+    public_cfg["maVicePribehu"] = multi_stories
+    public_cfg["pribehy"] = [story["slug"] for story in stories] if multi_stories else []
     site = dict(config=public_cfg, places=places, root=slugs[1], aliases={a: slugs[a] for a in SAME}, people=people,
                 families=families, records=records, lines=lines,
                 issues=[dict(title=i, text="") if isinstance(i, str) else dict(title=i[0], text=i[1]) for i in ISSUES], stats=stats, hypotheses=hypotheses,
@@ -341,8 +420,15 @@ def main():
         path = os.path.join(DATA, src)
         text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
         write(os.path.join(gen_dir, dst), strip_comments(re.sub(r"^# .*\n", "", text, count=1)))
-    story = os.path.join(DATA, "pribeh.md")
-    write(os.path.join(gen_dir, "pribeh.md"), strip_comments(open(story, encoding="utf-8").read()) if has_story else "---\ntitle: Příběh\nlead: ''\n---\n")
+    shutil.rmtree(os.path.join(gen_dir, "pribehy"), ignore_errors=True)
+    if multi_stories:
+        for story in stories:
+            write(os.path.join(gen_dir, "pribehy", story["slug"] + ".md"), strip_comments(story["text"]))
+    write(os.path.join(gen_dir, "pribehy.json"), json.dumps(
+        [{key: story[key] for key in ("slug", "title", "lead", "rod")} for story in stories if story["slug"]],
+        ensure_ascii=False, indent=1))
+    story = stories[0]["text"] if stories else "---\ntitle: Příběh\nlead: ''\n---\n"
+    write(os.path.join(gen_dir, "pribeh.md"), strip_comments(story))
 
     hrefs = os.path.join(gen_dir, "fan_hrefs.json")
     json.dump({k: f"/osoba/{s}/" for k, s in slugs.items()}, open(hrefs, "w", encoding="utf-8", newline="\n"))
@@ -378,10 +464,14 @@ def main():
     # odkazy v textech, které nikam nevedou (adresa osoby se změní třeba doplněním roku narození: jan-novak → jan-novak-1798)
     targets = dict(osoba=people, zdroj=recs, rod=lines, rodina=families)
     texts = {f: open(os.path.join(gen_dir, f), encoding="utf-8").read() for f in ("pribeh.md", "zajimavosti.md")}
+    if multi_stories:
+        texts.update({f"pribehy/{story['slug']}.md": story["text"] for story in stories})
     texts["web.json"] = json.dumps(cfg, ensure_ascii=False)
     texts["osoby.py (hypotézy)"] = json.dumps(hypotheses, ensure_ascii=False)
+    targets["pribehy"] = {story["slug"] for story in stories if story["slug"]}
     broken = [(f, m.group(0)) for f, t in texts.items()
-              for m in re.finditer(r"/(osoba|zdroj|rod|rodina)/([^/\s)\"'#?<>\]]+)", t) if m.group(2) not in targets[m.group(1)]]
+              for m in re.finditer(r"/(osoba|zdroj|rod|rodina|pribehy)/([^/\s)\"'#?<>\]]+)", t)
+              if m.group(2) not in targets[m.group(1)]]
     for f, link in dict.fromkeys(broken):
         print(f"POZOR: nefunkční odkaz {link}/ v {f} – oprav ho (adresy stránek jsou ve web/src/data/site.json)")
 

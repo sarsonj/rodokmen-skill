@@ -1,28 +1,47 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { docs, config, lineByK, href } from '../../lib/data.js';
+import { docs, config, lineByK, href, stories } from '../../lib/data.js';
 import { Content, frontmatter } from '../../generated/pribeh.md';
 const line = lineByK[config.pribeh?.rod ?? 8];
 ---
-<Base title={frontmatter.title}>
-  <p class="crumbs">{line && <><a href={href.line(line.slug)}>rod {line.name}</a> · </>}<a href="/zajimavosti/">další zajímavosti</a></p>
-  <h1>{frontmatter.title}</h1>
-  {frontmatter.lead && <p class="lead">{frontmatter.lead}</p>}
-  <div class="prose"><Content /></div>
-
-  <div class="next-step">
-    <p><strong>Chcete víc?</strong> Další objevy z rodokmenu najdete v zajímavostech.</p>
-    <a class="btn" href="/zajimavosti/">Zajímavosti z rodokmenu →</a>
-  </div>
-
-  {docs.length > 0 && (
+<Base title={config.maVicePribehu ? 'Rodinné příběhy' : frontmatter.title}>
+  {config.maVicePribehu ? (
     <>
-      <h2>Rodinné dokumenty a fotografie</h2>
-      <div class="docs">
-        {docs.map((d) => (
-          <figure><a href={`/img/${d.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${d.img}.jpg`} alt={d.caption} loading="lazy" /></a><figcaption>{d.caption}</figcaption></figure>
+      <p class="crumbs"><a href="/zajimavosti/">další zajímavosti</a></p>
+      <h1>Rodinné příběhy</h1>
+      <p class="lead">Vyberte si příběh z rodinné historie.</p>
+      <div class="grid2">
+        {stories.map((story) => (
+          <a class="card card-link" href={`/pribehy/${story.slug}/`}>
+            <h3>{story.title}</h3>
+            {story.lead && <p class="small muted">{story.lead}</p>}
+            {lineByK[story.rod] && <p class="small muted">Rod {lineByK[story.rod].name}</p>}
+          </a>
         ))}
       </div>
+    </>
+  ) : (
+    <>
+      <p class="crumbs">{line && <><a href={href.line(line.slug)}>rod {line.name}</a> · </>}<a href="/zajimavosti/">další zajímavosti</a></p>
+      <h1>{frontmatter.title}</h1>
+      {frontmatter.lead && <p class="lead">{frontmatter.lead}</p>}
+      <div class="prose"><Content /></div>
+
+      <div class="next-step">
+        <p><strong>Chcete víc?</strong> Další objevy z rodokmenu najdete v zajímavostech.</p>
+        <a class="btn" href="/zajimavosti/">Zajímavosti z rodokmenu →</a>
+      </div>
+
+      {docs.length > 0 && (
+        <>
+          <h2>Rodinné dokumenty a fotografie</h2>
+          <div class="docs">
+            {docs.map((d) => (
+              <figure><a href={`/img/${d.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${d.img}.jpg`} alt={d.caption} loading="lazy" /></a><figcaption>{d.caption}</figcaption></figure>
+            ))}
+          </div>
+        </>
+      )}
     </>
   )}
 </Base>

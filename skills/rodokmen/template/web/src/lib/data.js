@@ -1,7 +1,9 @@
 // Data exported from the research repo by tools/export_web.py (re-run `npm run data` after changes).
 import site from '../data/site.json';
+import stories from '../generated/pribehy.json';
 
 export const { people, families, lines, stats, issues, hypotheses, docs, config } = site;
+export { stories };
 /** Počet rodů slovem pro nadpisy („Osm rodů“). */
 export const linesTitle = (n) => (['Žádný rod', 'Jeden rod', 'Dva rody', 'Tři rody', 'Čtyři rody', 'Pět rodů', 'Šest rodů', 'Sedm rodů', 'Osm rodů'][n] ?? `${n} rodů`);
 export const root = people[site.root];
