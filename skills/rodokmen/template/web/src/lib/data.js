@@ -2,6 +2,8 @@
 import site from '../data/site.json';
 
 export const { people, families, lines, stats, issues, hypotheses, docs, config } = site;
+/** Osoby mimo přímou linii (data/osoby.py RODINA) pro stromový graf. */
+export const others = site.others ?? [];
 /** Počet rodů slovem pro nadpisy („Osm rodů“). */
 export const linesTitle = (n) => (['Žádný rod', 'Jeden rod', 'Dva rody', 'Tři rody', 'Čtyři rody', 'Pět rodů', 'Šest rodů', 'Sedm rodů', 'Osm rodů'][n] ?? `${n} rodů`);
 export const root = people[site.root];

@@ -1,0 +1,386 @@
+---
+// Whole-family tree: direct ancestors (Kekulé numbers) plus everyone from RODINA (siblings, their partners, children,
+// partners' ancestors). One row per generation; every card can open its parents (▲), siblings and partners/children.
+// Lines may cross – that is expected in a family with intermarriages.
+import Base from '../layouts/Base.astro';
+import { people, others, byK, lineByK, records, href } from '../lib/data.js';
+const K = (n) => (byK[n] ? `k${byK[n].k}` : `?${n}`);
+const recs = (list) => list.filter((r) => records[r]).map((r) => [href.record(r), records[r].date]);
+const nodes = {};
+for (const p of Object.values(people)) {
+  nodes[`k${p.k}`] = {
+    n: p.name, y: p.years, sex: p.sex, u: href.person(p.slug), c: p.line ? lineByK[p.line]?.color : null, b: p.sibStatus ?? 'none',
+    fa: K(2 * p.k), mo: K(2 * p.k + 1), pa: [],
+    nt: p.side.filter((e) => !e.id).map((e) => ({ n: e.name, r: e.rel ?? 'příbuzný', y: e.years ?? '', t: e.text, z: recs(e.records) })),
+  };
+}
+for (const o of others) {
+  nodes[o.id] = { n: o.name, y: o.years, sex: o.sex, o: 1, st: o.status, fa: o.father, mo: o.mother, pa: o.partners, f: o.facts, t: o.note, z: recs(o.records) };
+}
+const json = JSON.stringify(nodes).replace(/</g, '\\u003c');
+const names = [...new Set(Object.values(nodes).map((p) => p.n))].sort((a, b) => a.localeCompare(b, 'cs'));
+---
+<Base title="Stromový graf" full>
+  <div class="fan-bar">
+    <strong>Stromový graf</strong>
+    <form class="fan-search" autocomplete="off">
+      <input list="tree-names" placeholder="Najít osobu…" aria-label="Najít osobu" />
+      <datalist id="tree-names">{names.map((n) => <option value={n} />)}</datalist>
+      <button type="submit">Najít</button>
+    </form>
+    <span class="fan-btns">
+      <button type="button" data-act="all">Rozbalit vše</button>
+      <button type="button" data-act="line">Přímá linie</button>
+      <button type="button" data-act="fit">Celý</button>
+    </span>
+    <span class="small muted fan-hint">▲ nad osobou ukáže rodiče, pod jménem sourozence a potomky. Kolečkem přibližujte, tažením posouvejte.</span>
+  </div>
+  <div class="tree-stage">
+    <div class="tree-canvas"><svg class="tree-lines"></svg></div>
+    <div class="tree-info" hidden></div>
+  </div>
+  <script type="application/json" id="tree-data" set:html={json} />
+
+  <script>
+    type Fam = { fa: string | null; mo: string | null; ch: string[] };
+    const N: Record<string, any> = JSON.parse(document.getElementById('tree-data')!.textContent!);
+    const stage = document.querySelector<HTMLElement>('.tree-stage')!;
+    const canvas = stage.querySelector<HTMLElement>('.tree-canvas')!;
+    const lines = canvas.querySelector('svg')!;
+    const info = stage.querySelector<HTMLElement>('.tree-info')!;
+    const CW = 168, CH = 66, ROW = 130, GIN = 18, GAP = 26;
+    const esc = (t: string) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const real = (x: string | null | undefined): x is string => !!x && !!N[x];
+    const ids = Object.keys(N);
+
+    // families: one per parent pair ("?12" = unknown ancestor 12 keeps siblings together); partners without children too
+    const fam = new Map<string, Fam>(), birth: Record<string, string> = {}, asParent: Record<string, string[]> = {};
+    const addFam = (fa: string | null, mo: string | null) => {
+      const key = `${fa ?? ''}|${mo ?? ''}`;
+      if (!fam.has(key)) {
+        fam.set(key, { fa, mo, ch: [] });
+        for (const p of [fa, mo]) if (real(p)) (asParent[p] ??= []).push(key);
+      }
+      return key;
+    };
+    for (const id of ids) {
+      const p = N[id];
+      if (p.fa || p.mo) { birth[id] = addFam(p.fa || null, p.mo || null); fam.get(birth[id])!.ch.push(id); }
+    }
+    for (const id of ids) for (const q of N[id].pa ?? []) {
+      if (!real(q)) continue;
+      const [fa, mo] = N[id].sex === N[q].sex ? [id, q].sort() : N[id].sex === 'F' ? [q, id] : [id, q];
+      if (!fam.has(`${mo}|${fa}`)) addFam(fa, mo);
+    }
+    const parentsOf = (id: string) => { const f = fam.get(birth[id]); return f ? [f.fa, f.mo].filter(real) : []; };
+    const siblingsOf = (id: string) => (fam.get(birth[id])?.ch ?? []).filter((c) => c !== id);
+    const downOf = (id: string) => (asParent[id] ?? []).flatMap((key) => { const f = fam.get(key)!; return [f.fa, f.mo, ...f.ch].filter((x): x is string => real(x) && x !== id); });
+    const kek = (id: string) => (id[0] === 'k' ? Number(id.slice(1)) : 0);
+    const ancestors = (id: string, seen = new Set<string>()): Set<string> => {
+      for (const p of parentsOf(id)) if (!seen.has(p)) { seen.add(p); ancestors(p, seen); }
+      return seen;
+    };
+
+    // generations: direct line from its number, everyone else from parents, children or partners
+    const gen: Record<string, number> = {};
+    for (const id of ids) if (kek(id)) gen[id] = Math.floor(Math.log2(kek(id)));
+    for (let pass = 0, changed = true; changed && pass < 50; pass++) {
+      changed = false;
+      for (const id of ids) {
+        if (id in gen) continue;
+        const pg = parentsOf(id).filter((p) => p in gen), dn = (asParent[id] ?? []).flatMap((key) => fam.get(key)!.ch).filter((c) => c in gen);
+        const partner = (asParent[id] ?? []).map((key) => { const f = fam.get(key)!; return f.fa === id ? f.mo : f.fa; }).filter((x): x is string => !!x && x in gen);
+        const sib = siblingsOf(id).filter((s) => s in gen);
+        const g = pg.length ? gen[pg[0]] - 1 : dn.length ? gen[dn[0]] + 1 : partner.length ? gen[partner[0]] : sib.length ? gen[sib[0]] : null;
+        if (g !== null) { gen[id] = g; changed = true; }
+      }
+    }
+    for (const id of ids) gen[id] ??= 0;
+
+    // state: which cards have parents (u), siblings (s) or partners+children (d) open; defaults = direct line open
+    let allOpen = false, flip = new Set<string>();
+    // parents are shared by siblings, so "u" belongs to the birth family: open by default for families of the direct line
+    const flipKey = (t: string, id: string) => (t === 'u' ? `u:${birth[id]}` : `${t}:${id}`);
+    const isOpen = (t: string, id: string) => (t === 'u' && gen[id] === 0) ||   // bottom row: parents always shown
+      (allOpen || (t === 'u' && !!fam.get(birth[id])?.ch.some((c) => kek(c) > 0)) || (t === 's' && id === 'k1')) !== flip.has(flipKey(t, id));
+    const readHash = () => {
+      const hp = new Map(decodeURIComponent(location.hash.slice(1)).split('&').map((kv) => kv.split('=') as [string, string]));
+      allOpen = hp.get('a') === '1';
+      flip = new Set((hp.get('x') ?? '').split(',').filter(Boolean));
+      return hp.get('f') ?? '';
+    };
+    const save = () => history.replaceState(null, '', `#${allOpen ? 'a=1&' : ''}x=${[...flip].join(',')}`);
+
+    const visible = () => {
+      const vis = new Set(['k1']), q = ['k1'];
+      const add = (x: string | null) => { if (real(x) && !vis.has(x)) { vis.add(x); q.push(x); } };
+      while (q.length) {
+        const p = q.shift()!, b = fam.get(birth[p]);
+        if (b && isOpen('u', p)) { add(b.fa); add(b.mo); }
+        if (b && isOpen('s', p)) b.ch.forEach(add);
+        if (isOpen('d', p)) downOf(p).forEach(add);
+      }
+      return vis;
+    };
+
+    // layout: rows by generation, couples side by side; order direct line by Kekulé position, others next to relatives,
+    // then x by repeated "move towards relatives, keep order, no overlap" (isotonic regression per row)
+    let vis = new Set<string>(), X: Record<string, number> = {};
+    const layout = () => {
+      vis = visible();
+      const V = [...vis];
+      const keyOf: Record<string, number> = {}, bias: Record<string, number> = {};
+      for (const id of V) if (kek(id)) { const k = kek(id), g = gen[id]; keyOf[id] = (k - 2 ** g + 0.5) / 2 ** g; }
+      for (const id of V) {
+        if (kek(id)) continue;
+        const kin = siblingsOf(id).find((s) => kek(s));
+        bias[id] = kin ? (kek(kin) % 2 ? 1 : -1) * 1e-4 : 0;
+      }
+      const nb = (id: string) => [...parentsOf(id), ...(asParent[id] ?? []).flatMap((key) => fam.get(key)!.ch), ...downOf(id)].filter((x) => vis.has(x));
+      for (let it = 0; it < 30; it++) for (const id of V) {
+        if (kek(id)) continue;
+        let ks = nb(id).filter((x) => x in keyOf).map((x) => keyOf[x]);
+        if (!ks.length) ks = siblingsOf(id).filter((x) => x in keyOf).map((x) => keyOf[x]);
+        if (ks.length) keyOf[id] = ks.reduce((a, b) => a + b, 0) / ks.length + bias[id];
+      }
+      // blocks of partners in one row
+      const blockOf: Record<string, string[]> = {};
+      for (const id of V) blockOf[id] = [id];
+      for (const f of fam.values()) {
+        if (!(real(f.fa) && real(f.mo) && vis.has(f.fa) && vis.has(f.mo) && gen[f.fa] === gen[f.mo])) continue;
+        const a = blockOf[f.fa], b = blockOf[f.mo];
+        if (a === b) continue;
+        const merged = [...a, ...b];
+        for (const m of merged) blockOf[m] = merged;
+      }
+      const blocks = [...new Set(Object.values(blockOf))].map((members) => {
+        if (members.length === 2) {
+          const [p, q] = members, kin = bias[p] && !bias[q] ? p : bias[q] && !bias[p] ? q : null;
+          if (kin) members = bias[kin] > 0 ? [kin, kin === p ? q : p] : [kin === p ? q : p, kin];   // partner on the outer side
+          else members = N[p].sex === 'F' && N[q].sex !== 'F' ? [q, p] : [p, q];
+        } else members = [...members].sort((a, b) => (keyOf[a] ?? 0) - (keyOf[b] ?? 0));
+        const key = members.reduce((s, m) => s + (keyOf[m] ?? 0.5), 0) / members.length;
+        return { members, key, g: gen[members[0]], w: members.length * CW + (members.length - 1) * GIN, x: 0 };
+      });
+      const rows = new Map<number, typeof blocks>();
+      for (const b of blocks) (rows.get(b.g) ?? rows.set(b.g, []).get(b.g)!).push(b);
+      const off = (b: (typeof blocks)[0], m: string) => -b.w / 2 + CW / 2 + b.members.indexOf(m) * (CW + GIN);
+      const bOf: Record<string, (typeof blocks)[0]> = {};
+      for (const b of blocks) for (const m of b.members) bOf[m] = b;
+      const xm = (m: string) => bOf[m].x + off(bOf[m], m);
+      const widest = Math.max(...[...rows.values()].map((r) => r.reduce((s, b) => s + b.w + GAP, 0)));
+      const pava = (row: typeof blocks, want: number[]) => {
+        const c = [0];
+        for (let i = 1; i < row.length; i++) c[i] = c[i - 1] + (row[i - 1].w + row[i].w) / 2 + GAP;
+        const st: { v: number; n: number }[] = [];
+        for (let i = 0; i < row.length; i++) {
+          st.push({ v: want[i] - c[i], n: 1 });
+          while (st.length > 1 && st[st.length - 2].v > st[st.length - 1].v) {
+            const b = st.pop()!, a = st.pop()!;
+            st.push({ v: (a.v * a.n + b.v * b.n) / (a.n + b.n), n: a.n + b.n });
+          }
+        }
+        let i = 0;
+        for (const s of st) for (let j = 0; j < s.n; j++, i++) row[i].x = c[i] + s.v;
+      };
+      for (const row of rows.values()) { row.sort((a, b) => a.key - b.key); pava(row, row.map((b) => b.key * widest)); }
+      const gens = [...rows.keys()].sort((a, b) => a - b);
+      for (let it = 0; it < 40; it++) {
+        for (const g of it % 2 ? gens : [...gens].reverse()) {
+          const row = rows.get(g)!;
+          pava(row, row.map((b) => {
+            const d: number[] = [];
+            for (const m of b.members) {
+              const ps = parentsOf(m).filter((x) => vis.has(x));
+              const kin = kek(m) ? undefined : siblingsOf(m).find((x) => kek(x) && vis.has(x));
+              if (kin) d.push(xm(kin) - xm(m));   // stay next to the sibling in the direct line
+              else if (ps.length) d.push(ps.reduce((s, x) => s + xm(x), 0) / ps.length - xm(m));
+              for (const key of asParent[m] ?? []) {
+                const f = fam.get(key)!, ch = f.ch.filter((x) => vis.has(x));
+                if (!ch.length) continue;
+                const pv = [f.fa, f.mo].filter((x): x is string => real(x) && vis.has(x));
+                d.push(ch.reduce((s, x) => s + xm(x), 0) / ch.length - pv.reduce((s, x) => s + xm(x), 0) / pv.length);
+              }
+            }
+            return d.length ? b.x + d.reduce((s, v) => s + v, 0) / d.length : b.x;
+          }));
+        }
+      }
+      X = {};
+      for (const id of V) X[id] = xm(id);
+    };
+
+    const pos = (id: string) => ({ x: X[id] + offs.x, y: -gen[id] * ROW + offs.y });
+    let offs = { x: 0, y: 0 }, size = { w: 0, h: 0 };
+    const btn = (t: string, id: string, label: string, n: number, todo = false) =>
+      isOpen(t, id) ? `<button type="button" data-t="${t}" data-id="${esc(id)}" aria-expanded="true">▾ ${label}</button>`
+        : n ? `<button type="button" data-t="${t}" data-id="${esc(id)}" aria-expanded="false" class="${todo ? 'todo' : ''}">▸ ${label} ${n}</button>` : '';
+
+    const render = () => {
+      layout();
+      const V = [...vis];
+      const minX = Math.min(...V.map((id) => X[id])) - CW / 2, maxX = Math.max(...V.map((id) => X[id])) + CW / 2;
+      const maxG = Math.max(...V.map((id) => gen[id])), minG = Math.min(...V.map((id) => gen[id]));
+      offs = { x: 30 - minX, y: 40 + maxG * ROW };
+      size = { w: maxX - minX + 60, h: (maxG - minG) * ROW + CH + 80 };
+      let html = '', svg = '';
+      for (const id of V) {
+        const p = N[id], { x, y } = pos(id);
+        const hasPar = gen[id] > 0 && parentsOf(id).length > 0;
+        const hidden = (list: string[]) => list.filter((s) => !vis.has(s)).length;
+        const sibs = siblingsOf(id).filter(real), down = downOf(id);
+        const shownElsewhere = !isOpen('u', id) && parentsOf(id).every((x) => vis.has(x));   // reached from the parents' side
+        const up = !hasPar ? '' : shownElsewhere
+          ? `<button type="button" class="tc-tog" disabled title="Rodiče jsou vidět přes jinou větev">−</button>`
+          : `<button type="button" class="tc-tog" data-t="u" data-id="${esc(id)}" aria-expanded="${isOpen('u', id)}" title="${isOpen('u', id) ? 'Skrýt rodiče' : 'Ukázat rodiče'}">${isOpen('u', id) ? '−' : '▲ ' + ancestors(id).size}</button>`;
+        const status = !sibs.length && kek(id) > 1 ? `<span class="none">${p.b === 'done' ? 'bez sourozenců' : p.b === 'partial' ? 'sourozenci: částečně' : 'sourozenci nehledáni'}</span>` : '';
+        const foot = [btn('s', id, 'sourozenci', hidden(sibs), p.b !== 'done'), status, btn('d', id, 'potomci', hidden(down)),
+          p.nt?.length ? `<button type="button" data-note="${esc(id)}">pozn. ${p.nt.length}</button>` : ''].join('');
+        const name = p.u ? `<a href="${esc(p.u)}" draggable="false">${esc(p.n)}</a>` : `<button type="button" class="tc-name" data-info="${esc(id)}">${esc(p.n)}</button>`;
+        html += `<div class="tc-card${id === 'k1' ? ' tc-root' : ''}${p.o ? ' tc-other' : ''}" data-card="${esc(id)}" style="left:${x - CW / 2}px;top:${y}px${p.c ? `;border-left-color:${esc(p.c)}` : ''}">
+          ${up}${name}<span class="tc-y">${esc(p.y || ' ')}</span><div class="tc-foot">${foot}</div></div>`;
+      }
+      // lines: couple line between partners, from its middle down to a bus above the children, drops into each child
+      const busIdx: Record<number, number> = {};
+      const famList = [...fam.values()].map((f) => ({ f, pv: [f.fa, f.mo].filter((x): x is string => real(x) && vis.has(x)), ch: f.ch.filter((c) => vis.has(c)) }))
+        .filter(({ pv, ch }) => (pv.length === 2) || (ch.length && (pv.length || ch.length > 1)));
+      famList.sort((a, b) => (a.pv.length ? pos(a.pv[0]).x : 0) - (b.pv.length ? pos(b.pv[0]).x : 0));
+      for (const { pv, ch } of famList) {
+        let jx: number | null = null, jy = 0;
+        if (pv.length === 2) {
+          const [a, b] = pv.map(pos).sort((p, q) => p.x - q.x);
+          const my = (a.y + b.y) / 2 + CH / 2;
+          svg += `<path class="mar" d="M${a.x + CW / 2} ${a.y + CH / 2}L${b.x - CW / 2} ${b.y + CH / 2}"/>`;
+          jx = (a.x + b.x) / 2; jy = my;
+        } else if (pv.length === 1) { const a = pos(pv[0]); jx = a.x; jy = a.y + CH; }
+        if (!ch.length) continue;
+        const cs = ch.map(pos), top = Math.min(...cs.map((c) => c.y));
+        const g = Math.round(top);
+        busIdx[g] = (busIdx[g] ?? -1) + 1;
+        const by = top - 14 - (busIdx[g] % 4) * 7;
+        const xs = cs.map((c) => c.x).concat(jx === null ? [] : [jx]);
+        let d = `M${Math.min(...xs)} ${by}H${Math.max(...xs)}`;
+        if (jx !== null) d += `M${jx} ${jy}V${by}`;
+        for (const c of cs) d += `M${c.x} ${by}V${c.y}`;
+        svg += `<path${jx === null ? ' class="nop"' : ''} d="${d}"/>`;
+      }
+      canvas.querySelectorAll('.tc-card').forEach((e) => e.remove());
+      canvas.insertAdjacentHTML('beforeend', html);
+      lines.setAttribute('width', String(size.w));
+      lines.setAttribute('height', String(size.h));
+      lines.innerHTML = svg;
+      canvas.style.width = size.w + 'px';
+      canvas.style.height = size.h + 'px';
+      save();
+    };
+
+    let view = { s: 1, tx: 0, ty: 0 };
+    const applyView = () => (canvas.style.transform = `translate(${view.tx}px,${view.ty}px) scale(${view.s})`);
+    const fit = () => {
+      const r = stage.getBoundingClientRect();
+      const z = Math.max(0.05, Math.min(1, (r.width - 20) / size.w, (r.height - 20) / size.h));
+      view = { s: z, tx: (r.width - size.w * z) / 2, ty: Math.max(10, (r.height - size.h * z) / 2) };
+      applyView();
+    };
+    const focus = (id: string, z = 0.8) => {
+      const r = stage.getBoundingClientRect(), p = pos(id);
+      view = { s: z, tx: r.width / 2 - p.x * z, ty: r.height / 2 - (p.y + CH / 2) * z };
+      applyView();
+    };
+    // first view: whole tree, or when that is too small the root at the bottom
+    const start = (f: string) => {
+      if (f && vis.has(f)) return focus(f);
+      fit();
+      if (view.s >= 0.5) return;
+      const r = stage.getBoundingClientRect(), p = pos('k1'), z = 0.7;
+      view = { s: z, tx: r.width / 2 - p.x * z, ty: r.height - 30 - (p.y + CH) * z };
+      applyView();
+    };
+    const rerender = (id: string) => {
+      const before = X[id] !== undefined && pos(id);
+      render();
+      if (before && vis.has(id)) { const now = pos(id); view.tx += (before.x - now.x) * view.s; view.ty += (before.y - now.y) * view.s; }
+      applyView();
+    };
+
+    const zoomAt = (f: number, cx: number, cy: number) => {
+      const r = stage.getBoundingClientRect();
+      const s = Math.min(2.5, Math.max(0.05, view.s * f)), px = cx - r.left, py = cy - r.top;
+      view = { s, tx: px - (px - view.tx) * (s / view.s), ty: py - (py - view.ty) * (s / view.s) };
+      applyView();
+    };
+    stage.addEventListener('wheel', (e) => { if (info.contains(e.target as Node)) return; e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY); }, { passive: false });
+
+    // drag to pan (mouse + one finger), pinch to zoom (two fingers)
+    const pts = new Map<number, { x: number; y: number }>();
+    let moved = 0, pinch = 0;
+    stage.addEventListener('pointerdown', (e) => { moved = 0; if (info.contains(e.target as Node)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+    stage.addEventListener('pointermove', (e) => {
+      const prev = pts.get(e.pointerId);
+      if (!prev) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinch) zoomAt(d / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        pinch = d; moved += 10;
+        return;
+      }
+      const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved > 4) { stage.setPointerCapture(e.pointerId); view.tx += dx; view.ty += dy; applyView(); }
+    });
+    const up = (e: PointerEvent) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; };
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+
+    const recLinks = (z: string[][]) => (z.length ? `<p class="small">Zápisy: ${z.map(([u, d]) => `<a href="${esc(u)}">${esc(d ?? '')}</a>`).join(' · ')}</p>` : '');
+    const showInfo = (html: string) => { info.innerHTML = `<button type="button" class="tree-info-x" data-close aria-label="Zavřít">×</button>${html}`; info.hidden = false; };
+    stage.addEventListener('click', (e) => {
+      if (moved > 4 && e.detail > 0) { e.preventDefault(); e.stopPropagation(); return; }
+      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-t],[data-info],[data-note],[data-close]');
+      if (!t) return;
+      if (t.dataset.t) {
+        const key = flipKey(t.dataset.t, t.dataset.id!);
+        flip.has(key) ? flip.delete(key) : flip.add(key);
+        rerender(t.dataset.id!);
+      } else if (t.dataset.info) {
+        const p = N[t.dataset.info];
+        showInfo(`<strong>${esc(p.n)}</strong> <span class="muted">${esc(p.y || '')}${p.st ? ' · ' + esc(p.st) : ''}</span>
+          ${p.f?.length ? `<ul>${p.f.map((f: string) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}${p.t ? `<p>${esc(p.t)}</p>` : ''}${recLinks(p.z ?? [])}`);
+      } else if (t.dataset.note) {
+        const p = N[t.dataset.note];
+        showInfo(`<strong>Poznámky k osobě ${esc(p.n)}</strong>${p.nt.map((e2: any) =>
+          `<p><strong>${esc(e2.n)}</strong> <span class="muted">${esc(e2.r)}${e2.y ? ' · ' + esc(e2.y) : ''}</span><br>${esc(e2.t ?? '')}</p>${recLinks(e2.z)}`).join('')}`);
+      } else info.hidden = true;
+    }, true);
+
+    document.querySelectorAll<HTMLButtonElement>('.fan-btns button').forEach((b) => b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      if (act === 'all') { allOpen = true; flip = new Set(); render(); fit(); }
+      else if (act === 'line') { allOpen = false; flip = new Set(); render(); start(''); }
+      else fit();
+    }));
+
+    // search: open the path to the person if needed, then zoom to the card
+    const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    document.querySelector('.fan-search')!.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = norm((e.currentTarget as HTMLFormElement).querySelector('input')!.value.trim());
+      const id = q && ids.find((i) => norm(N[i].n) === q) || ids.find((i) => q && norm(N[i].n).includes(q));
+      if (!id) return;
+      if (!visible().has(id)) { allOpen = true; flip = new Set(); }
+      render();
+      if (!vis.has(id)) return;   // not connected to the direct line
+      focus(id, 1);
+      canvas.querySelector(`[data-card="${CSS.escape(id)}"]`)?.classList.add('tc-hit');
+    });
+
+    window.addEventListener('hashchange', () => { const f = readHash(); render(); start(f); });
+    const f0 = readHash();
+    render();
+    // the page may be laid out after the script runs (hidden tab, slow styles) – centre once the stage has a size
+    if (stage.clientWidth) start(f0);
+    else { const ro = new ResizeObserver(() => { if (stage.clientWidth) { ro.disconnect(); start(f0); } }); ro.observe(stage); }
+  </script>
+</Base>
