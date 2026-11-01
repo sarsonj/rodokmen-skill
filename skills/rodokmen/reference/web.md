@@ -80,6 +80,15 @@ Styly `web/src/styles/global.css` (barvy v `:root`), rozložení `web/src/layout
 Barvy rodů jsou v `tools/export_web.py` (`LINE_COLORS`) a `tools/fan_chart.py` (`BASE`). Upravuj jen na přání uživatele
 a po úpravě zkontroluj web na mobilu i počítači.
 
+## Vějíř na webu – plynulý posun a přibližování
+Stránka `/vejir/` je jedno SVG; u velkého vějíře (stovky jmen) by se při posunu a přibližování sekalo. Proto má
+hardwarovou akceleraci jako mapové aplikace (`web/src/lib/fanview.ts`, výpočty a testy v `fanmath.ts`): během pohybu
+grafická karta posouvá připravený obraz, po zastavení se dokreslí ostrý výřez v rozlišení obrazovky.
+- Výchozí `auto`: zapne se jen u velkých vějířů (od `AUTO_MIN_TEXTS` textů), malý vějíř (5–7 generací) jede bez ní.
+- Vynutit: `data/web.json` → `"vejir": { "akcelerace": true }` nebo `false`, pak `npm run data && npm run build`.
+- Vyzkoušet bez přestavění webu: adresa `/vejir/?akcelerace=1`, `=0` nebo `=auto`.
+- Testy výpočtů: ve `web/` `npm test`.
+
 ## Vějíř jako plakát
 `python3 -I tools/fan_chart.py vystupy/` → SVG a HTML (a PNG, je-li nainstalovaný Google Chrome, na Windows i Microsoft Edge) k tisku.
 

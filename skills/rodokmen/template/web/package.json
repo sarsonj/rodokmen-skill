@@ -8,6 +8,7 @@
     "dev": "astro dev",
     "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
+    "test": "node --test src/lib/*.test.ts",
     "nahled": "npm run data && npm run build && astro preview",
     "nasadit": "npm run data -- --nasazeni && npm run build && npx -y netlify-cli@latest deploy --prod --dir=dist",
     "pack": "tar -czf ../rodokmen-web.tar.gz --exclude=node_modules --exclude=dist --exclude=.astro .",
