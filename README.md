@@ -9,6 +9,8 @@ znalost rodiny a rozhodujete.
 
 Vznikl při skutečném hledání předků jedné rodiny.
 
+**Autor a správce:** Jindřich Šaršon ([sarsonj@gmail.com](mailto:sarsonj@gmail.com), [GitHub](https://github.com/sarsonj))
+
 **Aktuální verze: 0.5.0 (říjen 2026).** Skill se průběžně vyvíjí – opravuji chyby a doplňuji postupy pro další archivy
 podle toho, na co narazíte vy. Jak aktualizovat, najdete v části [Instalace](#instalace), seznam změn
 v [historii repozitáře](https://github.com/sarsonj/rodokmen-skill/commits/main).
@@ -182,6 +184,6 @@ tady v repozitáři.
   jeho návodem řídí.
 
 ## Licence
-Skill je pod licencí [MIT](LICENSE): smíte ho volně používat, upravovat a šířit dál, jen zachovejte uvedení autora.
+Skill je pod licencí [MIT](LICENSE): smíte ho volně používat, upravovat a šířit dál, jen zachovejte uvedení autora (Jindřich Šaršon).
 Výjimkou je metodická příručka `skills/rodokmen/reference/playbook.md`. Je to převzatá rešeršní zpráva bez uvedeného
 autora, licence MIT se na ni nevztahuje (podrobnosti na začátku souboru).
