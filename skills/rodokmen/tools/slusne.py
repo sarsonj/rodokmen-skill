@@ -1,0 +1,326 @@
+#!/usr/bin/env python3
+"""Brzda proti zablokování archivem: společný limit dotazů pro všechny procesy na jednom počítači.
+
+Archivy blokují IP adresu po sérii rychlých dotazů (MZA, ZA Opava…). Nástroje v tools/ si brzdu načítají samy
+(`import slusne`). Vlastní skripty, curl a shellové skripty spouštěj přes obal:
+
+  python3 -I tools/slusne.py pracovni/muj_skript.py [argumenty]   -> Python skript (urllib, requests…)
+  python3 -I tools/slusne.py curl [argumenty curl]                 -> curl se stejným limitem
+  python3 -I tools/slusne.py bash pracovni/skript.sh [argumenty]   -> shellový skript; curl uvnitř jde přes brzdu
+  python3 -I tools/slusne.py stav                                  -> limity a zastavené weby
+  python3 -I tools/slusne.py odblokuj [web]                        -> zrušit stopku (jen když víš, proč nastala)
+
+Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty na počítači – mají jednu IP adresu):
+  - dotazy (stránky, hledání, API) nejvýš 1 za 2 s (ZA Opava 1 za 4 s), obrázky a dlaždice nejvýš 10 za s;
+    omezuje se frekvence, ne souběh (vlákna stahování dlaždic nevadí),
+  - po odpovědi 429/503 (u dotazu i 403), po stránce „zablokováno“ nebo po 3 nepovedených spojeních za sebou
+    se web zastaví na 30 minut pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
+localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
+tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
+Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
+"""
+import http.client, io, json, os, re, shutil, socket, subprocess, sys, tempfile, threading, time
+from urllib.parse import urlsplit
+
+DOTAZ, OBRAZEK = 2.0, 0.1            # výchozí rozestup v sekundách
+LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
+    "archives.cz": (4.0, 0.1),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min
+    "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
+}
+VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
+         "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
+STOPKA = 30 * 60
+BAN_TEXT = {"archives.cz": re.compile(rb"zablokov[a\xc3\xa1]n|byl[a ]+zablokov|blocked", re.I)}
+OBRAZEK_RE = re.compile(r"\.(jpe?g|png|gif|webp|tiff?|jp2|bmp)(\?|$)|_files/|/tilegroup|/ximage/|zoomify|iipsrv|"
+                        r"isrv8\.cgi|/iiif/|/tile|/image/|/thumb|//img\.", re.I)
+STAV = os.environ.get("SLUSNE_STAV") or os.path.join(
+    os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), ".cache"), "rodokmen_slusne")
+KOD = 3
+
+
+class Zastaveno(SystemExit):
+    """Web je zastavený. Dědí ze SystemExit: smyčky `except Exception` / `except OSError` ji nespolknou."""
+
+
+def _skupina(host):
+    host = (host or "").lower().strip("[]").rstrip(".")
+    if not host or any(host == v or host.endswith("." + v) for v in VOLNE):
+        return None, None
+    for suffix, lim in LIMITY.items():
+        if host == suffix or host.endswith("." + suffix):
+            return suffix, lim
+    return host, (DOTAZ, OBRAZEK)
+
+
+def je_obrazek(url):
+    return bool(OBRAZEK_RE.search(url or ""))
+
+
+class _Zamek:
+    """Zámek souboru, společný všem procesům (flock, na Windows msvcrt)."""
+    _vlakna = threading.Lock()
+
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        self._vlakna.acquire()
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        self.f = open(self.path, "a+b")
+        if os.name == "nt":
+            import msvcrt
+            while True:
+                try:
+                    self.f.seek(0)
+                    msvcrt.locking(self.f.fileno(), msvcrt.LK_LOCK, 1)
+                    break
+                except OSError:
+                    time.sleep(0.05)
+        else:
+            import fcntl
+            fcntl.flock(self.f.fileno(), fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self.f.seek(0)
+                msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
+            self.f.close()
+        finally:
+            self._vlakna.release()
+
+
+def _cesta(skupina):
+    return os.path.join(STAV, re.sub(r"[^a-z0-9.-]", "_", skupina) + ".json")
+
+
+def _nacti(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _uloz(path, data):
+    tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(data, f)
+    os.replace(tmp, path)   # atomicky – souběžné procesy nikdy nenačtou rozepsaný soubor
+
+
+def _hlaska(skupina, st):
+    do = time.strftime("%H:%M", time.localtime(st["stop"]))
+    return (f"slusne: {skupina} je zastavený do {do} ({st.get('duvod', '')}). Archiv dává najevo, že ho zatěžujeme.\n"
+            f"Nezkoušej to znovu dřív a nic neobcházej (jiný nástroj, prohlížeč, jiný postup). Do té doby dělej jinou práci.\n"
+            f"Uživateli řekni, co se stalo. Stav: python3 -I tools/slusne.py stav")
+
+
+_ohlaseno = set()
+
+
+def _ohlas(skupina, st):
+    if skupina not in _ohlaseno:   # z vláken stahování jen jednou
+        _ohlaseno.add(skupina)
+        print(_hlaska(skupina, st), file=sys.stderr)
+
+
+def pockej(url_nebo_host, obrazek=None):
+    """Před dotazem: počká na volný slot (rezervace pod zámkem, čeká se bez zámku). Zastavený web -> Zastaveno."""
+    host = urlsplit(url_nebo_host).hostname if "://" in url_nebo_host else url_nebo_host
+    skupina, lim = _skupina(host)
+    if not skupina:
+        return
+    if obrazek is None:
+        obrazek = je_obrazek(url_nebo_host)
+    klic = "dalsi_obrazek" if obrazek else "dalsi_dotaz"
+    path = _cesta(skupina)
+    with _Zamek(path + ".lock"):
+        st = _nacti(path)
+        ted = time.time()
+        if st.get("stop", 0) > ted:
+            _ohlas(skupina, st)
+            raise Zastaveno(KOD)
+        slot = max(ted, st.get(klic, 0))
+        st[klic] = slot + lim[1 if obrazek else 0]
+        st.pop("stop", None)
+        _uloz(path, st)
+    if slot > ted:
+        time.sleep(slot - ted)
+
+
+def zastav(host, duvod):
+    skupina, _ = _skupina(host)
+    if not skupina:
+        return
+    path = _cesta(skupina)
+    with _Zamek(path + ".lock"):
+        st = _nacti(path)
+        st.update(stop=time.time() + STOPKA, duvod=duvod, kdy=time.strftime("%Y-%m-%d %H:%M"))
+        _uloz(path, st)
+    _ohlas(skupina, st)
+    raise Zastaveno(KOD)
+
+
+_selhani = {}
+
+
+def _spojeni_selhalo(host, e):
+    skupina, _ = _skupina(host)
+    if not skupina:
+        return
+    _selhani[skupina] = _selhani.get(skupina, 0) + 1
+    if _selhani[skupina] >= 3:
+        zastav(host, f"3 nepovedená spojení za sebou ({type(e).__name__}) – archiv neodpovídá nebo nás zablokoval")
+
+
+def kontroluj_odpoved(host, status, obrazek, telo=None):
+    skupina, _ = _skupina(host)
+    if not skupina:
+        return
+    _selhani.pop(skupina, None)
+    if status in (429, 503) or (status == 403 and not obrazek):
+        zastav(host, f"HTTP {status}")
+    vzor = BAN_TEXT.get(skupina)
+    if vzor and telo and vzor.search(telo):
+        zastav(host, "stránka hlásí zablokování")
+
+
+# --- brzda pro http.client: pokryje urllib, requests i vlastní skripty bez úprav --------------------------------
+def _host(conn):
+    return getattr(conn, "_tunnel_host", None) or conn.host
+
+
+def _zapni():
+    C = http.client.HTTPConnection
+    if getattr(C, "_slusne", False):
+        return
+    put, get, connect = C.putrequest, C.getresponse, C.connect
+
+    def putrequest(self, method, url, *a, **k):
+        self._slusne_obr = je_obrazek(url)
+        pockej(_host(self), self._slusne_obr)
+        return put(self, method, url, *a, **k)
+
+    def connect_(self):
+        try:
+            return connect(self)
+        except (ConnectionRefusedError, ConnectionResetError, TimeoutError, socket.timeout) as e:
+            _spojeni_selhalo(_host(self), e)
+            raise
+
+    def getresponse(self):
+        r = get(self)
+        host, obr = _host(self), getattr(self, "_slusne_obr", False)
+        telo = None
+        skupina, _ = _skupina(host)
+        if skupina in BAN_TEXT and r.status == 200 and "html" in (r.getheader("Content-Type") or ""):
+            telo = r.read()             # přečíst a vrátit zpět, aby volající dostal celé tělo
+            r.fp, r.length, r.chunked, r.will_close = io.BytesIO(telo), len(telo), False, True
+        kontroluj_odpoved(host, r.status, obr, telo)
+        return r
+
+    C.putrequest, C.getresponse, C.connect, C._slusne = putrequest, getresponse, connect_, True
+
+
+_zapni()
+
+
+# --- obal pro skripty, curl a bash ---------------------------------------------------------------------------------
+def _curl(args):
+    real = os.environ.get("SLUSNE_CURL") or shutil.which("curl")
+    if not real:
+        sys.exit("slusne: curl není nainstalovaný")
+    urls = [a for a in args if re.match(r"https?://", a)]
+    for u in urls:
+        pockej(u)
+    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args)
+    extra = [] if vlastni_w else ["-w", "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"]
+    p = subprocess.run([real, *args, *extra], stderr=subprocess.PIPE)
+    err = p.stderr.decode("utf-8", "replace")
+    kody = re.findall(r"^@@slusne (\d+) (\S*)$", err, re.M)
+    sys.stderr.write(re.sub(r"\n?@@slusne \d+ \S*\n", "", err))
+    for kod, url in kody:
+        kontroluj_odpoved(urlsplit(url).hostname, int(kod), je_obrazek(url))
+    if p.returncode in (7, 28, 35, 56) and urls:   # nepřipojil se / timeout / spojení přerušeno
+        _spojeni_selhalo(urlsplit(urls[0]).hostname, ConnectionError(f"curl kód {p.returncode}"))
+    return p.returncode
+
+
+def _bash(args):
+    shim = tempfile.mkdtemp(prefix="slusne_")
+    try:
+        me = os.path.abspath(__file__)
+        with open(os.path.join(shim, "curl"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'#!/bin/sh\nexec "{sys.executable}" -I "{me}" curl "$@"\n')
+        os.chmod(os.path.join(shim, "curl"), 0o755)
+        env = dict(os.environ, SLUSNE_CURL=os.environ.get("SLUSNE_CURL") or shutil.which("curl") or "",
+                   PATH=shim + os.pathsep + os.environ.get("PATH", ""))
+        return subprocess.run([shutil.which("bash") or "bash", *args], env=env).returncode
+    finally:
+        shutil.rmtree(shim, ignore_errors=True)
+
+
+def _skript(args):
+    import runpy
+    if args[0] == "-m":
+        sys.argv = args[1:]
+        runpy.run_module(args[1], run_name="__main__", alter_sys=True)
+    else:
+        sys.argv = list(args)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(args[0])))
+        runpy.run_path(args[0], run_name="__main__")
+    return 0
+
+
+def _stav():
+    print(f"Limity: dotaz 1 za {DOTAZ:g} s, obrázek 1 za {OBRAZEK:g} s; zvlášť: " +
+          ", ".join(f"{k} {v[0]:g}/{v[1]:g} s" for k, v in LIMITY.items()))
+    print("Stav:", STAV)
+    nic = True
+    for f in sorted(os.listdir(STAV)) if os.path.isdir(STAV) else []:
+        if f.endswith(".json"):
+            st = _nacti(os.path.join(STAV, f))
+            if st.get("stop", 0) > time.time():
+                nic = False
+                print(f"  ZASTAVENO {f[:-5]} do {time.strftime('%H:%M', time.localtime(st['stop']))} – "
+                      f"{st.get('duvod', '')} (od {st.get('kdy', '?')})")
+    if nic:
+        print("  žádný web není zastavený")
+
+
+def _odblokuj(web=None):
+    for f in os.listdir(STAV) if os.path.isdir(STAV) else []:
+        if f.endswith(".json") and (not web or f[:-5] in (web, _skupina(web)[0])):
+            path = os.path.join(STAV, f)
+            with _Zamek(path + ".lock"):
+                st = _nacti(path)
+                if st.pop("stop", None):
+                    print("odblokováno:", f[:-5])
+                _uloz(path, st)
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    cmd, rest = argv[0], argv[1:]
+    if cmd == "stav":
+        return _stav()
+    if cmd == "odblokuj":
+        return _odblokuj(rest[0] if rest else None)
+    if cmd == "curl":
+        return _curl(rest)
+    if cmd in ("bash", "sh"):
+        return _bash(rest)
+    if re.match(r"(python3?|py)(\.exe)?$", os.path.basename(cmd)):   # „slusne.py python3 x.py“ = „slusne.py x.py“
+        cmd, rest = rest[0], rest[1:]
+        if cmd == "-I" and rest:
+            cmd, rest = rest[0], rest[1:]
+    return _skript([cmd, *rest])
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

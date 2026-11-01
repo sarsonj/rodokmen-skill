@@ -130,7 +130,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   („Sorry, you have been blocked“ – podle IP, i v běžném prohlížeči); když blokuje i mza.cz, ať uživatel vypne VPN
   nebo zkusí jinou síť.
 - Knihu najdi v prohlížeči podle obce nebo fary. Snímky jsou IIIF: adresu obrázku najdi v síťovém provozu a stáhni ji
-  přes `curl` (Python dostane HTTP 426). Dál podle „Ostatní portály“ níže.
+  přes `python3 -I tools/slusne.py curl …` (Python dostane HTTP 426). MZA blokuje IP adresu už po desítkách
+  rychlých dotazů nebo stovkách snímků za večer – jen konkrétní snímky, žádné předběžné stahování celých knih.
+  Dál podle „Ostatní portály“ níže.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.
