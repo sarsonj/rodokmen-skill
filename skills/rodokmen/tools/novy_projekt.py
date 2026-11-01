@@ -5,8 +5,8 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka]
   --ukazka   nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
-a .claude/launch.json (náhled v Claude desktop).
+vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md a AGENTS.md (stejný text, jeden zdroj pravdy je CLAUDE.md),
+.gitignore, .gitattributes (konce řádků LF i na Windows) a .claude/launch.json (náhled v Claude desktop).
 Existující data nepřepisuje.
 Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ se přepíše vždy a soubory webu,
 které se liší od nové šablony, taky – jejich staré verze se nejdřív uloží do pracovni/zaloha_web_<datum>/.
@@ -78,6 +78,12 @@ def main():
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
+    # AGENTS.md má stejný text jako CLAUDE.md – jeden zdroj pravdy, ať se návod pro Cursor a Claude Code nerozejde.
+    # Claude Code čte CLAUDE.md, Cursor AGENTS.md. Když v projektu CLAUDE.md už je (třeba s pravidly pro Windows),
+    # převezme se on, ne šablona znovu. Šablona template/AGENTS.md je tentýž text pro člověka, který se dívá do šablony.
+    agents = os.path.join(dst, "AGENTS.md")
+    if not os.path.lexists(agents):
+        copy(os.path.join(dst, "CLAUDE.md"), agents)
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)
