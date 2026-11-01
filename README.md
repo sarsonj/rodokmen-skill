@@ -77,8 +77,18 @@ V Claude Code napište:
 /plugin install rodokmen@rodokmen-skill
 ```
 Pak Claude Code restartujte (do běžící relace se nový plugin nenačte).
-Aktualizace později: `/plugin marketplace update rodokmen-skill`. Rozpracovaný projekt pak Claude při další práci
-sám nabídne aktualizovat na novou verzi (vaše data zůstanou, změněné soubory webu zazálohuje do `pracovni/`).
+**Aktualizace.** Claude Code u pluginů od jiných autorů než Anthropic nové verze sám nehlídá. Máte dvě možnosti:
+- **Automaticky (doporučuji):** jednou v `/plugin` na kartě **Marketplaces** vyberte `rodokmen-skill` a zapněte
+  automatické aktualizace (Enable auto-update). Nová verze se pak stáhne při spuštění Claude Code.
+- **Ručně:** v terminálu (nebo v Claude Code s `!` na začátku)
+  ```
+  claude plugin marketplace update rodokmen-skill
+  claude plugin update rodokmen@rodokmen-skill
+  ```
+  O nových verzích se dozvíte přes **Watch → Custom → Releases** na GitHubu.
+
+Po aktualizaci Claude Code restartujte. Rozpracovaný projekt pak Claude při další práci sám nabídne aktualizovat
+na novou verzi (vaše data zůstanou, změněné soubory webu zazálohuje do `pracovni/`).
 
 ### Varianta B – ručně
 Stáhněte repozitář (zelené tlačítko **Code → Download ZIP** na GitHubu, nebo `git clone`) a zkopírujte složku
