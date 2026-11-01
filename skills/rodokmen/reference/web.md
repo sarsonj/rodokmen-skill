@@ -15,7 +15,15 @@ a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hle
 | `npm run dev` | vývojový režim při úpravách vzhledu |
 | `npm run nasadit` | data + build + nahrání na Netlify |
 
-Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (snímek obrazovky přes prohlížeč, je-li k dispozici).
+Náhled spouštěj na pozadí a uživateli pošli odkaz.
+
+**Web ve vnitřní síti (domácí počítač, bez nasazení na internet):** stačí servírovat hotové `dist/`, např.
+`python3 -I -m http.server 4321 --bind 0.0.0.0 --directory dist` (ve `web/`). Aby běžel i po restartu (Linux),
+uživatelská služba systemd `~/.config/systemd/user/rodokmen-web.service` s tímto `ExecStart`, `WorkingDirectory=%h/<projekt>/web`,
+`Restart=on-failure`, `WantedBy=default.target` → `systemctl --user enable --now rodokmen-web`; bez přihlášení po restartu
+ještě jednou `sudo loginctl enable-linger <uživatel>` (pustí uživatel). Po změně dat jen `npm run data && npm run build` –
+server obnovu pozná sám. Úvod i patička ukazují „Poslední aktualizace“, ať rodina vidí, že se web obnovuje.
+Pozor: takový web nemá přihlášení – je vidět z celé domácí sítě. Vzhled si ověř sám (snímek obrazovky přes prohlížeč, je-li k dispozici).
 
 ## `data/web.json`
 ```json

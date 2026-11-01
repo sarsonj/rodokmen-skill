@@ -110,6 +110,15 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
 - Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`.
 - Index nenašel ≠ zápis neexistuje. Zapiš, co přesně jsi prošel.
 - Pomocníci (subagenti) a OCR/AI čtou historické písmo chybně – vždy ověř sám (viz `playbook.md` §1 bod 10).
+- Velké kolo s pomocníky (zkušenost s 10 souběžnými): společná pravidla dej do jednoho souboru (`pracovni/ZADANI_POMOCNIK.md`)
+  a v zadání na něj jen odkaž. Do pravidel patří: obrázek pro čtení zmenšit na max. 2000 px (jinak se nástroji
+  nezobrazí a pomocník „čte“ naslepo), **nikdy nepsat přepis zápisu, který neviděl**, ukládat výsledek průběžně po každém
+  nálezu (pomocník může skončit předčasně), u nálezu uvést soubor výřezu, ze kterého četl. Kurent 1. poloviny 19. století
+  ve středním rozlišení ARON (úroveň 1) spolehlivě nepřečte – chtěj plné rozlišení a výřez sloupce. Víc než ~5 pomocníků
+  současně na ARON ho přetíží (snímek pak trvá minuty) – rozlož je mezi archivy (ARON, Porta fontium, eBadatelna).
+- Nemanželské dítě matky se stejným jménem: rodinný strom může „dosadit“ za rodiče prarodiče (nemanželská dcera
+  svobodné matky vedená jako dcera matčina bratra). Rozhodne zápis o sňatku nebo úmrtí dítěte (uvádí matku) a to, zda je v matrice
+  jiné dítě daného jména.
 
 ## Technické pasti (macOS, zsh) – napiš je i pomocníkům do zadání
 - Shell je zsh: `for a in "x y z"; do set -- $a` slova nerozdělí (v zsh `${=a}`); `ls F*` bez shody = chyba
