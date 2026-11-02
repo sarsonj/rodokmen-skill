@@ -148,6 +148,9 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
 - **U úředníků, vojáků, lékařů, učitelů, farářů** zkus noviny a ročenky (`reference/portaly.md` → Noviny): ukážou
   kariéru, tedy kde člověk kdy žil, a dají výstřižky na web. U sedláků a řemeslníků na vsi se nevyplatí.
 - Matriky před ~1650 skoro nejsou. Pro 17. století: soupis poddaných 1651, berní rula 1654, gruntovní knihy (`reference/portaly.md`).
+- **Když matrika nestačí** (původ přistěhovalce či vojáka, chybějící rodiče): písemnosti vrchnosti – soupisy poddaných,
+  svatební smlouvy, sirotčí a pozůstalostní spisy (fond „Velkostatek <panství>“); u mlynářů karta mlýna na vodnimlyny.cz;
+  zemské desky jen u svobodníků a majitelů statků (`reference/portaly.md` → Starší prameny).
 - Najdeš-li **spornou věc**, kterou nerozhodneš (dvě možná čtení, dva kandidáti), napiš to uživateli s výřezem
   a nech ho rozhodnout; do té doby `prob`.
 - **Hodně sporných čtení najednou** (desítky po velkém kole) nedávej do chatu po jednom. Sesbírej je do
