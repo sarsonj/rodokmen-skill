@@ -114,9 +114,12 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 
 ## SOA Litoměřice (severní Čechy) – `tools/soal_zoomify.py`
 - Digitální badatelna digi.soalitomerice.cz má na vstupu automatické ověření (asi 15 s „počítání“) → knihu a snímek
-  najdi v prohlížeči. V síťovém provozu pak najdi adresu `…/zoomify/cz/archives/CZ-214000010/matriky/<cesta>/ImageProperties.xml`.
-- Snímky stahuj nástrojem: `python3 -I tools/soal_zoomify.py <cesta> 0 pracovni/x.jpg` (0 = plné rozlišení, 1 = poloviční).
-  Obrázkový server neomezuje a cookies nepotřebuje.
+  najdi v prohlížeči. Pak zjisti **celou adresu obrázku** (`https://images.soalitomerice.cz/…`): v síťovém provozu
+  požadavek na `…/ImageProperties.xml`, nebo `document.querySelector('#navigatorImage').src` na stránce snímku.
+  Archiv koncem října 2026 změnil cesty (nově `…/CZ-214000010/NAD-<číslo>/dao/images/<složka>/<uuid>.jpg`),
+  starší zkrácená `<cesta>` za `…/matriky/` pak vrací 404 – nástroji dávej vždy celou adresu.
+- Snímky stahuj nástrojem: `python3 -I tools/soal_zoomify.py "<celá adresa>" 0 pracovni/x.jpg` (0 = plné rozlišení,
+  1 = poloviční). Obrázkový server neomezuje a cookies nepotřebuje.
 - **POZOR: po zhruba 100 rychlých požadavcích na stránky aplikace (prohlížení snímků, detail výsledku) archiv zablokuje
   přístup na 30 minut.** V prohlížeči proto jen najdi knihu a cestu k obrázkům, pak už jen nástroj. Pomocníkům to napiš do zadání.
 
@@ -265,7 +268,7 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
 - **Berní rula 1654** – jen hospodáři s půdou; edice a rejstříky v knihovnách (Kramerius/DNNT).
 - **Gruntovní (pozemkové) knihy** – převody domů z otce na syna; online jen část (SOA Plzeň téměř vše, SOA Praha část,
   ostatní spíš badatelna). Fond „Velkostatek <panství>“.
-- **Mapy stabilního katastru (1824–43)** – kde stál dům s číslem popisným: archivnimapy.cuzk.cz (Archiv ČÚZK).
+- **Mapy stabilního katastru (1824–43)** – kde stál dům s číslem popisným: ags.cuzk.gov.cz/archiv (Archiv ČÚZK; stará adresa archivnimapy.cuzk.cz už nefunguje).
   Na **císařských otiscích** chybí u části listů barvy a čísla domů. Lepší jsou **indikační skici**: mají čísla domů
   a u pozemků jméno majitele („N. 13“ = patří k domu čp. 13). Dům bez pozemků mimo ves = domkář bez polí.
   Jméno majitele samotného domu bývá jen v písemném operátu (archiv, ne online). Výřezy map patří na web k rodině.

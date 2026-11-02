@@ -3,7 +3,8 @@
 
 Použití (z kořene projektu):
   soal_zoomify.py <cesta nebo adresa> <zmenseni> <vystup.jpg>
-    cesta     = SOA Litoměřice: část adresy obrázku za „…/CZ-214000010/matriky/“ (konec typicky „….jpg“), vezmi ji jednou
+    (SOA Litoměřice koncem října 2026 změnil cesty na …/CZ-214000010/NAD-<číslo>/dao/images/… – dávej celou adresu)
+    cesta     = starší adresy SOA Litoměřice: část adresy obrázku za „…/CZ-214000010/matriky/“, vezmi ji jednou
                 z prohlížeče: v digitální badatelně otevři snímek a v síťovém provozu najdi požadavek na
                 https://images.soalitomerice.cz/ximage/matriky/zoomify/cz/archives/CZ-214000010/matriky/<cesta>/ImageProperties.xml
                 (další snímky téže knihy mají stejnou cestu, liší se jen číslem obrázku)

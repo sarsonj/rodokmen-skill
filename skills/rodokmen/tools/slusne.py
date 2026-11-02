@@ -6,7 +6,7 @@ Archivy blokují IP adresu po sérii rychlých dotazů (MZA, ZA Opava…). Nást
 
   python3 -I tools/slusne.py pracovni/muj_skript.py [argumenty]   -> Python skript (urllib, requests…)
   python3 -I tools/slusne.py - <<'EOF' … EOF                       -> kód v Pythonu ze vstupu (heredoc), i -c "kód"
-  python3 -I tools/slusne.py curl [argumenty curl]                 -> curl se stejným limitem
+  python3 -I tools/slusne.py curl [argumenty curl]                 -> curl se stejným limitem (bez -A jako „rodokmen“)
   python3 -I tools/slusne.py bash pracovni/skript.sh [argumenty]   -> shellový skript; curl uvnitř jde přes brzdu
   python3 -I tools/slusne.py stav                                  -> limity a zastavené weby
   python3 -I tools/slusne.py odblokuj [web]                        -> zrušit stopku (jen když víš, proč nastala)
@@ -49,6 +49,7 @@ ZAKAZ["digi.ceskearchivy.cz"] = (   # SOA Třeboň: od 2. 11. 2026 vrací nástr
     "SOA Třeboň). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
+UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)
 STOPKY = (30 * 60, 2 * 3600, 8 * 3600)   # stopka po 1., 2. a 3. (i každém dalším) odmítnutí webu během OKNO
 OKNO = 24 * 3600
 BAN_TEXT = {"archives.cz": re.compile(rb"zablokov[a\xc3\xa1]n|byl[a ]+zablokov|blocked", re.I)}
@@ -408,6 +409,9 @@ def _bash_cesta():
 
 def _curl(args):
     real, umi_stderr = _najdi_curl()
+    if not any(a in ("-A", "--user-agent") or a.startswith("--user-agent=") or re.match(r"(?i)\s*user-agent\s*:", a)
+               for a in args):
+        args = ["-A", UA, *args]   # představit se jako nástroje; výchozí „curl/…“ některé archivy odmítají (403)
     urls = [a for a in args if re.match(r"https?://", a)]
     for u in urls:
         pockej(u)
