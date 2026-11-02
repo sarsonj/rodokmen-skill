@@ -44,7 +44,8 @@
     document.getElementById('f').addEventListener('submit', function (e) {
       e.preventDefault();
       var v = document.getElementById('a').value.normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase().replace(/[^a-z0-9*]/g, '');
+        .toLowerCase();
+      v = v.replace(/[^a-z0-9]/g, '') || v.replace(/\s+/g, '');   // jen interpunkce nebo azbuka: bez mezer, jinak by byla prázdná
       if (!window.crypto || !crypto.subtle) {   // jen přes https (nebo localhost)
         document.getElementById('err').textContent = 'Přihlášení funguje jen přes zabezpečené spojení (https).';
         return;
