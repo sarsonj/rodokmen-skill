@@ -59,6 +59,12 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    přes Git Bash (`bash tools/…`). Delší jednorázové skripty v Pythonu nepiš jako heredoc (`python - <<EOF`), v Git Bash
    občas spadnou na „unexpected EOF“ – zapiš je do souboru v `pracovni/` a spusť. Tato pravidla zapiš hned po založení projektu do jeho `CLAUDE.md`, ať platí i příště
    (a dej je do zadání i pomocníkům, viz `reference/matriky.md`).
+   **Prohlížeč pro Clauda** potřebuješ pro archivy, které nástroje nepouštějí (MZA Brno, SOA Třeboň, ZA Opava,
+   hledání v SOA Litoměřice). Když předci žili tam a nemáš nástroje `mcp__…playwright…`, nabídni doplněk
+   Playwright: `/plugin install playwright@claude-plugins-official` (dej ho uživateli s `!` jako
+   `claude plugin install playwright@claude-plugins-official`), pak restart Claude Code. Jinou možností je Claude
+   in Chrome (`/chrome`), postupy v `portaly.md` jsou ale vyzkoušené s Playwrightem (snímek obrazovky do souboru).
+   Bez prohlížeče ať uživatel posílá snímky obrazovky.
 2. Zeptej se, kde má projekt být (navrhni `~/Rodokmen`), a založ ho:
    `python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`
    Chce-li uživatel nejdřív vidět, jak web vypadá, založ vedle ukázku: `… novy_projekt.py ~/Rodokmen-ukazka --ukazka`,

@@ -55,6 +55,10 @@ s přepisem a překladem, „Co hledáme“ a deník hledání. **[Podívejte se
   Linux by měl fungovat, ale vyzkoušený není.
 - Programy **Python 3, Node.js, ImageMagick a git**. Nemusíte je instalovat předem – Claude zkontroluje, co chybí,
   a pomůže s instalací (na Macu přes [Homebrew](https://brew.sh), na Windows přes winget).
+- Pro jižní Čechy a Moravu (SOA Třeboň, MZA Brno, ZA Opava) **prohlížeč pro Clauda** – doplněk Playwright.
+  Tyto archivy stahovací nástroje nepouštějí, Claude proto čte matriky přímo v jejich prohlížeči. Instalace
+  v Claude Code: `/plugin install playwright@claude-plugins-official`, pak restart. Bez něj můžete Claudovi
+  posílat snímky obrazovky sami.
 - Volitelně účet na [Netlify](https://www.netlify.com) (zdarma), pokud chcete web zveřejnit pro rodinu.
 
 ## S jakými modely to vzniklo
