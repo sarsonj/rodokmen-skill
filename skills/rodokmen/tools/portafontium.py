@@ -13,11 +13,12 @@ Použití (z kořene projektu `python3 -I tools/portafontium.py …`, na Windows
                                                 x0,y0,x1,y1 = jen výřez (zlomky 0..1)
   portafontium.py link <kniha> <snímek>      -> trvalý odkaz na snímek (pole „odkaz“ v zaznamy.json)
   portafontium.py svazek <kniha>             -> zapíše svazek do data/svazky.json (klíč pf_<kniha>)
-Snímek = pořadové číslo náhledu v prohlížeči portálu (1, 2, 3…). Stránky knih se ukládají do pracovni/.cache_pf/.
+Snímek = pořadové číslo náhledu v prohlížeči portálu (1, 2, 3…). Stránky knih i celé snímky se ukládají do sdílené cache (tools/cache.py).
 Ber ohled na server: stahuj jen snímky, které čteš.
 """
 import html, http.client, json, os, re, ssl, sys, time, unicodedata, urllib.error, urllib.parse, urllib.request
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená cache stažených snímků (tools/cache.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -25,7 +26,7 @@ for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (
 BASE = "https://www.portafontium.eu"
 ARCHIV = "soap-pn"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE = os.path.join(ROOT, "pracovni", ".cache_pf")
+CACHE = cache.cesta("portafontium")   # stránky knih (seznam snímků) i celé snímky
 UA = {"User-Agent": "Mozilla/5.0 (rodokmen)"}   # bez prohlížečového User-Agentu portál vrací 403
 PAUZA = 0.5   # s před každým požadavkem – ohled na server i při volání ve smyčce
 
@@ -159,13 +160,20 @@ def snimek(kniha, n, out, nahled=False, crop=None):
             sys.exit("výřez x0,y0,x1,y1 musí být zlomky 0–1 a x0 < x1, y0 < y1")
         region = "pct:" + ",".join(f"{v * 100:.3f}" for v in (x0, y0, x1 - x0, y1 - y0))
     size = "pct:25" if nahled else "full"
-    data = get(f"/fcgi-bin/iipsrv.fcgi?IIIF={urllib.parse.quote(path)}/{region}/{size}/0/default.jpg", binary=True)
-    if not data.startswith(b"\xff\xd8"):
-        sys.exit("Porta fontium nevrátil obrázek JPEG (zkus to později)")
-    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    with open(out, "wb") as f:
-        f.write(data)
-    print(out, f"{len(data) // 1024} kB", "odkaz:", BASE + link)
+
+    def stahni(cil):
+        data = get(f"/fcgi-bin/iipsrv.fcgi?IIIF={urllib.parse.quote(path)}/{region}/{size}/0/default.jpg", binary=True)
+        if not data.startswith(b"\xff\xd8"):
+            sys.exit("Porta fontium nevrátil obrázek JPEG (zkus to později)")
+        os.makedirs(os.path.dirname(os.path.abspath(cil)), exist_ok=True)
+        with open(cil, "wb") as f:
+            f.write(data)
+
+    if crop:
+        stahni(out)
+    else:
+        cache.soubor(f"portafontium/{kniha}/sn{int(n):04d}{'-nahled' if nahled else ''}.jpg", out, stahni)
+    print(out, f"{os.path.getsize(out) // 1024} kB", "odkaz:", BASE + link)
 
 
 def fara(slug):

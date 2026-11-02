@@ -9,19 +9,20 @@ Použití:
   aron_img.py <apu_id> link <n>      -> trvalý odkaz na snímek n v prohlížeči ARON (pole "odkaz" v zaznamy.json)
   aron_img.py <apu_id> svazek        -> zapíše svazek do data/svazky.json (klíč = prvních 8 znaků apu_id)
 
-Popis svazků se ukládá do pracovni/.cache_aron/<apu_id>.json (ve složce projektu).
+Popis svazků i celé snímky se ukládají do sdílené cache (tools/cache.py): aron/<apu_id>.json a aron/<apu_id>/sn<n>-u<uroven>.jpg.
 """
 import glob, json, math, os, shutil, subprocess, sys, tempfile, time, urllib.request
 import concurrent.futures as cf
 import xml.etree.ElementTree as ET
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená cache stažených snímků (tools/cache.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
 
 API = "https://aron.vychodoceskearchivy.cz/api/aron"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE = os.path.join(ROOT, "pracovni", ".cache_aron")
+CACHE = cache.cesta("aron")
 
 
 def magick():
@@ -151,5 +152,9 @@ if __name__ == "__main__":
     lo = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     out = sys.argv[4] if len(sys.argv) > 4 else f"{apu[:8]}_{n:04d}.jpg"
     crop = tuple(float(v) for v in sys.argv[5].split(",")) if len(sys.argv) > 5 else None
-    path, dims = fetch_image(tiles[n], lo, out, crop)
-    print(path, "full size", dims)
+    if crop:
+        path, dims = fetch_image(tiles[n], lo, out, crop)
+        print(path, "full size", dims)
+    else:
+        cache.soubor(f"aron/{apu}/sn{n:04d}-u{lo}.jpg", out, lambda cil: fetch_image(tiles[n], lo, cil))
+        print(out)

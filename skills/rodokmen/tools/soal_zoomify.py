@@ -13,10 +13,13 @@ Použití (z kořene projektu):
 POZOR: aplikace digi.soalitomerice.cz po ~100 rychlých požadavcích (digi.archives.cz v Opavě už po ~75) zablokuje
 přístup na 30 minut. Prohlížečem jen najdi knihu a cestu k obrázkům, snímky pak stahuj tímto nástrojem (obrázkový server
 neomezuje).
+Stažené snímky jsou ve sdílené cache (tools/cache.py). Adresu obrázku si zapiš (např. k zápisu v zaznamy.json),
+příště snímek stáhneš bez prohlížeče a vezme se z cache.
 """
-import glob, math, os, re, shutil, subprocess, sys, tempfile, time, urllib.parse, urllib.request
+import glob, hashlib, math, os, re, shutil, subprocess, sys, tempfile, time, urllib.parse, urllib.request
 import concurrent.futures as cf
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená cache stažených snímků (tools/cache.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -54,6 +57,15 @@ def main():
     if urllib.parse.urlsplit(base).scheme != "https" or urllib.parse.urlsplit(base).hostname not in HOSTS:
         sys.exit(f"Adresa musí být https:// na serveru archivu ({', '.join(HOSTS)}), ne {base[:80]}")
     red, out = int(sys.argv[2]), sys.argv[3]
+    u = urllib.parse.urlsplit(base)
+    slozka, jmeno = u.path.rstrip("/").split("/")[-2:]
+    # obrázek určuje celá adresa (hash); složka a jméno jsou jen pro orientaci
+    klic = f"zoomify/{u.hostname}/{slozka}/{os.path.splitext(jmeno)[0]}-{hashlib.sha1(base.encode()).hexdigest()[:8]}-u{red}.jpg"
+    cache.soubor(klic, out, lambda cil: stahni(base, red, cil))
+    print(out)
+
+
+def stahni(base, red, out):
     MAGICK = magick()
     x = get(base + "/ImageProperties.xml").decode()
     W, H, T = (int(re.search(fr'{k}="(\d+)"', x).group(1)) for k in ("WIDTH", "HEIGHT", "TILESIZE"))
@@ -89,7 +101,7 @@ def main():
                         os.path.abspath(out)], check=True, cwd=d)
     finally:
         shutil.rmtree(d, ignore_errors=True)
-    print(out, w, h)
+    print("rozměr", w, h)
 
 
 if __name__ == "__main__":

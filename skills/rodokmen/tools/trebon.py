@@ -12,10 +12,11 @@ Použití (z kořene projektu):
                                          -> stáhne snímek v plném rozlišení (slepí dlaždice); "nahled" = 1/4 rozlišení
   trebon.py svazek <id_knihy>            -> zapíše svazek do data/svazky.json (klíč trebon_<id_knihy>)
 Trvalý odkaz na snímek: https://digi.ceskearchivy.cz/<id_knihy>/<snímek>
-Ber ohled na server: stahuj jen snímky, které čteš.
+Ber ohled na server: stahuj jen snímky, které čteš. Stažené snímky jsou ve sdílené cache (tools/cache.py).
 """
 import glob, html, json, os, re, shutil, subprocess, sys, tempfile, unicodedata, urllib.parse, urllib.request, http.cookiejar
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená cache stažených snímků (tools/cache.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -97,6 +98,13 @@ def rejstrik(bid, pis):
 def snimek(bid, n, out, nahled=False):
     MAGICK = magick()
     ref = f"{BASE}/{bid}/{n}"
+    klic = f"trebon/{bid}/sn{int(n):04d}{'-nahled' if nahled else ''}.jpg"
+    cache.soubor(klic, out, lambda cil: stahni(bid, n, cil, nahled, MAGICK, ref))
+    r = subprocess.run([MAGICK, out + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
+    print(out, r.stdout, "odkaz:", ref)
+
+
+def stahni(bid, n, out, nahled, MAGICK, ref):
     get(ref)
     page, _ = get(f"/view.php?menu=3&id={bid}&page={n}&r=0", referer=ref)
     m = re.search(r'showImage\("[^"]*","([^"]+)"', page)
@@ -134,8 +142,6 @@ def snimek(bid, n, out, nahled=False):
     for f in os.listdir(tmp):
         os.remove(os.path.join(tmp, f))
     os.rmdir(tmp)
-    r = subprocess.run([MAGICK, out + "[0]", "-format", "%wx%h", "info:"], capture_output=True, text=True)
-    print(out, r.stdout, "odkaz:", ref)
 
 
 def svazek(bid):
