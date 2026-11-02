@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Matriky SOA Třeboň (digi.ceskearchivy.cz) bez prohlížeče.
 
+ZATÍM VYPNUTO: archiv od 2. 11. 2026 nástroj odmítá (HTTP 403) a brzda tools/slusne.py ho proto zastaví.
+Matriky čti v prohlížeči (reference/portaly.md, SOA Třeboň). Nástroj zůstává pro případ, že archiv přístup povolí.
+
 Použití (z kořene projektu):
   trebon.py misto "Obec"                 -> id místa a jeho název (diakritiku a mezery nástroj odstraní sám; portál vybere
                                             jedno místo – VŽDY zkontroluj vypsaný název a okres, u stejnojmenných obcí

@@ -7,7 +7,7 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | SOA Zámrsk | východní Čechy (Hradecký a Pardubický kraj) | ARON – aron.vychodoceskearchivy.cz | **ano – hotové nástroje** |
 | SOA Praha | střední Čechy | eBadatelna – ebadatelna.soapraha.cz | **ano – nástroj `ebadatelna.py`** (i urbáře a gruntovní knihy) |
 | SOA Plzeň | západní Čechy | Porta fontium – portafontium.eu | **ano – nástroj `portafontium.py`** |
-| SOA Třeboň | jižní Čechy | digi.ceskearchivy.cz | **ano – nástroj `trebon.py`** |
+| SOA Třeboň | jižní Čechy | digi.ceskearchivy.cz | **jen v prohlížeči** – archiv nástroj od 2. 11. 2026 odmítá (postup níže) |
 | SOA Litoměřice | severní Čechy | Digitální badatelna – digi.soalitomerice.cz | **částečně – `soal_zoomify.py`** (knihu najdi v prohlížeči) |
 | AHMP | hl. m. Praha | katalog.ahmp.cz (Pragapublica) | **ano – `ahmp_search.sh`, `ahmp_scan.py`** |
 | MZA Brno | jižní Morava, Vysočina z části | Acta Publica – www.mza.cz/actapublica | **jen v prohlížeči** – snímek obrazovky přiblíženého zápisu (postup níže) |
@@ -36,21 +36,41 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   („Copulati Gross Lhota“).
 - Ber ohled na server: stahuj jen to, co čteš; žádné hromadné stahování celých svazků.
 
-## SOA Třeboň (digi.ceskearchivy.cz) – `tools/trebon.py`, bez prohlížeče
-- `trebon.py misto "Obec"` → id místa. Diakritiku a mezery nástroj odstraní sám (portál zná jen „RatiborskeHory“).
-  Portál vrátí vždy jen jedno místo – **zkontroluj vypsaný název a okres**: u stejnojmenných obcí jinou (Buk → Bukovka),
-  u měst i okres nebo synagogu (Jindřichův Hradec → okres 1949–1960). Správné id pak najdi na portálu a pracuj s ním.
-  Malé osady portál jako místo nezná vůbec (Malá Chyška) – hledej farní nebo sousední obec (Chyšky) a osadu v popisu knih.
-  Občasná chyba 500 bývá výpadek portálu – nástroj zkouší znovu; když trvá, zkus to později.
-- `trebon.py svazky <id|"Obec">` → knihy místa (id knihy, druh, roky, obce).
-- `trebon.py rejstrik <id_knihy> <písmeno>` → **dobrovolnický jmenný rejstřík** knihy se snímkem, obrovská úspora.
-  Ne každá kniha ho má; prázdný výsledek = rejstřík chybí, ne „osoba tam není“.
-- `trebon.py snimek <id_knihy> <snímek> pracovni/x.jpg [nahled]`, `trebon.py svazek <id_knihy>` (do `svazky.json`).
-- Trvalý odkaz: `https://digi.ceskearchivy.cz/<id_knihy>/<snímek>`.
-- Některé fary mají knihy po vesnicích, které nejsou v seznamu svazků místa (Vacov → Žár) – hledej podle titulků knih fary.
+## SOA Třeboň (digi.ceskearchivy.cz) – jen v prohlížeči
+- **Od 2. 11. 2026 archiv nástroj odmítá** (HTTP 403 podle User-Agentu „rodokmen“), `trebon.py` je vypnutý a brzda
+  skripty na digi.ceskearchivy.cz zastaví. Neobcházej to (jiný User-Agent, vlastní skript). Matriky čti v prohlížeči
+  (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo jako člověk, jen
+  stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky obrazovky uživatel.
+- Obec: `https://digi.ceskearchivy.cz/<Obec>` (bez diakritiky a mezer, např. `RatiborskeHory`) → stránka místa, vlevo
+  „Matriční knihy“ (stránka je v rámci `ram_obsah`) → seznam knih s roky a obcemi; kliknutí otevře knihu v nové záložce.
+  **Zkontroluj název a okres**: u stejnojmenných obcí portál vybere jinou (Buk → Bukovka), u měst i okres nebo synagogu.
+  Malé osady portál nezná (Malá Chyška) – hledej farní nebo sousední obec a osadu v popisu knih.
+- Snímek: `https://digi.ceskearchivy.cz/<kniha>/<snímek>` (zároveň trvalý odkaz). Knihy mívají dobrovolnický jmenný
+  rejstřík (stránka místa → „Rejstříky“) – obrovská úspora; ne každá kniha ho má.
+- Prohlížeč je Zoomify v rámci `ram_obsah`. Postup: snímek okna (scale css) → odečti rohy zápisu → úryvek níže
+  (browser_evaluate) schová panely Navigátor a Náhledy, přiblíží zápis a vrátí odkaz `/<kniha>/<snímek>/<x>/<y>/<zoom>/0`
+  přímo na zápis (do `odkaz`) → snímek okna v rozlišení zařízení do `pracovni/trebon_<kniha>_<snímek>.png` → `vyrez.py`
+  (ořízni lištu nahoře a dole):
+  ```js
+  async () => {
+    const [x0, y0, x1, y1] = [185, 688, 590, 795];   // rohy zápisu na snímku okna (CSS px)
+    const f = document.querySelector('iframe[name=ram_obsah]'), d = f.contentDocument, vp = f.contentWindow.Z.Viewport;
+    if (!d.getElementById('rodokmen-skryj')) d.head.insertAdjacentHTML('beforeend',
+      '<style id="rodokmen-skryj">#navigat_b,#thumbs_b{display:none!important}</style>');
+    const r = f.getBoundingClientRect(), z = vp.getZoom(), c = vp.calculateCurrentCenterCoordinates();
+    const W = vp.getViewW(), H = vp.getViewH();
+    const obr = (x, y) => ({x: (x - r.left - W / 2) / z + c.x, y: (y - r.top - H / 2) / z + c.y});
+    const a = obr(x0, y0), b = obr(x1, y1);
+    vp.zoomAndPanToView((a.x + b.x) / 2, (a.y + b.y) / 2, Math.min(W / (b.x - a.x), H / (b.y - a.y)));
+    await new Promise(ok => setTimeout(ok, 6000));
+    return location.href;
+  }
+  ```
+  Souřadnice ber vždy z aktuálního snímku okna (po načtení stránky nebo `vp.reset()`), ne ze staršího.
+- Svazek do `svazky.json` ručně (Ostatní portály, krok 4, klíč `trebon_<kniha>`).
+- Některé fary mají knihy po vesnicích, které nejsou v seznamu knih místa (Vacov → Žár) – hledej podle titulků knih fary.
 - **Civilní matriky (1920–1945) lidí bez vyznání** jsou v knihách okresních úřadů (např. Tábor, kniha 12304) a mají
-  dobrovolnický rejstřík (`trebon.py rejstrik 12304 N`). Dobrá cesta, když farní matrika mlčí. V `svazky "Obec"`
-  se neukážou (patří okresu, ne obci) – id knihy najdi na portálu.
+  dobrovolnický rejstřík. Dobrá cesta, když farní matrika mlčí. U obce se neukážou (patří okresu) – hledej u okresního města.
 
 ## SOA Plzeň (Porta fontium, portafontium.eu) – `tools/portafontium.py`, bez prohlížeče
 - `portafontium.py fara <fara>` → knihy fary: kniha | obce | roky a druhy (`*` N, `oo` O, `+` Z, `i` index) | popis.
@@ -139,11 +159,21 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Detail knihy má „Části matriky“ s rozsahy snímků (narození 1–43, index narozených 43–93, u knih pro víc obcí po obcích).
   Snímek s hledaným rokem odhadni (snímky ÷ roky). Rejstříky uvádějí stranu, ne snímek: přečti čísla stran na 1–2 snímcích
   a dopočítej (vztah bývá lineární, kniha od knihy jiný).
-- Prohlížeč je OpenSeadragon v proměnné `viewer`: `viewer.goToPage(n-1)`, `viewer.viewport.goHome(true)` a snímek obrazovky
-  celé stránky (rok a měsíc v záhlaví). U nalezeného zápisu převeď rohy z obrazovky
-  `viewer.viewport.pointFromPixel(new OpenSeadragon.Point(x, y))`, přibliž `viewer.viewport.fitBounds(new OpenSeadragon.Rect(…), true)`,
-  počkej ~5 s na doostření a ulož snímek prvního prvku `.openseadragon-container` v rozlišení zařízení do
-  `pracovni/mza_<kniha>_<snímek>.png` (Playwright ukládá jen do složky projektu). Dál `vyrez.py` jako u jiných portálů.
+- Prohlížeč je OpenSeadragon v proměnné `viewer`: `viewer.goToPage(n-1)`, `viewer.viewport.goHome(true)` a snímek okna
+  (scale css) – rok a měsíc v záhlaví. U nalezeného zápisu odečti z aktuálního snímku okna rohy zápisu a přibliž ho
+  úryvkem (browser_evaluate); pak ulož snímek prvního prvku `.openseadragon-container` v rozlišení zařízení do
+  `pracovni/mza_<kniha>_<snímek>.png` (Playwright ukládá jen do složky projektu) a dál `vyrez.py` jako u jiných portálů:
+  ```js
+  async () => {
+    const [x0, y0, x1, y1] = [145, 435, 595, 500];   // rohy zápisu na snímku okna (CSS px)
+    const vp = viewer.viewport, e = viewer.container.getBoundingClientRect();
+    const P = (x, y) => vp.pointFromPixel(new OpenSeadragon.Point(x - e.left, y - e.top));
+    const a = P(x0, y0), b = P(x1, y1);
+    vp.fitBounds(new OpenSeadragon.Rect(a.x, a.y, b.x - a.x, b.y - a.y), true);
+    await new Promise(ok => setTimeout(ok, 5000));
+    return location.href;
+  }
+  ```
 - Nezobrazuj celou stránku v plném rozlišení (velké okno) – stovky dlaždic naráz a MZA vrací 503. Tempo jako člověk,
   jen stránky, které opravdu čteš. Když ověření nepustí nebo MZA hlásí chybu, skonči a řekni to uživateli.
 - Trvalý odkaz = adresa v prohlížeči `…/matrika/detail/<id>?image=<soubor>.jp2` (soubor končí číslem snímku × 10:
@@ -225,7 +255,7 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
 4. Svazek zapiš do `data/svazky.json` ručně: `"klic": {"archiv": "SOA Třeboň", "portal": "digi.ceskearchivy.cz",
    "svazek": "N Volary 1784–1820, sign. …", "popis": "obce…", "url": "<odkaz na svazek>"}`.
 5. Dál stejně jako u ARON: `vyrez.py`, `ramecek.py`, přepis, osoby, deník.
-6. Když se postup osvědčí, napiš pro portál vlastní malý nástroj podle `trebon.py` (bez prohlížeče, pokud to jde)
+6. Když se postup osvědčí, napiš pro portál vlastní malý nástroj podle `portafontium.py` (bez prohlížeče, jen když to archiv nezakazuje)
    a postup zapiš do `STAV.md`. Poznatek zapiš i do `poznamky_pro_skill.md` (pro správce skillu).
 
 ## Starší prameny (17.–18. století)

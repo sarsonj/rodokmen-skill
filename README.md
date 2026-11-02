@@ -136,12 +136,13 @@ skills/rodokmen/
 ```
 
 ## Co umí a co ne
-- **Hotové nástroje** (bez prohlížeče) mají: východní Čechy (SOA Zámrsk, ARON), jižní Čechy (SOA Třeboň,
-  včetně dobrovolnických rejstříků), západní Čechy (SOA Plzeň, Porta fontium), střední Čechy (SOA Praha, eBadatelna –
-  i urbáře a gruntovní knihy) a Prahu (AHMP a policejní přihlášky 1850–1914). Pro severní Čechy (SOA Litoměřice)
-  stahuje snímky nástrojem, knihu ale najde přes prohlížeč. Pro Rakousko je postup přes Matriculu.
-- Ostatní archivy (Brno, Opava) Claude obsluhuje obecným postupem přes prohlížeč.
-  Funguje to, ale je to pomalejší.
+- **Hotové nástroje** (bez prohlížeče) mají: východní Čechy (SOA Zámrsk, ARON), západní Čechy (SOA Plzeň,
+  Porta fontium), střední Čechy (SOA Praha, eBadatelna – i urbáře a gruntovní knihy) a Prahu (AHMP a policejní
+  přihlášky 1850–1914). Pro severní Čechy (SOA Litoměřice) stahuje snímky nástrojem, knihu ale najde přes prohlížeč.
+  Pro Rakousko je postup přes Matriculu.
+- **Jen přes prohlížeč:** jižní Čechy (SOA Třeboň) a Morava (MZA Brno) – oba archivy od listopadu 2026 stahovací
+  nástroje odmítají, Claude proto zápis přiblíží v jejich prohlížeči a uloží snímek obrazovky. Opava taky přes
+  prohlížeč. Funguje to, ale je to pomalejší.
 - U úředníků, vojáků a lékařů hledá i v **dobových novinách** (ANNO, Kramerius) – kariéra, vyznamenání, parte.
 - Umí načíst **rodinný strom z MyHeritage** a dalších služeb (export GEDCOM, z MyHeritage i zálohu stromu z programu
   Family Tree Builder) a udělat z něj plán hledání.

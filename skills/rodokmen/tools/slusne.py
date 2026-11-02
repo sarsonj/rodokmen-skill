@@ -20,6 +20,7 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
   - curl, python a bash spuštěné z Pythonu (subprocess) jdou taky přes brzdu.
   - MZA Brno (mza.cz, actapublica.eu) skripty nepovoluje: skriptem jen hledání knih (…/actapublica/matrika/hledani…,
     1 dotaz za 4 s), detail knihy a snímky jen v prohlížeči. Jiná adresa MZA nástroj hned ukončí (kód 3).
+  - SOA Třeboň (digi.ceskearchivy.cz) nástroj od 2. 11. 2026 odmítá: skripty nic, jen prohlížeč.
 localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
 tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
@@ -41,6 +42,11 @@ ZAKAZ = {                            # konec názvu webu: (cesty povolené skrip
              "MZA Brno). Neobcházej to (jiná adresa, nástroj, hlavičky).")
     for suffix in ("mza.cz", "actapublica.eu")
 }
+ZAKAZ["digi.ceskearchivy.cz"] = (   # SOA Třeboň: od 2. 11. 2026 vrací nástroji (User-Agent „rodokmen“) 403
+    re.compile(r"(?!)"),             # skriptům nic
+    "SOA Třeboň od 2. 11. 2026 nástroj rodokmen odmítá (HTTP 403) – trebon.py ani vlastní skripty nepoužívej. "
+    "Matriky čti v prohlížeči digi.ceskearchivy.cz: přiblížit zápis a uložit snímek obrazovky (reference/portaly.md, "
+    "SOA Třeboň). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
 STOPKY = (30 * 60, 2 * 3600, 8 * 3600)   # stopka po 1., 2. a 3. (i každém dalším) odmítnutí webu během OKNO
@@ -469,7 +475,7 @@ def _skript(args):
 def _stav():
     print(f"Limity: dotaz 1 za {DOTAZ:g} s, obrázek 1 za {OBRAZEK:g} s; zvlášť: " +
           ", ".join(f"{k} {v[0]:g}/{v[1]:g} s" for k, v in LIMITY.items()))
-    print("Skripty nepovolují: " + ", ".join(ZAKAZ) + " (jen hledání knih, viz slusne.py --help)")
+    print("Skripty nepovolují: " + ", ".join(ZAKAZ) + " (jen prohlížeč; u MZA skriptem hledání knih, viz --help)")
     d = _slozka()
     print("Stav:", d or "jen v paměti procesu (do složky nejde zapisovat)")
     nic, ted = True, time.time()
