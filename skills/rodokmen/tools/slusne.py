@@ -5,6 +5,7 @@ Archivy blokují IP adresu po sérii rychlých dotazů (MZA, ZA Opava…). Nást
 (`import slusne`). Vlastní skripty, curl a shellové skripty spouštěj přes obal:
 
   python3 -I tools/slusne.py pracovni/muj_skript.py [argumenty]   -> Python skript (urllib, requests…)
+  python3 -I tools/slusne.py - <<'EOF' … EOF                       -> kód v Pythonu ze vstupu (heredoc), i -c "kód"
   python3 -I tools/slusne.py curl [argumenty curl]                 -> curl se stejným limitem
   python3 -I tools/slusne.py bash pracovni/skript.sh [argumenty]   -> shellový skript; curl uvnitř jde přes brzdu
   python3 -I tools/slusne.py stav                                  -> limity a zastavené weby
@@ -14,7 +15,9 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
   - dotazy (stránky, hledání, API) nejvýš 1 za 2 s (ZA Opava 1 za 4 s), obrázky a dlaždice nejvýš 10 za s;
     omezuje se frekvence, ne souběh (vlákna stahování dlaždic nevadí),
   - po odpovědi 429/503 (u dotazu i 403), po stránce „zablokováno“ nebo po 3 nepovedených spojeních za sebou
-    se web zastaví na 30 minut pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
+    se web zastaví pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
+    Stopka trvá 30 minut, při druhém odmítnutí webu během 24 h 2 hodiny, při třetím a dalším 8 hodin.
+  - curl, python a bash spuštěné z Pythonu (subprocess) jdou taky přes brzdu.
 localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
 tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
@@ -29,7 +32,8 @@ LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
 }
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
-STOPKA = 30 * 60
+STOPKY = (30 * 60, 2 * 3600, 8 * 3600)   # stopka po 1., 2. a 3. (i každém dalším) odmítnutí webu během OKNO
+OKNO = 24 * 3600
 BAN_TEXT = {"archives.cz": re.compile(rb"zablokov[a\xc3\xa1]n|byl[a ]+zablokov|blocked", re.I)}
 OBRAZEK_RE = re.compile(r"\.(jpe?g|png|gif|webp|tiff?|jp2|bmp)(\?|$)|_files/|/tilegroup|/ximage/|zoomify|iipsrv|"
                         r"isrv8\.cgi|/iiif/|/tile|/image/|/thumb|//img\.", re.I)
@@ -37,16 +41,22 @@ STAV = os.environ.get("SLUSNE_STAV") or os.path.join(
     os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), ".cache"), "rodokmen_slusne")
 KOD = 3
 _slozka_ = []
+_slozka_zamek = threading.Lock()
 
 
 def _slozka():
     """Složka stavu. Když do ní nejde psát (sandbox Claude Code), zkusí dočasnou složku systému; když ani to,
     platí brzda jen uvnitř tohoto procesu (None)."""
+    with _slozka_zamek:   # první dotaz z víc vláken najednou: zkouška jen jednou (na Windows by si soubory překážely)
+        return _slozka_bez_zamku()
+
+
+def _slozka_bez_zamku():
     if not _slozka_:
         for d in dict.fromkeys([STAV, os.path.join(tempfile.gettempdir(), "rodokmen_slusne")]):
             try:
                 os.makedirs(d, exist_ok=True)
-                t = os.path.join(d, f".zkouska_{os.getpid()}")
+                t = os.path.join(d, f".zkouska_{os.getpid()}_{threading.get_ident()}")
                 open(t, "w").close()
                 os.remove(t)
                 _slozka_.append(d)
@@ -149,9 +159,15 @@ def _uloz(path, data):
     os.replace(tmp, path)   # atomicky – souběžné procesy nikdy nenačtou rozepsaný soubor
 
 
+def _cas(t):
+    lt = time.localtime(t)
+    return time.strftime("%H:%M", lt) if lt[:3] == time.localtime()[:3] else f"{lt.tm_mday}. {lt.tm_mon}. {lt.tm_hour}:{lt.tm_min:02d}"
+
+
 def _hlaska(skupina, st):
-    do = time.strftime("%H:%M", time.localtime(st["stop"]))
-    return (f"slusne: {skupina} je zastavený do {do} ({st.get('duvod', '')}). Archiv dává najevo, že ho zatěžujeme.\n"
+    do, n = _cas(st["stop"]), st.get("poradi", 1)
+    return (f"slusne: {skupina} je zastavený do {do} ({st.get('duvod', '')}"
+            f"{f', {n}. odmítnutí za 24 h' if n > 1 else ''}). Archiv dává najevo, že ho zatěžujeme.\n"
             f"Nezkoušej to znovu dřív a nic neobcházej (jiný nástroj, prohlížeč, jiný postup). Do té doby dělej jinou práci.\n"
             f"Uživateli řekni, co se stalo. Stav: python3 -I tools/slusne.py stav")
 
@@ -196,8 +212,12 @@ def zastav(host, duvod):
     path = _cesta(skupina)
     with _Zamek(path + ".lock"):
         st = _nacti(path)
-        st.update(stop=time.time() + STOPKA, duvod=duvod, kdy=time.strftime("%Y-%m-%d %H:%M"))
-        _uloz(path, st)
+        ted = time.time()
+        if st.get("stop", 0) <= ted:   # už zastavený web = odpověď na souběžný dotaz, ne nové odmítnutí
+            odm = [t for t in st.get("odmitnuti", []) if t > ted - OKNO] + [ted]
+            st.update(stop=ted + STOPKY[min(len(odm), len(STOPKY)) - 1], duvod=duvod,
+                      kdy=time.strftime("%Y-%m-%d %H:%M"), odmitnuti=odm, poradi=len(odm))
+            _uloz(path, st)
     _ohlas(skupina, st)
     raise Zastaveno(KOD)
 
@@ -263,13 +283,65 @@ def _zapni():
     C.putrequest, C.getresponse, C.connect, C._slusne = putrequest, getresponse, connect_, True
 
 
+# --- brzda pro podprocesy: curl, python a bash spuštěné z Pythonu (úpravu http.client nedědí) ---------------------
+_primo = threading.local()   # volání skutečného curl a bash z této brzdy se nepřepisuje
+
+
+def _prepis(argv):
+    jm = os.path.basename(str(argv[0])).lower()
+    jm = jm[:-4] if jm.endswith(".exe") else jm
+    me = [sys.executable, "-I", "-X", "utf8", os.path.abspath(__file__)]
+    if jm == "curl":
+        return me + ["curl", *argv[1:]]
+    if jm in ("bash", "sh") and len(argv) > 1:
+        return me + ["bash", *argv[1:]]
+    if re.fullmatch(r"python[\d.]*|pythonw[\d.]*|py", jm):
+        i = 1
+        while i < len(argv):
+            a = str(argv[i])
+            if a in ("-X", "-W"):
+                i += 2
+                continue
+            if a == "-m":
+                return argv
+            if a in ("-c", "-") or not a.startswith("-"):
+                break
+            i += 1
+        if i < len(argv) and os.path.basename(str(argv[i])) != "slusne.py":
+            return argv[:i] + [os.path.abspath(__file__)] + argv[i:]
+    return argv
+
+
+def _hlidej_podprocesy():
+    P = subprocess.Popen
+    if getattr(P, "_slusne", False):
+        return
+    init = P.__init__
+
+    def init_(self, args, *a, **k):
+        if isinstance(args, (list, tuple)) and args and not k.get("shell") and not getattr(_primo, "ano", False):
+            args = _prepis(list(args))
+        init(self, args, *a, **k)
+
+    P.__init__, P._slusne = init_, True
+
+
+def _bez_prepisu(fce, *a, **k):
+    _primo.ano = True
+    try:
+        return fce(*a, **k)
+    finally:
+        _primo.ano = False
+
+
 _zapni()
+_hlidej_podprocesy()
 
 
 # --- obal pro skripty, curl a bash ---------------------------------------------------------------------------------
 def _curl_umi_stderr(real):
     try:
-        v = subprocess.run([real, "--version"], capture_output=True, text=True).stdout
+        v = _bez_prepisu(subprocess.run, [real, "--version"], capture_output=True, text=True).stdout
         m = re.match(r"curl (\d+)\.(\d+)", v)
         return bool(m) and (int(m.group(1)), int(m.group(2))) >= (7, 63)
     except OSError:
@@ -302,8 +374,8 @@ def _curl(args):
         pockej(u)
     vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args) or not _curl_umi_stderr(real)
     extra = [] if vlastni_w else ["-w", "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"]
-    p = subprocess.run([real, *args, *extra], stderr=subprocess.PIPE)
-    err = p.stderr.decode("utf-8", "replace")
+    p = _bez_prepisu(subprocess.run, [real, *args, *extra], stderr=subprocess.PIPE)
+    err = p.stderr.decode("utf-8", "replace").replace("\r\n", "\n")   # curl na Windows píše do stderr \r\n
     kody = re.findall(r"^@@slusne (\d+) (\S*)$", err, re.M)
     sys.stderr.write(re.sub(r"\n?@@slusne \d+ \S*\n", "", err))
     for kod, url in kody:
@@ -313,23 +385,40 @@ def _curl(args):
     return p.returncode
 
 
+def _posix(p):
+    """Cesta pro Git Bash: C:\\Users\\x → /c/Users/x (mimo Windows beze změny)."""
+    if os.name != "nt":
+        return p
+    p = p.replace("\\", "/")
+    return "/" + p[0].lower() + p[2:] if re.match(r"[A-Za-z]:", p) else p
+
+
 def _bash(args):
     shim = tempfile.mkdtemp(prefix="slusne_")
     try:
         me = os.path.abspath(__file__)
         with open(os.path.join(shim, "curl"), "w", encoding="utf-8", newline="\n") as f:
             py, me_ = sys.executable.replace("\\", "/"), me.replace("\\", "/")   # Git Bash: lomítka místo zpětných
-            f.write(f'#!/bin/sh\nexec "{py}" -I "{me_}" curl "$@"\n')
+            f.write(f'#!/bin/sh\nexec "{py}" -I -X utf8 "{me_}" curl "$@"\n')
         os.chmod(os.path.join(shim, "curl"), 0o755)
+        # Git\bin\bash.exe (z PowerShellu jiný bash není) si PATH přestaví a skutečný curl by byl před náhradním.
+        # BASH_ENV načte každý neinteraktivní bash (i vnořený `bash -c`) až potom, takže náhradní curl vrátí dopředu.
+        with open(os.path.join(shim, "env.sh"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'PATH="{_posix(shim)}:$PATH"; export PATH\n')
         env = dict(os.environ, SLUSNE_CURL=os.environ.get("SLUSNE_CURL") or shutil.which("curl") or "",
-                   PATH=shim + os.pathsep + os.environ.get("PATH", ""))
-        return subprocess.run([_bash_cesta(), *args], env=env).returncode
+                   PATH=shim + os.pathsep + os.environ.get("PATH", ""), BASH_ENV=_posix(os.path.join(shim, "env.sh")))
+        return _bez_prepisu(subprocess.run, [_bash_cesta(), *args], env=env).returncode
     finally:
         shutil.rmtree(shim, ignore_errors=True)
 
 
 def _skript(args):
     import runpy
+    if args[0] in ("-", "-c"):   # kód ze vstupu (heredoc) nebo z argumentu
+        kod = sys.stdin.read() if args[0] == "-" else (args[1] if len(args) > 1 else "")
+        sys.argv = [args[0], *args[2 if args[0] == "-c" else 1:]]
+        exec(compile(kod, "<stdin>" if args[0] == "-" else "<string>", "exec"), {"__name__": "__main__"})
+        return 0
     if args[0] == "-m":
         sys.argv = args[1:]
         runpy.run_module(args[1], run_name="__main__", alter_sys=True)
@@ -345,14 +434,19 @@ def _stav():
           ", ".join(f"{k} {v[0]:g}/{v[1]:g} s" for k, v in LIMITY.items()))
     d = _slozka()
     print("Stav:", d or "jen v paměti procesu (do složky nejde zapisovat)")
-    nic = True
+    nic, ted = True, time.time()
     for f in sorted(os.listdir(d)) if d else []:
         if f.endswith(".json"):
             st = _nacti(os.path.join(d, f))
-            if st.get("stop", 0) > time.time():
+            odm = [t for t in st.get("odmitnuti", []) if t > ted - OKNO]
+            if st.get("stop", 0) > ted:
                 nic = False
-                print(f"  ZASTAVENO {f[:-5]} do {time.strftime('%H:%M', time.localtime(st['stop']))} – "
-                      f"{st.get('duvod', '')} (od {st.get('kdy', '?')})")
+                print(f"  ZASTAVENO {f[:-5]} do {_cas(st['stop'])} – {st.get('duvod', '')} (od {st.get('kdy', '?')}, "
+                      f"{st.get('poradi', 1)}. odmítnutí za 24 h)")
+            elif odm:
+                dalsi = STOPKY[min(len(odm) + 1, len(STOPKY)) - 1]
+                delka = f"{dalsi // 60} min" if dalsi < 3600 else f"{dalsi // 3600} h"
+                print(f"  {f[:-5]}: odmítnutí za 24 h {len(odm)} (poslední {_cas(odm[-1])}), další stopka by trvala {delka}")
     if nic:
         print("  žádný web není zastavený")
 
@@ -366,14 +460,22 @@ def _odblokuj(web=None):
                 st = _nacti(path)
                 if st.pop("stop", None):
                     print("odblokováno:", f[:-5])
+                    st["odmitnuti"] = st.get("odmitnuti", [])[:-1]   # byla to naše chyba – do prodlužování se nepočítá
                 _uloz(path, st)
 
 
 def main(argv):
+    for s in (sys.stdout, sys.stderr):   # hlášky česky i na Windows bez -X utf8 (např. z curl() v ahmp_search.sh)
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+    if not argv and not sys.stdin.isatty():   # slusne.py <<'EOF' … EOF
+        argv = ["-"]
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0
     cmd, rest = argv[0], argv[1:]
+    if cmd == "--stav":   # tvar ze starší brzdy scripts/slusne.py
+        cmd = "stav"
     if cmd == "stav":
         return _stav()
     if cmd == "odblokuj":
