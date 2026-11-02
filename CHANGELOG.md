@@ -6,6 +6,22 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.6.2 – 2. 11. 2026
+
+SOA Třeboň jen přes prohlížeč.
+
+**Nové**
+- SOA Třeboň od 2. 11. odmítá stahovací nástroje (`trebon.py` dostává HTTP 403). Skill proto čte jihočeské
+  matriky jen v prohlížeči archivu: přiblíží zápis a uloží snímek obrazovky, výřez pak jako u jiných archivů.
+  `trebon.py` je zatím vypnutý a brzda skripty na digi.ceskearchivy.cz zastaví.
+
+**Návody**
+- `portaly.md`: SOA Třeboň a MZA Brno – vyzkoušené úryvky pro přiblížení zápisu v prohlížeči archivu,
+  u Třeboně i trvalý odkaz přímo na zápis.
+
+Kdo pracoval s `trebon.py`: Claude teď místo něj otevře prohlížeč (Playwright). Bez prohlížeče pošlete
+snímky obrazovky sami. Děkuji všem, kdo na blokaci upozornili e-mailem.
+
 ## 0.6.1 – 2. 11. 2026
 
 MZA Brno jen přes prohlížeč, opravy brzdy a hlídače na Windows.
