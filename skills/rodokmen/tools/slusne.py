@@ -15,6 +15,8 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
     omezuje se frekvence, ne souběh (vlákna stahování dlaždic nevadí),
   - po odpovědi 429/503 (u dotazu i 403), po stránce „zablokováno“ nebo po 3 nepovedených spojeních za sebou
     se web zastaví na 30 minut pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
+  - MZA Brno (mza.cz, actapublica.eu) skripty nepovoluje: skriptem jen hledání knih (…/actapublica/matrika/hledani…,
+    1 dotaz za 4 s), detail knihy a snímky jen v prohlížeči. Jiná adresa MZA nástroj hned ukončí (kód 3).
 localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
 tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
@@ -26,6 +28,15 @@ DOTAZ, OBRAZEK = 2.0, 0.1            # výchozí rozestup v sekundách
 LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
     "archives.cz": (4.0, 0.1),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min
     "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
+    "mza.cz": (4.0, 4.0),            # MZA Brno – skriptem jen hledání knih (ZAKAZ níže), blokuje i za rychlé dotazy na katalog
+}
+ZAKAZ = {                            # konec názvu webu: (cesty povolené skriptům, hláška pro ostatní)
+    suffix: (re.compile(r"/actapublica/matrika/hledani"),
+             "MZA od 2. 11. 2026 nepovoluje stahování skriptem. Skriptem jen hledání knih "
+             "(https://www.mza.cz/actapublica/matrika/hledani?typ=obec&search_by_obec=<obec>&page=<n>); detail knihy "
+             "a snímky jen v prohlížeči Acta Publica – přiblížit zápis a uložit snímek obrazovky (reference/portaly.md, "
+             "MZA Brno). Neobcházej to (jiná adresa, nástroj, hlavičky).")
+    for suffix in ("mza.cz", "actapublica.eu")
 }
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
@@ -165,9 +176,22 @@ def _ohlas(skupina, st):
         print(_hlaska(skupina, st), file=sys.stderr)
 
 
+def zakaz(host, url):
+    """Web, který skripty nepovoluje (ZAKAZ): jiná než povolená cesta -> hláška a Zastaveno (bez stopky)."""
+    host = (host or "").lower().strip("[]").rstrip(".")
+    for suffix, (povoleno, hlaska) in ZAKAZ.items():
+        if host == suffix or host.endswith("." + suffix):
+            cesta = urlsplit(url).path if "://" in url else url.split("?")[0]
+            if not povoleno.match(cesta or "/"):
+                print(f"slusne: {hlaska}", file=sys.stderr)
+                raise Zastaveno(KOD)
+
+
 def pockej(url_nebo_host, obrazek=None):
     """Před dotazem: počká na volný slot (rezervace pod zámkem, čeká se bez zámku). Zastavený web -> Zastaveno."""
     host = urlsplit(url_nebo_host).hostname if "://" in url_nebo_host else url_nebo_host
+    if "://" in url_nebo_host:
+        zakaz(host, url_nebo_host)
     skupina, lim = _skupina(host)
     if not skupina:
         return
@@ -239,6 +263,7 @@ def _zapni():
 
     def putrequest(self, method, url, *a, **k):
         self._slusne_obr = je_obrazek(url)
+        zakaz(_host(self), url)
         pockej(_host(self), self._slusne_obr)
         return put(self, method, url, *a, **k)
 
@@ -343,6 +368,7 @@ def _skript(args):
 def _stav():
     print(f"Limity: dotaz 1 za {DOTAZ:g} s, obrázek 1 za {OBRAZEK:g} s; zvlášť: " +
           ", ".join(f"{k} {v[0]:g}/{v[1]:g} s" for k, v in LIMITY.items()))
+    print("Skripty nepovolují: " + ", ".join(ZAKAZ) + " (jen hledání knih, viz slusne.py --help)")
     d = _slozka()
     print("Stav:", d or "jen v paměti procesu (do složky nejde zapisovat)")
     nic = True
