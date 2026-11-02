@@ -71,10 +71,10 @@ def slugify(text):
 
 
 def norm_answer(text):
-    """Stejná normalizace jako v prihlaseni.html: bez diakritiky, malá písmena, jen a-z0-9 a „*“ (aby šla odpověď „***“)."""
+    """Stejná normalizace jako v prihlaseni.html: bez diakritiky, malá písmena, jen a-z0-9."""
     t = unicodedata.normalize("NFD", text)
     t = "".join(c for c in t if not unicodedata.combining(c)).lower()
-    return re.sub(r"[^a-z0-9*]", "", t)
+    return re.sub(r"[^a-z0-9]", "", t)
 
 
 def years(y):

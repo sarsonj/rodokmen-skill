@@ -44,7 +44,7 @@
     document.getElementById('f').addEventListener('submit', function (e) {
       e.preventDefault();
       var v = document.getElementById('a').value.normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase().replace(/[^a-z0-9*]/g, '');
+        .toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!window.crypto || !crypto.subtle) {   // jen přes https (nebo localhost)
         document.getElementById('err').textContent = 'Přihlášení funguje jen přes zabezpečené spojení (https).';
         return;
