@@ -6,6 +6,37 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.6.1 – 2. 11. 2026
+
+MZA Brno jen přes prohlížeč, opravy brzdy a hlídače na Windows.
+
+**Nové**
+- MZA Brno (Acta Publica) od 2. 11. blokuje stahovací skripty. Skill proto čte snímky jen v jejich prohlížeči:
+  přiblíží zápis a uloží snímek obrazovky (Playwright), výřez pak jako u jiných archivů. Bez prohlížeče pošle
+  snímky obrazovky uživatel sám. Skriptem jde jen hledání knih, ostatní adresy MZA brzda zastaví (#64).
+- Brzda: když archiv odmítne podruhé za 24 hodin, stopka trvá 2 hodiny, potřetí 8 hodin (#53).
+- Brzda hlídá i `curl`, `python` a `bash` spuštěné z Pythonu (#53).
+
+**Opravy**
+- Windows: hlídač sítě bez Git for Windows zamítal každý příkaz. Nově se spouští bez shellu, takže funguje
+  v Git Bashi i v PowerShellu, i v projektu sdíleném přes OneDrive.
+- Windows: brzda nepoznala u `curl` odmítnutí archivu (429/503) a po zablokování poslala další dotaz;
+  `slusne.py bash` spuštěný z PowerShellu nebrzdil `curl` uvnitř skriptu (#53).
+- Windows se Smart App Control: když `curl` z Gitu nejde spustit, brzda použije systémový `curl.exe`.
+- Hlášky brzdy a hlídače na Windows bez rozsypané češtiny.
+- Hlídač pozná i `import json, urllib.request`, `python -c "…"`, `bash -c "curl …"` a nástroj Monitor.
+
+**Návody**
+- `portaly.md`: MZA – postup v prohlížeči a tipy, jak listovat méně (části matriky, rejstříky, strana → snímek).
+- `portaly.md`: židovské matriky Národního archivu ve VadeMeCum místo badatelna.eu (#54).
+- README: jak aktualizovat skill (#58).
+
+Kdo má na Windows zapnutý hlídač a Claude mu zamítá každý příkaz: nechte Claude aktualizovat projekt
+(nabídne to sám), nebo hlídač vypněte příkazem `novy_projekt.py <projekt> --bez-hlidace`.
+
+Opravy pro Windows a testy připravil svamberk (#53), blokaci MZA nahlásil HonzinaThor (#64).
+Děkuji i všem, kdo e-mailem poslali zkušenosti z Windows a nápady k MZA.
+
 ## 0.6.0 – 2. 11. 2026
 
 Brzda proti zablokování archivem.
