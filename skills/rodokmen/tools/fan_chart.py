@@ -193,7 +193,26 @@ title = (f'<text x="{W / 2}" y="250" text-anchor="middle" font-family="Georgia, 
 lx, ly = 300, CY + 2240 + 170
 legend = []
 items = [(k, LINES[k][0]) for k in range(8, 16) if k in LINES]
-desc = {k: (LINES[k][1].split(";")[0].split(".")[0])[:70] for k, _ in items}
+
+
+def popis_rodu(text, jmeno):
+    """První věta popisu rodu, zkrácená na celé slovo, aby se vešla do sloupce legendy.
+    Tečka končí větu jen před velkým písmenem nebo na konci a po slově s aspoň 4 znaky – „čp. 41“, „roz. Nová“,
+    „sv. Jan“ ani „19. století“ větu neukončí."""
+    t = text.split(";")[0].strip()
+    for m in re.finditer(r"\.(\s+|$)", t):
+        za, pred = t[m.end():m.end() + 1], t[:m.start()].split()[-1:]
+        if (not za or za.isupper()) and pred and len(pred[0]) >= 4:
+            t = t[:m.start()]
+            break
+    t = t.rstrip(". ")
+    limit = max(30, 84 - len(jmeno))   # sloupec legendy pojme asi 85 znaků písmem 40 px
+    if len(t) > limit:
+        t = t[:limit].rsplit(" ", 1)[0].rstrip(",;:–- ") + "…"
+    return t
+
+
+desc = {k: popis_rodu(LINES[k][1], nm) for k, nm in items}
 for idx, (k, nm) in enumerate(items):
     col, row = idx // 4, idx % 4
     x, y = lx + col * 1950, ly + row * 78

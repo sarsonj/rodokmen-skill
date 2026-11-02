@@ -12,27 +12,10 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | AHMP | hl. m. Praha | katalog.ahmp.cz (Pragapublica) | **ano – `ahmp_search.sh`, `ahmp_scan.py`** |
 | MZA Brno | jižní Morava, Vysočina z části | Acta Publica – www.mza.cz/actapublica | částečně – v prohlížeči (postup níže) |
 | ZA Opava | severní Morava a Slezsko, Olomoucko a Litovelsko | Digitální badatelna – digi.archives.cz/da/ | **částečně – `soal_zoomify.py`** (jen s prohlížečem, CAPTCHU řeší uživatel) |
-| Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | badatelna.eu; digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
+| Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | HBMa: VadeMeCum NA – vademecum.nacr.cz (Digitální badatelna → Matriky židovských náboženských obcí; stará adresa badatelna.eu už nepatří archivu); digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
 
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `playbook.md` §2
 (Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže.
-
-## Limity a blokování – platí pro všechny portály
-Příkazy s nástroji v tomto souboru spouštěj přes wrapper: `python3 -I scripts/slusne.py tools/…`, skripty `.sh` přes
-`… scripts/slusne.py bash tools/…`, ruční stahování přes `… scripts/slusne.py curl …` (SKILL.md, „Ohleduplnost k archivům“).
-Wrapper pustí na jeden web 1 dotaz za 2 s a 10 dlaždic za s a po HTTP 429/503 ho na 30 minut zastaví. Co víme o limitech:
-
-| Portál | Co se stalo / pravidlo |
-|---|---|
-| MZA Brno (katalog a API) | ~40 rychlých dotazů z terminálu a stránkování skriptem → zablokovaná IP adresa (zkušenost uživatele skillu, 10/2026) |
-| SOA Litoměřice (digi.soalitomerice.cz) | ~100 rychlých požadavků na stránky aplikace → blok na 30 min; obrázkový server neomezuje |
-| ZA Opava (digi.archives.cz) | ~75 rychlých požadavků → CAPTCHA nebo „Access blocked“ na 30 min; po desítkách showZoomify denní limit |
-| FamilySearch | ~1000 rychlých požadavků na snímky → HTTP 429 a blok na desítky minut |
-| Geneteka | po desítkách rychlých dotazů vrací nefiltrovaná data; provozovatel nechce hromadné stahování |
-| OpenStreetMap Nominatim (`mista.py`) | pravidla služby: nejvýš 1 dotaz za sekundu |
-| eBadatelna, Porta fontium | nástroje mají navíc vlastní pauzu 0,5 s; po HTTP 429 dřív čekaly a zkoušely znovu, přes wrapper skončí |
-| MyHeritage (v prohlížeči) | denní limit asi 400 načtení editačních stránek, pak „Maximum usage reached“; hromadné procházení hrozí blokací účtu |
-| ARON, AHMP, Třeboň, Kramerius, ANNO, Matricula | limit neznáme – platí výchozí hodnoty wrapperu |
 
 ## ARON (SOA Zámrsk) – hotové nástroje
 - **Hledání svazků:** `python3 -I tools/aron_search.py "Holice"` → řádky `apu_id | signatura, roky | druh, obce`.
@@ -147,9 +130,9 @@ Wrapper pustí na jeden web 1 dotaz za 2 s a 10 dlaždic za s a po HTTP 429/503 
   („Sorry, you have been blocked“ – podle IP, i v běžném prohlížeči); když blokuje i mza.cz, ať uživatel vypne VPN
   nebo zkusí jinou síť.
 - Knihu najdi v prohlížeči podle obce nebo fary. Snímky jsou IIIF: adresu obrázku najdi v síťovém provozu a stáhni ji
-  přes `curl` (Python dostane HTTP 426) – přes wrapper `… scripts/slusne.py curl …`. Dál podle „Ostatní portály“ níže.
-- **Pozor na blokování:** katalog a API MZA zablokovaly IP adresu po ~40 rychlých dotazech (i stránkování výsledků
-  skriptem). Dotazy jen přes wrapper, v prohlížeči nejvýš 1 za 2 s a výsledky hledání neprocházej smyčkou.
+  přes `python3 -I tools/slusne.py curl …` (Python dostane HTTP 426). MZA blokuje IP adresu už po desítkách
+  rychlých dotazů nebo stovkách snímků za večer – jen konkrétní snímky, žádné předběžné stahování celých knih.
+  Dál podle „Ostatní portály“ níže.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.

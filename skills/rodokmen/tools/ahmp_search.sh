@@ -4,6 +4,7 @@
 D=$(mktemp -d); B=https://katalog.ahmp.cz; C=$D/cj
 # Python 3: na Windows je „python3“ často jen nefunkční alias z Microsoft Store → zkus python, py -3
 PY=python3; $PY -c "" 2>/dev/null || PY=python; $PY -c "" 2>/dev/null || PY="py -3"
+curl() { $PY -I "$(dirname "$0")/slusne.py" curl "$@"; }   # brzda proti zablokování archivem
 q=$($PY -I -c "import urllib.parse,sys;print(urllib.parse.quote_plus(sys.argv[1]))" "$1")
 curl -s -b $C -c $C -L "$B/pragapublica/searchlink?xid=7EF18906B65E11DF820F00166F1163D4&fcDb=&onlyDigi=&modeView=LIST&searchAsPhrase=&patternTxt=$q" -o $D/a.html
 f=$(grep -A6 'name="pageRows"' $D/a.html | grep -oE 'name="(_sourcePage|__fp)" value="[^"]*"' | head -2)

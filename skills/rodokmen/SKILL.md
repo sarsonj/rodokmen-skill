@@ -31,6 +31,9 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    že je nová verze skillu, a nabídni aktualizaci projektu: `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`
    (data zůstanou, změněné soubory webu se zazálohují do `pracovni/`), pak ve `web/` `npm install`. Po souhlasu ji udělej
    a podle výpisu převezmi ze zálohy případné úpravy vzhledu (viz `reference/web.md`). Odmítne-li, připomeň to až příště.
+   Aktualizace z verze starší než 0.6.0 přidá brzdu proti zablokování archivem: zeptej se i na hlídač sítě (viz Fáze 0,
+   krok 2). Po aktualizaci řekni uživateli, ať pro jistotu restartuje Claude Code – změny v `.claude/settings.json`
+   (zákaz `curl`, hlídač) se jinak nemusí projevit hned.
 2. Projekt ještě není → **Fáze 0**.
 
 ## Fáze 0 – Příprava (jednou)
@@ -53,13 +56,17 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    spadnou na znacích jako „→“. ImageMagick: `winget install --id ImageMagick.ImageMagick --source winget --accept-source-agreements --accept-package-agreements`; do PATH se dostane až po
    restartu Claude Code (do té doby před příkazy `export PATH="/c/Program Files/ImageMagick-7…:$PATH"` s přesnou složkou
    z `C:\Program Files`). **Nikdy `convert`** (to je systémový nástroj Windows), vždy `magick`. Skripty `.sh` spouštěj
-   přes Git Bash (`bash tools/…`; síťové přes wrapper `python -I -X utf8 scripts/slusne.py bash tools/…`). Delší jednorázové skripty v Pythonu nepiš jako heredoc (`python - <<EOF`), v Git Bash
+   přes Git Bash (`bash tools/…`). Delší jednorázové skripty v Pythonu nepiš jako heredoc (`python - <<EOF`), v Git Bash
    občas spadnou na „unexpected EOF“ – zapiš je do souboru v `pracovni/` a spusť. Tato pravidla zapiš hned po založení projektu do jeho `CLAUDE.md`, ať platí i příště
    (a dej je do zadání i pomocníkům, viz `reference/matriky.md`).
 2. Zeptej se, kde má projekt být (navrhni `~/Rodokmen`), a založ ho:
    `python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`
    Chce-li uživatel nejdřív vidět, jak web vypadá, založ vedle ukázku: `… novy_projekt.py ~/Rodokmen-ukazka --ukazka`,
    pak `cd web && npm install && npm run nahled` a pošli mu odkaz http://localhost:4321.
+   Pak se zeptej, jestli zapnout **hlídač sítě** (`… novy_projekt.py <složka> --hlidac`, vypnutí `--bez-hlidace`).
+   Vysvětli jednou větou: archivy blokují IP adresu po sérii rychlých dotazů. Hlídač je malý skript v projektu
+   (`tools/hlidac_site.py`), který před každým příkazem zkontroluje, že stahování jde přes brzdu, a jinak ho zamítne.
+   Sám nic nestahuje. Bez něj platí jen pravidla níže a zákaz přímého `curl`/`wget` v `.claude/settings.json`.
 3. V projektu `git init` a první uložení (git = historie změn, kdyby se něco pokazilo). Doporuč pokračovat v Claude Code
    **z této složky** (soubor `CLAUDE.md` v ní zajistí, že příště navážeš).
 4. Vyplň v `data/STAV.md` sekci „Pro koho“ a v `data/web.json` název webu („Rodokmen Novákových“),
@@ -108,15 +115,14 @@ Základní smyčka pro každou osobu:
 2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku
    (narození 100 let, sňatky 75, úmrtí 30). Mladší údaje jsou na matričním úřadě (žádost s doložením příbuzenství) –
    zapiš do `data/archivni_dotazy.md` a jdi dál.
-3. **Najdi svazek**: podle obce → farnost → archiv. Nástroje, které chodí na síť, spouštěj vždy přes wrapper
-   (viz „Ohleduplnost k archivům“). ARON: `python3 -I scripts/slusne.py tools/aron_search.py "Obec"`, SOA Třeboň:
+3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Třeboň:
    `tools/trebon.py`, SOA Plzeň: `tools/portafontium.py`, SOA Praha (střední Čechy): `tools/ebadatelna.py`,
    Praha: `tools/ahmp_search.sh`; ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty.
    Je-li ke svazku index (rejstřík), začni jím. Starší matriky (před ~1784) bývají ve faře sousedního města.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš
    (šetří čas, archiv i CAPTCHY). Najdi zápis, **přečti ho sám ze snímku** (přiblíž si výřez v plném rozlišení).
 5. **Zapiš nález** (vždy všech 6 kroků, i když to zdržuje):
-   1. svazek do `data/svazky.json` (ARON: `python3 -I scripts/slusne.py tools/aron_img.py <apu> svazek`),
+   1. svazek do `data/svazky.json` (ARON: `python3 -I tools/aron_img.py <apu> svazek`),
    2. zápis do `data/zaznamy.json` (klíč = popisný název, např. `holice_krest_jan_novak_1890`; odkaz na snímek) přes `tools/zapis.py`,
    3. výřez: `python3 -I tools/vyrez.py pracovni/<stránka>.jpg <klíč> x0,y0,x1,y1` (velkoryse – celý zápis s hlavičkou sloupců a okrajovými poznámkami),
    4. rámeček čteného místa: `python3 -I tools/ramecek.py <klíč> x0,y0,x1,y1` a **prohlédni si** `pracovni/ramecek_<klíč>.jpg`,
@@ -149,6 +155,19 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
   kde uživatel u každého klikne na odpověď. Když to jde, použij artefakt s ukládáním odpovědí, jinak HTML soubor
   s tlačítkem „stáhnout odpovědi“. Odpovědi pak zapracuj a zapiš do deníku.
 
+### Šetrně k archivům – brzda `tools/slusne.py`
+Archivy blokují IP adresu po sérii rychlých dotazů (MZA i celou síť na hodiny, ZA Opava na 30 minut). Blokaci
+nezpůsobují nástroje, ale rychlé dočasné skripty a smyčky `curl`. Nástroje v `tools/` mají brzdu samy: společný limit
+pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na počítači.
+- **Síť jen přes brzdu, i u pomocníků:** vlastní skript `python3 -I tools/slusne.py pracovni/x.py …`, curl
+  `python3 -I tools/slusne.py curl …`, shellový skript `python3 -I tools/slusne.py bash pracovni/x.sh`. Přímé
+  `curl`/`wget` má projekt zakázané (`.claude/settings.json`); i místní náhled webu zkoušej přes `slusne.py curl`.
+- **Hláška „slusne: … je zastavený“ (kód 3)** = archiv dal najevo, že ho zatěžujeme (429/503/403, stránka
+  „zablokováno“, spojení odmítnuto). Nezkoušej to znovu, neobcházej to (jiný nástroj, prohlížeč), řekni to uživateli
+  a dělej jinou práci. Stav: `slusne.py stav`. `slusne.py odblokuj` jen když víš, že šlo o tvou chybu (špatná adresa).
+- **V prohlížeči brzda neplatí:** nejvýš 1 dotaz za 2 s, žádné smyčky `fetch` ani `Promise.all`.
+- **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
+
 ### Pomocníci (subagenti) – šetrně
 Na velké kolo (např. „projdi 5 svazků a najdi všechny Nováky“) můžeš pustit 2–4 pomocníky paralelně.
 Každému dej přesné zadání (svazek, snímky, koho hledat, formát výsledku: klíč, snímek, souřadnice zápisu, přepis)
@@ -163,8 +182,7 @@ kreditů. Ověření na snímku a zápis do dat dělá hlavní model (ty). Uživ
 Osvědčilo se 3–4 pomocníci na různé větve a archivy současně, jedno kolo ≈ 15–25 nových předků.
 Pomocníci stojí hodně kreditů – před velkým kolem řekni uživateli, co plánuješ a proč, a nech si to schválit.
 Do zadání jim napiš technické pasti z `reference/matriky.md` (macOS: zsh; Windows: `python -I -X utf8`, `magick`)
-a pravidlo: na síť jen přes `scripts/slusne.py`; když wrapper ohlásí zablokovaný web, nic dalšího nezkoušet a ohlásit to.
-Limit wrapperu platí pro všechny pomocníky dohromady, takže víc pomocníků na stejném archivu hledání nezrychlí.
+a pravidla brzdy výše (síť jen přes `tools/slusne.py`, při hlášce „zastavený“ skončit a ohlásit).
 **V zadání chtěj u každého prošlého snímku, co na něm skutečně přečetl** (rok, první jméno), ne jen „prošel jsem
 sn. 20–40“ – pomocník jinak přehlédne, že se mu část snímků nenačetla. Na špatně čitelné knihy (kurent 1. poloviny
 19. století, vybledlé snímky) pomocníky nepouštěj, nebo jim dej přesný snímek; ARON a Porta fontium zvládají dobře.
@@ -220,28 +238,11 @@ Nedělej to pořád. Postup:
 **Nic sám neposílej** (žádný e-mail, formulář ani issue). Rozhoduje uživatel. Až řekne, že poslal, zapiš do
 `poznamky_pro_skill.md` „odesláno <datum>“ a další poznámky piš pod tuto čáru.
 
-## Ohleduplnost k archivům – limit dotazů
-Archivy blokují IP adresu po sérii rychlých dotazů (MZA Brno po ~40 dotazech na katalog, SOA Litoměřice a ZA Opava po
-desítkách rychlých stránek, viz `reference/portaly.md`). Ban dopadne na uživatele a archivy mohou přitvrdit vůči všem.
-- **Vše, co chodí na síť, spouštěj přes wrapper `scripts/slusne.py`** (v projektu; kopie ze skillu):
-  `python3 -I scripts/slusne.py tools/<nástroj>.py …`, vlastní skript `… scripts/slusne.py pracovni/x.py`, kód z heredocu
-  `… scripts/slusne.py - <<'EOF'`, `… scripts/slusne.py curl …` (místo curl a wget) a `… scripts/slusne.py bash tools/<skript>.sh …`.
-  Wrapper hlídá limit pro každý web zvlášť a společně pro všechny procesy (i paralelní pomocníky). Dotazy (hledání, API,
-  stránky) pustí nejvýš 1 za 2 s, dlaždice a obrázky 10 za s. Souběžné stahování dlaždic nevadí, vadí rychlé série dotazů.
-- Po HTTP 429 nebo 503 (a po 403 na dotaz) wrapper web na 30 minut zablokuje pro všechny procesy a nástroj skončí s kódem 75.
-  **Pak na ten web nic neposílej a blok neobcházej** (ani prohlížečem). Pokračuj jinou prací a řekni to uživateli.
-  Co je zablokované, ukáže `… scripts/slusne.py --stav`.
-- Hook v `.claude/settings.json` projektu (`scripts/slusne_hook.py`) zamítne přímé volání síťového Pythonu, curl, wget
-  a skriptů s curl v Bash i v PowerShellu. V odpovědi vrátí přesný příkaz přes wrapper. Je to textová heuristika – neobcházej ji.
-- **JavaScript v prohlížeči (Claude in Chrome, vestavěný prohlížeč) hook nevidí.** Tam platí totéž ručně: nejvýš 1 dotaz
-  za 2 s (smyčka s `await` a pauzou), **žádné `Promise.all` ani jiné souběžné `fetch` na dotazy**. Po 429, 503 nebo stránce
-  „blocked“ přestaň a řekni to uživateli. Obrázky, které stránka načítá sama při prohlížení, nevadí.
-
 ## Co nikdy
-- Neposílej na archivy dotazy mimo `scripts/slusne.py` a v prohlížeči rychleji než 1 za 2 s; zablokovaný web neobcházej.
 - Nestahuj hromadně z placených služeb (MyHeritage, Ancestry, Geni…) a neobcházej jejich ochranu –
   automatické procházení stovek záznamů vede k **zablokování účtu**. Čti jen to, co uživatel otevře, nebo co potřebuješ jednotlivě.
 - Nezadávej za uživatele hesla, platební údaje, neřeš CAPTCHA, nekupuj předplatné.
+- Neobcházej brzdu `tools/slusne.py` ani blokaci archivu.
 - Nedávej na web podrobnosti o žijících lidech bez jejich souhlasu.
 - Nepřepisuj data bez zálohy v gitu; po větším kroku navrhni uložení (`git add -A && git commit -m "…"`).
 
@@ -259,12 +260,9 @@ desítkách rychlých stránek, viz `reference/portaly.md`). Ban dopadne na uži
 | `dokumenty/`, `pracovni/` | originály od rodiny; pracovní soubory (nejdou na web) |
 | `poznamky_pro_skill.md` | poznámky pro správce skillu (chyby, nové archivy, nápady) – posílá je uživatel ručně |
 | `tools/` | nástroje (kopie ze skillu; aktualizace celého projektu: znovu spustit `novy_projekt.py` na stejnou složku, viz `reference/web.md`) |
-| `scripts/`, `.claude/settings.json` | wrapper `slusne.py` (limit dotazů na archivy) a hook, který hlídá, že se síťové příkazy pouštějí přes něj |
 | `web/` | web (Astro); data do něj jdou jen přes `npm run data` |
 
 ## Nástroje (`tools/`, spouštět z kořene projektu `python3 -I tools/<nástroj>`)
-Na síť chodí `aron_*`, `trebon`, `portafontium`, `ebadatelna`, `ahmp_*`, `policie_prihlasky`, `soal_zoomify`, `matricula_*`,
-`anno*`, `kramerius` a `mista` – ty spouštěj přes `python3 -I scripts/slusne.py tools/<nástroj>` (skripty `.sh` přes `… slusne.py bash tools/…`).
 | Nástroj | Co dělá |
 |---|---|
 | `aron_search.py "Obec"` | najde svazky matrik na ARON (SOA Zámrsk); `"Obec,Fara"` zúží stejnojmenné obce |
@@ -285,6 +283,7 @@ Na síť chodí `aron_*`, `trebon`, `portafontium`, `ebadatelna`, `ahmp_*`, `pol
 | `ramecek.py <klíč> x0,y0,x1,y1` | rámeček čteného místa + kontrolní obrázek |
 | `mista.py pridej "Obec"` / `mista.py` | místa pro mapu (souřadnice z OpenStreetMap) |
 | `zapis.py <soubor> <klíč> <vstup.json> [--sloucit]` | přidá / změní položku v `zaznamy`, `svazky`, `prepisy`… beze změny formátu |
+| `slusne.py <skript.py> / curl … / bash x.sh / stav` | brzda proti zablokování archivem – vlastní skripty a curl spouštěj přes ni |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
 | `export_web.py` | data → web (volá ho `npm run data`) |
 | `fan_chart.py vystupy/` | vějíř předků jako plakát k tisku |

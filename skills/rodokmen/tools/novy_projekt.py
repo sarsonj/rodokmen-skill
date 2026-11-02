@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """Založí nový projekt rodokmenu ze šablony skillu.
 
-Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka]
-  --ukazka   nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
+Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [--hlidac | --bez-hlidace]
+  --ukazka        nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
+  --hlidac        zapne hlídač sítě (hook v .claude/settings.json, tools/hlidac_site.py): zamítne příkazy,
+                  které jdou na web archivu mimo brzdu tools/slusne.py; --bez-hlidace ho vypne
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-scripts/ (wrapper slusne.py s limitem dotazů na archivy a jeho hook), vyrezy/, zdroje/, dokumenty/, pracovni/,
-CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows), .claude/launch.json (náhled v Claude desktop)
-a .claude/settings.json (hook, který síťové příkazy pustí jen přes wrapper).
+vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
+a .claude/launch.json (náhled v Claude desktop). Do .claude/settings.json doplní zákaz přímého curl/wget
+(stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
 Existující data nepřepisuje.
-Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ a scripts/ se přepíšou vždy a soubory webu,
+Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ se přepíše vždy a soubory webu,
 které se liší od nové šablony, taky – jejich staré verze se nejdřív uloží do pracovni/zaloha_web_<datum>/.
 """
-import filecmp, os, shutil, sys, time
+import filecmp, json, os, shutil, sys, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -47,8 +49,50 @@ def copy_tree(src, dst, backup=None):
     return changed
 
 
+SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
+# Hlídač spustit, jen když soubor existuje: chybějící skript by Python ukončil kódem 2 a ten by zablokoval každý příkaz.
+# mimo Windows ne cestu s číslem verze (po aktualizaci Pythonu by zmizela); na Windows lomítka (projdou Git Bash i cmd)
+PY = sys.executable.replace("\\", "/") if os.name == "nt" else "python3"
+HLIDAC = (f'"{PY}" -I -c "import os,runpy;p=os.path.join(os.environ.get(\'CLAUDE_PROJECT_DIR\',\'.\'),'
+          f'\'tools\',\'hlidac_site.py\');os.path.isfile(p) and runpy.run_path(p,run_name=\'__main__\')"')
+
+
+def nastaveni(dst, hlidac):
+    """Doplní do .claude/settings.json zákaz curl/wget; hlidac=True/False zapne/vypne hook, None nechá, jak je."""
+    path = os.path.join(dst, ".claude", "settings.json")
+    data = {}
+    if os.path.exists(path):
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except ValueError:
+            print(f"POZOR: {path} není platný JSON – nastavení brzdy jsem nedoplnil. Oprav ho a spusť znovu.")
+            return
+    puvodni = json.dumps(data, sort_keys=True)
+    deny = data.setdefault("permissions", {}).setdefault("deny", [])
+    deny += [r for r in SIT_ZAKAZ if r not in deny]
+    pre = data.setdefault("hooks", {}).setdefault("PreToolUse", [])
+    nase = [h for h in pre if "hlidac_site.py" in json.dumps(h)]
+    for h in nase:   # aktualizace projektu: příkaz obnovit (cesta k Pythonu se mohla změnit)
+        for x in h.get("hooks", []):
+            x["command"] = HLIDAC
+    if hlidac is True and not nase:
+        pre.append({"matcher": "Bash|PowerShell", "hooks": [{"type": "command", "command": HLIDAC, "timeout": 10}]})
+    elif hlidac is False:
+        pre[:] = [h for h in pre if h not in nase]
+    if not pre:
+        del data["hooks"]["PreToolUse"]
+    if not data["hooks"]:
+        del data["hooks"]
+    if json.dumps(data, sort_keys=True) != puvodni:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    zapnuty = any("hlidac_site.py" in json.dumps(h) for h in data.get("hooks", {}).get("PreToolUse", []))
+    print("Hlídač sítě:", "zapnutý" if zapnuty else "vypnutý (zapnout: --hlidac)")
+
+
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1].startswith("-"):
         sys.exit(__doc__)
     dst = os.path.abspath(os.path.expanduser(sys.argv[1]))
     demo = "--ukazka" in sys.argv
@@ -72,23 +116,14 @@ def main():
                 data = open(p, "rb").read()
                 if b"\r\n" in data:
                     open(p, "wb").write(data.replace(b"\r\n", b"\n"))
-    scripts = os.path.join(dst, "scripts")
-    os.makedirs(scripts, exist_ok=True)
-    for f in os.listdir(os.path.join(SKILL, "scripts")):
-        if f.endswith(".py"):
-            copy(os.path.join(SKILL, "scripts", f), os.path.join(scripts, f))   # wrapper a hook vždy aktualizovat
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json"),
-                 os.path.join(".claude", "settings.json")):
+    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
-    with open(os.path.join(dst, ".claude", "settings.json"), encoding="utf-8") as f:
-        if "slusne_hook" not in f.read():
-            print("POZOR: .claude/settings.json projektu nemá hook slusne_hook.py – doplň ho ze šablony skillu "
-                  "(template/.claude/settings.json), jinak síťové příkazy nikdo nehlídá.")
+    nastaveni(dst, True if "--hlidac" in sys.argv else False if "--bez-hlidace" in sys.argv else None)
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)
