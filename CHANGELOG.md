@@ -6,6 +6,23 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.6.3 – 3. 11. 2026
+
+Opravy po hlášeních z praxe.
+
+**Opravy**
+- Brzda: `slusne.py curl` se bez `-A` představí stejně jako nástroje. Porta fontium výchozí „curl“ odmítá (403)
+  a brzda to brala jako zablokování archivu.
+- SOA Litoměřice změnil koncem října cesty k obrázkům – `soal_zoomify.py` je potřeba dávat celou adresu
+  obrázku (návod upraven).
+
+**Návody**
+- Příprava (Fáze 0): na macOS ověřit https – Python z python.org po instalaci nemá certifikáty.
+- Prohlížeč pro Clauda: jak nainstalovat doplněk Playwright (README a příprava).
+- Archivní mapy ČÚZK na nové adrese ags.cuzk.gov.cz/archiv.
+
+Děkuji všem, kdo poslali hlášení e-mailem.
+
 ## 0.6.2 – 2. 11. 2026
 
 SOA Třeboň jen přes prohlížeč.
