@@ -1,7 +1,7 @@
 """Regresní sada pro hlídač sítě tools/hlidac_site.py: příkazy, které má zamítnout, a příkazy, které má pustit.
 
-Hlídač se spouští přesně příkazem, který do .claude/settings.json zapíše `novy_projekt.py --hlidac`, a to přes bash
-(na Windows Git Bash – výchozí shell hooků) a přes PowerShell (shell hooků na Windows bez Git Bashe), je-li k dispozici.
+Hlídač se spouští přesně tak, jak ho do .claude/settings.json zapíše `novy_projekt.py --hlidac`: vždy bez shellu
+(command + args – tvar pro Windows od 0.6.1) a mimo Windows i shellovým příkazem přes bash (a PowerShell, je-li).
 U zamítnutí kontroluje i to, že odpověď je platné UTF-8 (Claude Code ji tak čte). Hlídač nic nestahuje.
 Z kořene repozitáře (přes obal, test obsahuje příkazy s curl):
   python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_hlidac.py skills/rodokmen
@@ -16,12 +16,17 @@ sys.path.insert(0, os.path.join(SKILL, "tools"))
 import novy_projekt                            # noqa: E402 – stejný příkaz hooku, jaký zapisuje --hlidac
 
 PRIKAZ = novy_projekt.HLIDAC
-SHELLY = {}
-if os.name == "nt" and os.path.isfile(r"C:\Program Files\Git\usr\bin\bash.exe"):
+HOOK = novy_projekt.hook_hlidace()
+SHELLY = {   # tvar bez shellu (command + args) – na Windows ho zapisuje novy_projekt.py; jinde se zkouší stejný kód
+    "bez shellu (args)": [shutil.which(HOOK["command"]) or HOOK["command"], *HOOK["args"]] if "args" in HOOK
+    else [sys.executable, "-I", "-X", "utf8", "-c", novy_projekt.KOD]}
+if "args" in HOOK:
+    pass   # Windows: shellový tvar se už nezapisuje
+elif os.name == "nt" and os.path.isfile(r"C:\Program Files\Git\usr\bin\bash.exe"):
     SHELLY["Git Bash"] = [r"C:\Program Files\Git\usr\bin\bash.exe", "-c", PRIKAZ]
 elif shutil.which("bash"):
     SHELLY["bash"] = [shutil.which("bash"), "-c", PRIKAZ]
-if shutil.which("pwsh"):
+if shutil.which("pwsh") and "args" not in HOOK:
     SHELLY["PowerShell"] = [shutil.which("pwsh"), "-NoProfile", "-Command", PRIKAZ]
 
 POM = tempfile.mkdtemp(prefix="test_hlidac_")
@@ -48,6 +53,16 @@ PRIPADY = [
     ("Bash", 'curl -s "https://www.portafontium.eu/register/soap-pn?q=Plaňany"', Z),
     ("Bash", "curl -s https://rodokmen.svamberk.net/", Z),
     ("Monitor", "while true; do curl -s https://example.com/stav; sleep 1; done", Z),
+    ("Bash", "sh -c 'wget https://example.cz/a.jpg'", Z),
+    ("Bash", 'python3 -c "import json, urllib.request; print(1)"', Z),
+    ("Bash", "python3 -c 'import os; import requests'", Z),
+    ("Bash", 'python3 -c "import json; print(42)"', P),
+    ("Bash", 'echo "import requests" >> pracovni/poznamka.txt', P),
+    ("Bash", "python3 - <<'EOF'\nimport os, sys, requests\nEOF", Z),
+    ("Bash", "python3 - <<'EOF'\nimport json as j, http.client\nEOF", Z),
+    ("Monitor", "tail -f pracovni/log.txt | grep --line-buffered CHYBA", P),
+    ("Bash", 'bash -c "python -I -X utf8 tools/kontrola.py"', P),
+    ("Bash", "python3 - <<'EOF'\nimport json, os  # requests tu nejsou\nEOF", P),
     # Bash – pustit (nástroje se brzdí samy, obal, localhost, vlastní web)
     ("Bash", 'python -I -X utf8 tools/aron_search.py "Holice"', P),
     ("Bash", 'bash tools/ahmp_search.sh "Švamberk"', P),

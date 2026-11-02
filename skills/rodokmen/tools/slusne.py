@@ -364,13 +364,23 @@ _hlidej_podprocesy()
 
 
 # --- obal pro skripty, curl a bash ---------------------------------------------------------------------------------
-def _curl_umi_stderr(real):
-    try:
-        v = _bez_prepisu(subprocess.run, [real, "--version"], capture_output=True, text=True).stdout
+def _najdi_curl():
+    """Curl, který jde spustit, a jestli umí %{stderr} (od 7.63). Na Windows po Git curl i systémový curl.exe –
+    Smart App Control spouštění curl z Gitu blokuje (WinError 4551)."""
+    kandidati = [os.environ.get("SLUSNE_CURL"), shutil.which("curl")]
+    if os.name == "nt":
+        kandidati.append(os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "curl.exe"))
+    chyby = []
+    for c in dict.fromkeys(k for k in kandidati if k):
+        try:
+            v = _bez_prepisu(subprocess.run, [c, "--version"], capture_output=True, text=True).stdout
+        except OSError as e:
+            chyby.append(f"{c}: {e}")
+            continue
         m = re.match(r"curl (\d+)\.(\d+)", v)
-        return bool(m) and (int(m.group(1)), int(m.group(2))) >= (7, 63)
-    except OSError:
-        return False
+        return c, bool(m) and (int(m.group(1)), int(m.group(2))) >= (7, 63)
+    sys.exit("slusne: curl nejde spustit" + (" (" + "; ".join(chyby) + ")" if chyby else " – není nainstalovaný") +
+             ". Na Windows pomůže v .claude/settings.json → \"env\": {\"SLUSNE_CURL\": \"C:\\\\Windows\\\\System32\\\\curl.exe\"}.")
 
 
 def _bash_cesta():
@@ -391,13 +401,11 @@ def _bash_cesta():
 
 
 def _curl(args):
-    real = os.environ.get("SLUSNE_CURL") or shutil.which("curl")
-    if not real:
-        sys.exit("slusne: curl není nainstalovaný")
+    real, umi_stderr = _najdi_curl()
     urls = [a for a in args if re.match(r"https?://", a)]
     for u in urls:
         pockej(u)
-    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args) or not _curl_umi_stderr(real)
+    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args) or not umi_stderr
     extra = [] if vlastni_w else ["-w", "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"]
     p = _bez_prepisu(subprocess.run, [real, *args, *extra], stderr=subprocess.PIPE)
     err = p.stderr.decode("utf-8", "replace").replace("\r\n", "\n")   # curl na Windows píše do stderr \r\n
@@ -430,7 +438,11 @@ def _bash(args):
         # BASH_ENV načte každý neinteraktivní bash (i vnořený `bash -c`) až potom, takže náhradní curl vrátí dopředu.
         with open(os.path.join(shim, "env.sh"), "w", encoding="utf-8", newline="\n") as f:
             f.write(f'PATH="{_posix(shim)}:$PATH"; export PATH\n')
-        env = dict(os.environ, SLUSNE_CURL=os.environ.get("SLUSNE_CURL") or shutil.which("curl") or "",
+        try:
+            skutecny = _najdi_curl()[0]   # skutečný curl, který jde spustit (náhradní je v PATH první)
+        except SystemExit:
+            skutecny = ""                 # skript curl možná nepotřebuje; když ano, hlášku vypíše náhradní curl
+        env = dict(os.environ, SLUSNE_CURL=skutecny,
                    PATH=shim + os.pathsep + os.environ.get("PATH", ""), BASH_ENV=_posix(os.path.join(shim, "env.sh")))
         return _bez_prepisu(subprocess.run, [_bash_cesta(), *args], env=env).returncode
     finally:
@@ -494,8 +506,6 @@ def main(argv):
     for s in (sys.stdout, sys.stderr):   # hlášky česky i na Windows bez -X utf8 (např. z curl() v ahmp_search.sh)
         if hasattr(s, "reconfigure"):
             s.reconfigure(encoding="utf-8", errors="replace")
-    if not argv and not sys.stdin.isatty():   # slusne.py <<'EOF' … EOF
-        argv = ["-"]
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0

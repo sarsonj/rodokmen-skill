@@ -10,12 +10,15 @@ Při jakékoli vlastní chybě příkaz pustí – rozbitý hlídač nesmí zabl
 """
 import json, os, re, sys
 
-CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s)\s*"
+CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s|\b(?:bash|sh|zsh)\s+-c\s+[\"'])\s*"
 CURL = re.compile(CMD + r"(curl|wget)(?:\.exe)?(?=\s|$)", re.I)
 PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python3?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)
 SHELL = re.compile(CMD + r"(?:(?:bash|sh|zsh)\s+|\./)(\S+\.sh)\b")
-SIT_PY = re.compile(r"^\s*(?:import|from)\s+(?:requests|httpx|aiohttp|urllib3|pycurl|socket|urllib\.request|http\.client)\b"
-                    r"|^\s*from\s+urllib\s+import\s+.*\brequest\b|urllib\.request\.|urlopen\(", re.M)
+SIT_MOD = r"(?:requests|httpx|aiohttp|urllib3|pycurl|socket|urllib\.request|http\.client)\b"
+ZAC = r"(?:^|[;\"'])\s*"   # začátek řádku, příkazu za středníkem nebo kódu v python -c "…"
+SIT_PY = re.compile(ZAC + r"from\s+" + SIT_MOD +
+                    "|" + ZAC + r"import\s+(?:[\w.]+(?:\s+as\s+\w+)?\s*,\s*)*" + SIT_MOD +   # i „import json, urllib.request“
+                    "|" + ZAC + r"from\s+urllib\s+import\s+.*\brequest\b|urllib\.request\.|urlopen\(", re.M)
 PS = re.compile(r"\b(Invoke-WebRequest|Invoke-RestMethod|iwr|irm|curl\.exe|wget|Start-BitsTransfer|Net\.WebClient|"
                 r"HttpClient|DownloadString|DownloadFile)\b", re.I)
 URL = re.compile(r"https?://([^/\s\"'`:;)]+)", re.I)
@@ -48,6 +51,8 @@ def cist(path, cwd):
 
 def posoudit(tool, cmd, cwd):
     """Vrátí důvod zamítnutí, nebo None (pustit)."""
+    if tool == "Monitor":   # spouští příkaz v bashi stejně jako Bash
+        tool = "Bash"
     if tool == "PowerShell":
         if PS.search(cmd) and "slusne.py" not in cmd and not jen_volne(cmd):
             return "PowerShell stahuje z webu mimo brzdu"
@@ -91,7 +96,7 @@ def main():
     if duvod:
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason": f"Hlídač sítě: {duvod}.\n{RADA}"}}, ensure_ascii=False))
+            "permissionDecisionReason": f"Hlídač sítě: {duvod}.\n{RADA}"}}))   # \uXXXX: čeština projde i v cp1250
     return 0
 
 

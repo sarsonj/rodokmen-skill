@@ -52,9 +52,26 @@ def copy_tree(src, dst, backup=None):
 SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
 # Hlídač spustit, jen když soubor existuje: chybějící skript by Python ukončil kódem 2 a ten by zablokoval každý příkaz.
 # mimo Windows ne cestu s číslem verze (po aktualizaci Pythonu by zmizela); na Windows lomítka (projdou Git Bash i cmd)
+KOD = ("import os,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR','.'),'tools','hlidac_site.py');"
+       "os.path.isfile(p) and runpy.run_path(p,run_name='__main__')")
 PY = sys.executable.replace("\\", "/") if os.name == "nt" else "python3"
-HLIDAC = (f'"{PY}" -I -c "import os,runpy;p=os.path.join(os.environ.get(\'CLAUDE_PROJECT_DIR\',\'.\'),'
-          f'\'tools\',\'hlidac_site.py\');os.path.isfile(p) and runpy.run_path(p,run_name=\'__main__\')"')
+HLIDAC = f'"{PY}" -I -c "{KOD}"'   # tvar se shellem (macOS, Linux)
+MATCHER = "Bash|PowerShell|Monitor"   # Monitor spouští příkaz v bashi stejně jako Bash
+
+
+def _python_windows():
+    """Python pro hook na Windows: z PATH (projde i projekt sdílený přes OneDrive na dvou počítačích), jinak plná cesta.
+    Zástupce z Microsoft Store (WindowsApps) se nepočítá – bez nainstalovaného Pythonu jen otevře obchod."""
+    p = shutil.which("python")
+    return "python" if p and "windowsapps" not in p.lower() else sys.executable
+
+
+def hook_hlidace():
+    """Hook hlídače. Na Windows bez shellu (command + args): hooky tam běží v Git Bashi, nebo v PowerShellu, když
+    Git Bash chybí – a tam by příkaz s uvozovkami byl chyba syntaxe a Claude Code by pak zamítal každý příkaz."""
+    if os.name == "nt":
+        return {"type": "command", "command": _python_windows(), "args": ["-I", "-X", "utf8", "-c", KOD], "timeout": 10}
+    return {"type": "command", "command": HLIDAC, "timeout": 10}
 
 
 def nastaveni(dst, hlidac):
@@ -72,11 +89,11 @@ def nastaveni(dst, hlidac):
     deny += [r for r in SIT_ZAKAZ if r not in deny]
     pre = data.setdefault("hooks", {}).setdefault("PreToolUse", [])
     nase = [h for h in pre if "hlidac_site.py" in json.dumps(h)]
-    for h in nase:   # aktualizace projektu: příkaz obnovit (cesta k Pythonu se mohla změnit)
-        for x in h.get("hooks", []):
-            x["command"] = HLIDAC
+    for h in nase:   # aktualizace projektu: hook obnovit (cesta k Pythonu i tvar se mohly změnit)
+        h["matcher"] = MATCHER
+        h["hooks"] = [hook_hlidace()]
     if hlidac is True and not nase:
-        pre.append({"matcher": "Bash|PowerShell", "hooks": [{"type": "command", "command": HLIDAC, "timeout": 10}]})
+        pre.append({"matcher": MATCHER, "hooks": [hook_hlidace()]})
     elif hlidac is False:
         pre[:] = [h for h in pre if h not in nase]
     if not pre:
