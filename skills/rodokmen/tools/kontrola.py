@@ -106,8 +106,13 @@ def main():
 
     hranice = datetime.date.today().year - 100   # posledních ~100 let; staré matriční údaje (nemanželské dítě v 18. stol.) nevadí
 
-    def recent(text):
+    def recent(text):   # datum v závorce („Dovětek (3. 11. 2026)“) je datum zápisu poznámky, ne události
+        text = re.sub(r"\(\s*\d{1,2}\.\s*\d{1,2}\.\s*\d{4}\s*\)", "", text)
         return any(int(y) >= hranice for y in re.findall(r"\b(19\d\d|20\d\d)\b", text))
+
+    def popreno(text, m):   # „nejsou dluhy“, „bez dluhů“, „nebyl rozveden“ – slovo je popřené
+        return re.search(r"(?:^|\s)(?:bez|žádn\w*|nejsou|nebyl\w*|neměl\w*|nemá\w*|není)\s+(?:\w+\s+)?$",
+                         text[max(0, m.start() - 30):m.start()], re.I)
     schvaleno = [s for s in (cfg.get("citlive_schvaleno") if isinstance(cfg.get("citlive_schvaleno"), list) else [])
                  if isinstance(s, str) and len(s.strip()) >= 3]
 
@@ -127,11 +132,12 @@ def main():
     texty += [(f"boční příbuzný {s.get('n')}", s.get("n", "") + " " + s.get("t", "")) for s in SIDE]
     for f in ("zajimavosti.md", "pribeh.md"):
         if os.path.exists(os.path.join(DATA, f)):
-            texty += [(f, odst) for odst in open(os.path.join(DATA, f), encoding="utf-8").read().split("\n\n")]
+            obsah = open(os.path.join(DATA, f), encoding="utf-8").read()
+            texty += [(f, odst) for odst in re.split(r"\n\s*\n|\n(?=#)", obsah)]   # odstavce i oddíly „## …“
     for kde, text in texty:
         if not recent(text):
             continue
-        m = next((m for m in citlive.finditer(text) if not schvalene(text, m)), None)
+        m = next((m for m in citlive.finditer(text) if not schvalene(text, m) and not popreno(text, m)), None)
         if m:
             warn.append(f"CITLIVÉ ({kde}): „…{text[max(0, m.start() - 40):m.end() + 40].strip()}…“ – jde na web; "
                         f"zeptej se uživatele, jestli to tam smí být (reference/soukromi.md); když ano, "
