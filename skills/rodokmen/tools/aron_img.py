@@ -190,6 +190,7 @@ if __name__ == "__main__":
     crop = tuple(float(v) for v in sys.argv[5].split(",")) if len(sys.argv) > 5 else None
     if n not in tiles:
         bez_snimku(vol, tiles, n)
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     try:
         path, dims = fetch_image(tiles[n], lo, out, crop)
     except SIT + (ET.ParseError,) as e:
