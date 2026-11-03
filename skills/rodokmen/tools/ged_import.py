@@ -30,6 +30,8 @@ CZ_WORDS = {"JARO": "jaro", "LÉTO": "léto", "PODZIM": "podzim", "ZIMA": "zima"
 
 def decode(data):
     """UTF-8, a když soubor UTF-8 není a hlavička říká „1 CHAR ANSI“ (Brother's Keeper aj.), pak Windows-1250."""
+    # CONC spojit už v bajtech: MyHeritage dělí dlouhé řádky i uprostřed vícebajtového znaku UTF-8 („č“ → „��“)
+    data = re.sub(rb"\r?\n[ \t]*\d+[ \t]+CONC(?: |(?=\r?\n))", b"", data)
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError:
@@ -40,7 +42,7 @@ def decode(data):
         return data.decode("cp1250", "replace")
     if char == "ANSEL":
         print("POZOR: strom je v kódování ANSEL – čeština může být rozbitá; vyexportuj ho znovu v UTF-8.", file=sys.stderr)
-    return data.decode("utf-8", "replace")   # MyHeritage občas rozsekne znak na hranici CONC
+    return data.decode("utf-8", "replace")
 
 
 def read(path):
