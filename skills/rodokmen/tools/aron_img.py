@@ -97,10 +97,12 @@ def fetch_image(dzi_url, level_offset=1, out="page.jpg", crop=None):
         def dl(job):
             c, r, url, p = job
             with open(p, "wb") as f:
-                f.write(get(url, binary=True))
+                f.write(get(url, binary=True, tries=6))
             return job
 
-        with cf.ThreadPoolExecutor(8) as ex:
+        # 4 vlákna: brzda pustí 10 obrázků za s i tak a víc souběžných dotazů na macOS shazuje překlad adres
+        # (URLError [Errno 8] nodename nor servname) u plného rozlišení
+        with cf.ThreadPoolExecutor(4) as ex:
             list(ex.map(dl, jobs))
         # a tile with c > 0 (r > 0) carries `ov` extra pixels on its left (top) edge;
         # crop every tile to its own ts x ts cell, then append rows and columns
@@ -121,7 +123,17 @@ def fetch_image(dzi_url, level_offset=1, out="page.jpg", crop=None):
     return out, (W, H)
 
 
+def bez_snimku(vol, tiles, n):
+    """Snímek n ve svazku není: srozumitelná hláška místo KeyError."""
+    if not tiles:
+        sys.exit(f"Svazek „{vol.get('name', '')}“ nemá v ARONu zveřejněné snímky (scans: 0) – zkus jiný svazek fary "
+                 "(bývá i samostatný rejstřík nebo druhopis), nebo ho najdi v prohlížeči ARON.")
+    sys.exit(f"Snímek {n} ve svazku není – svazek má snímky {min(tiles)}–{max(tiles)} (aron_img.py <apu_id> info).")
+
+
 if __name__ == "__main__":
+    if len(sys.argv) < 3 or sys.argv[1] in ("-h", "--help"):
+        sys.exit(__doc__)
     apu = sys.argv[1]
     vol = volume(apu)
     tiles = tiles_by_order(vol)
@@ -143,13 +155,17 @@ if __name__ == "__main__":
         sys.exit(0)
     if sys.argv[2] == "link":
         n = int(sys.argv[3])
-        dao = vol["digitalObjects"][0]
-        pub = [f for f in dao["files"] if f["type"] == "PUBLISHED" and f["order"] == n][0]
-        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{pub['id']}")
+        dao = (vol.get("digitalObjects") or [{}])[0]
+        pub = [f for f in dao.get("files", []) if f["type"] == "PUBLISHED" and f["order"] == n]
+        if not pub:
+            bez_snimku(vol, tiles, n)
+        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{pub[0]['id']}")
         sys.exit(0)
     n = int(sys.argv[2])
     lo = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     out = sys.argv[4] if len(sys.argv) > 4 else f"{apu[:8]}_{n:04d}.jpg"
     crop = tuple(float(v) for v in sys.argv[5].split(",")) if len(sys.argv) > 5 else None
+    if n not in tiles:
+        bez_snimku(vol, tiles, n)
     path, dims = fetch_image(tiles[n], lo, out, crop)
     print(path, "full size", dims)
