@@ -1,0 +1,63 @@
+---
+// Významné osobnosti rodokmenu: předci s výjimečným povoláním nebo postavením.
+// Kategorie odpovídají tools/osobnosti.py. Ruční popis v osoby.py (pole vyz) má přednost a jde nahoru.
+import Base from '../layouts/Base.astro';
+import { people, href, statusClass } from '../lib/data.js';
+
+const KATEGORIE = [
+  ['Vzdělanci a duchovní', /\b(farář|kaplan|kněz|děkan|vikář|kanovník|biskup|páter|učitel|řídící|profesor|ředitel škol|doktor|dr\.|lékař|ranhojič|chirurg|advokát|notář|soudce|inženýr|ing\.|architekt|lékárník|studoval|absolvent|maturit|univerzit)/i],
+  ['Vědci a vynálezci', /\b(vědec|badatel|vynález|patent|astronom|chemik|fyzik|botanik|přírodověd|historik|archivář|akademi)/i],
+  ['Umělci', /\b(malíř|sochař|hudebník|muzikant|kapelník|varhaník|ředitel kůru|regenschori|skladatel|zpěvák|herec|herečka|spisovatel|básník|fotograf|kreslíř|řezbář)/i],
+  ['Funkcionáři a úředníci', /\b(starosta|purkmistr|rychtář|radní|obecní|poslanec|senátor|úředník|správce|vrchní|hejtman|purkrabí|důchodní|direktor|předseda|místopředseda|jednatel|okresní|zemský|četník|četnick|celník|poštmistr|přednosta)/i],
+  ['Vojáci a důstojníci', /\b(důstojník|poručík|nadporučík|setník|kapitán|major|plukovník|generál|šikovatel|legionář|legie|vyznamenán|medail)/i],
+  ['Sportovci', /\b(sportov|sokol|závodník|reprezent|olympi|mistr republiky|fotbal|hokej|lyžař|atlet|gymnast|cvičitel)/i],
+  ['Mistři, sedláci a podnikatelé', /\b(továrník|majitel továrny|podnikatel|statkář|velkostatk|sedlák|mlynář|sládek|pivovar|hostinsk|obchodník|kupec|stavitel|mistr|firma)/i],
+];
+
+const all = Object.values(people);
+const rucne = all.filter((p) => p.vyz);
+const skupiny = KATEGORIE.map(([nazev, rx]) => ({
+  nazev,
+  lidi: all
+    .filter((p) => !p.vyz)
+    .map((p) => ({ p, fakt: p.facts.find((t) => rx.test(t)) }))
+    .filter((x) => x.fakt)
+    .sort((a, b) => a.p.k - b.p.k),
+})).filter((g) => g.lidi.length);
+const nikdo = !rucne.length && !skupiny.length;
+---
+<Base title="Významné osobnosti">
+  <h1>Významné osobnosti rodokmenu</h1>
+  <p class="lead">Předci, kteří vyčnívali – vzdělanci a duchovní, umělci, funkcionáři, vojáci, sportovci, vědci i úspěšní hospodáři.</p>
+
+  {rucne.length > 0 && (
+    <section>
+      <h2>Nejvýznamnější</h2>
+      <ul class="osobnosti">
+        {rucne.map((p) => (
+          <li><a class={statusClass(p.st)} href={href.person(p.slug)}>{p.name}</a> <span class="muted">{p.years} · {p.rel}</span><br />{p.vyz}</li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {skupiny.map((g) => (
+    <section>
+      <h2>{g.nazev}</h2>
+      <ul class="osobnosti">
+        {g.lidi.map(({ p, fakt }) => (
+          <li><a class={statusClass(p.st)} href={href.person(p.slug)}>{p.name}</a> <span class="muted">{p.years} · {p.rel}</span><br /><span class="small">{fakt}</span></li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  {nikdo && <p>Mezi dosud nalezenými předky zatím nikdo takový není – byli to většinou rolníci a řemeslníci. Stránka se doplní sama, jak budeme hledat dál.</p>}
+
+  <p class="small muted">Seznam vzniká automaticky podle povolání a údajů u předků, proto v něm mohou být i běžnější řemesla (mistr, sedlák).</p>
+</Base>
+
+<style>
+  .osobnosti { list-style: none; padding: 0; }
+  .osobnosti li { margin: 0 0 0.9em; }
+</style>
