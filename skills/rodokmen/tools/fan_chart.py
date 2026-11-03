@@ -266,10 +266,13 @@ if not CHROME:
     sys.exit(0)
 prof = tempfile.mkdtemp(prefix="fanchart-")
 before = os.path.getmtime(png_path) if os.path.exists(png_path) else 0
-subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={prof}",
-                "--force-device-scale-factor=1", f"--window-size={W},{H}", f"--screenshot={png_path}",
-                __import__("pathlib").Path(html_path).as_uri()], check=True, capture_output=True, timeout=120)
+try:   # velký plakát na pomalejším stroji: Chrome PNG dopíše, ale skončí až po limitu – rozhoduje, zda PNG vznikl
+    subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={prof}",
+                    "--force-device-scale-factor=1", f"--window-size={W},{H}", f"--screenshot={png_path}",
+                    __import__("pathlib").Path(html_path).as_uri()], check=True, capture_output=True, timeout=300)
+except subprocess.TimeoutExpired:
+    pass
 shutil.rmtree(prof, ignore_errors=True)
 if not os.path.exists(png_path) or os.path.getmtime(png_path) <= before:
-    sys.exit("PNG se nevygeneroval (Chrome)")
+    sys.exit(f"PNG se nevygeneroval (Chrome) – plakát je v {html_path}, otevřete ho v prohlížeči a vytiskněte do PDF")
 print(png_path, len(known), "předků", len(doc), "doc", len(recs), "zápisů", maxg + 1, "generací")
