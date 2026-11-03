@@ -10,6 +10,8 @@ Archivy blokují IP adresu po sérii rychlých dotazů (MZA, ZA Opava…). Nást
   python3 -I tools/slusne.py bash pracovni/skript.sh [argumenty]   -> shellový skript; curl uvnitř jde přes brzdu
   python3 -I tools/slusne.py stav                                  -> limity a zastavené weby
   python3 -I tools/slusne.py odblokuj [web]                        -> zrušit stopku (jen když víš, proč nastala)
+  python3 -I tools/slusne.py zastav <web|adresa> [důvod]           -> zapsat stopku ručně (archiv odmítl prohlížeč:
+                                                                      403/429/503) – zastaví i skripty a nástroje
 
 Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty na počítači – mají jednu IP adresu):
   - dotazy (stránky, hledání, API) nejvýš 1 za 2 s (ZA Opava 1 za 4 s), obrázky a dlaždice nejvýš 10 za s;
@@ -537,6 +539,13 @@ def main(argv):
         return _stav()
     if cmd == "odblokuj":
         return _odblokuj(rest[0] if rest else None)
+    if cmd == "zastav":   # odmítnutí, které brzda sama nevidí (prohlížeč) – stejná stopka jako u skriptů
+        if not rest:
+            sys.exit("slusne.py zastav <web nebo adresa> [důvod], např. zastav ebadatelna.soapraha.cz \"HTTP 403 v prohlížeči\"")
+        web = urlsplit(rest[0] if "//" in rest[0] else "//" + rest[0]).hostname
+        if not _skupina(web)[0]:
+            sys.exit(f"slusne: {rest[0]} brzda nehlídá (vlastní web, localhost…) – není co zastavit")
+        zastav(web, "ručně: " + (" ".join(rest[1:]) or "archiv odmítl prohlížeč"))
     if cmd == "curl":
         return _curl(rest)
     if cmd in ("bash", "sh"):
