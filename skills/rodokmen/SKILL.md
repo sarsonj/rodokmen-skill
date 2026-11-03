@@ -62,7 +62,7 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    přes Git Bash (`bash tools/…`). Delší jednorázové skripty v Pythonu nepiš jako heredoc (`python - <<EOF`), v Git Bash
    občas spadnou na „unexpected EOF“ – zapiš je do souboru v `pracovni/` a spusť. Tato pravidla zapiš hned po založení projektu do jeho `CLAUDE.md`, ať platí i příště
    (a dej je do zadání i pomocníkům, viz `reference/matriky.md`).
-   **Prohlížeč pro Clauda** potřebuješ pro archivy, které nástroje nepouštějí (MZA Brno, SOA Třeboň, ZA Opava,
+   **Prohlížeč pro Clauda** potřebuješ pro archivy, které nástroje nepouštějí (SOA Praha, MZA Brno, SOA Třeboň, ZA Opava,
    hledání v SOA Litoměřice). Když předci žili tam a nemáš nástroje `mcp__…playwright…`, nabídni doplněk
    Playwright: `/plugin install playwright@claude-plugins-official` (dej ho uživateli s `!` jako
    `claude plugin install playwright@claude-plugins-official`), pak restart Claude Code. Jinou možností je Claude
@@ -125,8 +125,8 @@ Základní smyčka pro každou osobu:
    (narození 100 let, sňatky 75, úmrtí 30). Mladší údaje jsou na matričním úřadě (žádost s doložením příbuzenství) –
    zapiš do `data/archivni_dotazy.md` a jdi dál.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
-   `tools/portafontium.py`, SOA Praha (střední Čechy): `tools/ebadatelna.py`, Praha: `tools/ahmp_search.sh`;
-   MZA Brno a SOA Třeboň jen v prohlížeči, ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív
+   `tools/portafontium.py`, Praha: `tools/ahmp_search.sh`;
+   SOA Praha (střední Čechy), MZA Brno a SOA Třeboň jen v prohlížeči, ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív
    ve farnosti nevěsty.
    Je-li ke svazku index (rejstřík), začni jím. Starší matriky (před ~1784) bývají ve faře sousedního města.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš
@@ -279,7 +279,7 @@ Nedělej to pořád. Postup:
 | `aron_img.py <apu> info / <snímek> 1 pracovni/x.jpg / link <n> / svazek` | stáhne snímek, dá odkaz, zapíše svazek |
 | `trebon.py …` | matriky SOA Třeboň – zatím vypnuto (archiv nástroj od 2. 11. 2026 odmítá), čti v prohlížeči (`portaly.md`) |
 | `portafontium.py fara / info / snimek / link / svazek` | matriky SOA Plzeň (západní Čechy, Porta fontium) bez prohlížeče (faru zjisti na portálu) |
-| `ebadatelna.py hledat / matriky / info / snimek / link / svazek`, `a-…` | matriky a archiválie (urbáře, gruntovní knihy) SOA Praha (střední Čechy) |
+| `ebadatelna.py link / a-link` | trvalý odkaz na snímek SOA Praha – ostatní příkazy zatím vypnuto (archiv nástroj od 2. 11. 2026 zakazuje), čti v prohlížeči (`portaly.md`) |
 | `ahmp_search.sh "dotaz"`, `ahmp_scan.py XID snímek out.jpg` | matriky Prahy (AHMP) |
 | `policie_prihlasky.py Příjmení [Jméno] [od] [do]`, `karta <pořadí> out.jpg …` | pražské policejní přihlášky 1850–1914 (rodiny s dětmi a adresami), stažení karty |
 | `soal_zoomify.py <cesta nebo adresa> 0 out.jpg` | snímek SOA Litoměřice nebo ZA Opava (knihu najdi v prohlížeči; pozor na blokování) |

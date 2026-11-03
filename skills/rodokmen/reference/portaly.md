@@ -5,7 +5,7 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | Archiv | Oblast | Portál s matrikami | Vyzkoušeno se skillem |
 |---|---|---|---|
 | SOA Zámrsk | východní Čechy (Hradecký a Pardubický kraj) | ARON – aron.vychodoceskearchivy.cz | **ano – hotové nástroje** |
-| SOA Praha | střední Čechy | eBadatelna – ebadatelna.soapraha.cz | **ano – nástroj `ebadatelna.py`** (i urbáře a gruntovní knihy) |
+| SOA Praha | střední Čechy | eBadatelna – ebadatelna.soapraha.cz | **jen v prohlížeči** – archiv nástroj od 2. 11. 2026 zakazuje (postup níže; i urbáře a gruntovní knihy) |
 | SOA Plzeň | západní Čechy | Porta fontium – portafontium.eu | **ano – nástroj `portafontium.py`** |
 | SOA Třeboň | jižní Čechy | digi.ceskearchivy.cz | **jen v prohlížeči** – archiv nástroj od 2. 11. 2026 odmítá (postup níže) |
 | SOA Litoměřice | severní Čechy | Digitální badatelna – digi.soalitomerice.cz | **částečně – `soal_zoomify.py`** (knihu najdi v prohlížeči) |
@@ -89,21 +89,47 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Bez prohlížečového User-Agentu portál vrací 403 (nástroj ho posílá). Jmenné hledání portál nemá – indexy jsou jen uvnitř knih
   (`*i`, `ooi`, `+i` v seznamu knih fary).
 
-## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – `tools/ebadatelna.py`, bez prohlížeče
-- `ebadatelna.py hledat "Obec"` → celé názvy lokalit („Lhota - obec X - okres Y“); `matriky "Obec"` (nebo celý název)
-  → matrikaId | kniha | druh | roky | fara | počet snímků. U stejnojmenných obcí vypíše možnosti.
-- `ebadatelna.py info <matrikaId>` → obsah knihy včetně **rozvržení stran po vesnicích** (např. „1–48 Ves A, 49–82 Ves B,
-  1–30 Ves C …“ – každá ves může mít vlastní stránkování) – u takových knih neodhaduj snímek podle roku, ale podle stran
-  dané vsi (číslo strany je nahoře na snímku). Takové knihy bývají řazené po vsích, ne chronologicky – je-li rejstřík,
-  začni jím.
-- `ebadatelna.py snimek <matrikaId> <snímek> pracovni/x.jpg [nahled] [x0,y0,x1,y1]`; `link`, `svazek` (klíč `ebad_<id>`).
-- **Archiválie** (urbáře, gruntovní a pozemkové knihy velkostatků – most přes 17. století): `a-info <archivalieId>`,
-  `a-snimek`, `a-link`, `a-svazek` (klíč `ebad_a_<id>`). Archiválii nástroj nehledá – najdi ji na portálu v prohlížeči;
-  id je v adrese `…/pages/ArchivaliePage/archivalieId/<id>`.
+## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – jen v prohlížeči
+- **Od 2. 11. 2026 archiv nástroj zakazuje** (robots.txt „User-agent: rodokmen – Disallow: /“, HTTP 403),
+  `ebadatelna.py` je vypnutý (fungují jen `link`, `a-link`) a brzda skripty na soapraha.cz zastaví. Neobcházej to
+  (jiný User-Agent, vlastní skript, stahování snímku z prohlížeče). Matriky čti v prohlížeči (nejlépe Playwright).
+  Tempo jako člověk, jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky obrazovky uživatel.
+- Hledání: Matriky → pole „lokalita“ vyplň obcí bez posledního písmene (`browser_type`) a poslední písmeno napiš
+  se `slowly` (teprve to ukáže našeptávač; psaní po písmenech do prázdného pole se připojí k textu „lokalita“). Vyber
+  celý název (`.ui-menu-item`, „Obec - obec X - okres Y“), Vyhledat. Seznam knih jedním `browser_evaluate`:
+  `[...document.querySelectorAll('table tr')].map(r => [...r.cells].map(c => c.innerText.trim()).join(' | ') + ' | ' + (r.querySelector('a')?.getAttribute('href') ?? ''))`
+  (kniha | původce | okres | lokality | roky N, O, Z, indexy | snímků | `/pages/MatrikaPage/matrikaId/<id>`).
+- Popis knihy: `https://ebadatelna.soapraha.cz/pages/MatrikaPage/matrikaId/<id>` (archiválie
+  `…/pages/ArchivaliePage/archivalieId/<id>`) – `document.body.innerText`. „Obecný popis matriky“ uvádí u knih psaných
+  po vsích **rozvržení stran** („1–48 Ves A, 49–82 Ves B …“, každá ves může mít vlastní stránkování) – neodhaduj snímek
+  podle roku, ale podle stran vsi; je-li rejstřík, začni jím.
+- Snímek: `https://ebadatelna.soapraha.cz/d/<matrikaId>/<snímek>` (archiválie `/a/<archivalieId>/<snímek>`, zároveň
+  trvalý odkaz, do `odkaz`). Prohlížeč načte celý snímek v plném rozlišení (2–3 MB, chvíli trvá) a jen ho zmenší.
+  Postup: snímek okna (scale css) → odečti rohy zápisu → úryvek (`browser_evaluate`) vykreslí výřez z už načteného
+  snímku přes okno (bez dalšího dotazu na archiv) → snímek prvku `#rodokmen-vyrez` v rozlišení zařízení do
+  `pracovni/ebad_<id>_<snímek>.png` → `vyrez.py` jako u jiných archivů:
+  ```js
+  async () => {
+    const [x0, y0, x1, y1] = [60, 245, 600, 435];   // rohy zápisu na snímku okna (CSS px)
+    const im = document.getElementById('scanImage'), r = im.getBoundingClientRect();
+    const k = im.naturalWidth / r.width, w = (x1 - x0) * k, h = (y1 - y0) * k;
+    document.getElementById('rodokmen-vyrez')?.remove();
+    const c = document.createElement('canvas');
+    c.id = 'rodokmen-vyrez'; c.width = Math.round(w); c.height = Math.round(h);
+    c.getContext('2d').drawImage(im, (x0 - r.left) * k, (y0 - r.top) * k, w, h, 0, 0, c.width, c.height);
+    const s = Math.min(1, innerWidth / w, innerHeight / h);
+    Object.assign(c.style, {position: 'fixed', left: 0, top: 0, width: w * s + 'px', height: h * s + 'px',
+      zIndex: 99999, pointerEvents: 'none'});
+    document.body.append(c);
+    return [c.width, c.height, location.href];
+  }
+  ```
+  Souřadnice ber z aktuálního snímku okna; snímek neotáčej ani nepřibližuj (úryvek počítá s výchozím zobrazením).
+  Před dalším krokem výřez odstraň: `document.getElementById('rodokmen-vyrez').remove()`.
 - Starší snímky bývají z mikrofilmu nebo silně vybledlé – čti se zvýšeným kontrastem:
-  `magick x.jpg -colorspace Gray -contrast-stretch 2%x30% x_k.jpg` (výřez pak dělej z kontrastní verze a poznamenej to v přepisu).
-- Portál dává vždy celý snímek (nedlaždicuje); náhled a výřez dělá nástroj po stažení přes ImageMagick (`magick`).
-  Denní údržba kolem 4:44 (asi 2 minuty).
+  `magick x.png -colorspace Gray -contrast-stretch 2%x30% x_k.png` (výřez pak dělej z kontrastní verze a poznamenej to v přepisu).
+- Svazek do `svazky.json` ručně (Ostatní portály, krok 4, klíč `ebad_<matrikaId>`, archiválie `ebad_a_<id>`).
+  Denní údržba portálu kolem 4:44 (asi 2 minuty).
 
 ## AHMP Praha – `tools/ahmp_search.sh`, `tools/ahmp_scan.py`
 - `bash tools/ahmp_search.sh "Smíchov"` → svazky Sbírky matrik: popis | farnost | (XID, id, počet snímků).

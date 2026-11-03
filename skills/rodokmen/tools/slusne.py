@@ -21,6 +21,7 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
   - MZA Brno (mza.cz, actapublica.eu) skripty nepovoluje: skriptem jen hledání knih (…/actapublica/matrika/hledani…,
     1 dotaz za 4 s), detail knihy a snímky jen v prohlížeči. Jiná adresa MZA nástroj hned ukončí (kód 3).
   - SOA Třeboň (digi.ceskearchivy.cz) nástroj od 2. 11. 2026 odmítá: skripty nic, jen prohlížeč.
+  - SOA Praha (soapraha.cz, eBadatelna) nástroj od 2. 11. 2026 zakazuje (robots.txt): skripty nic, jen prohlížeč.
 localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
 tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
@@ -47,6 +48,11 @@ ZAKAZ["digi.ceskearchivy.cz"] = (   # SOA Třeboň: od 2. 11. 2026 vrací nástr
     "SOA Třeboň od 2. 11. 2026 nástroj rodokmen odmítá (HTTP 403) – trebon.py ani vlastní skripty nepoužívej. "
     "Matriky čti v prohlížeči digi.ceskearchivy.cz: přiblížit zápis a uložit snímek obrazovky (reference/portaly.md, "
     "SOA Třeboň). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
+ZAKAZ["soapraha.cz"] = (            # SOA Praha (eBadatelna): od 2. 11. 2026 robots.txt „User-agent: rodokmen / Disallow: /“, 403
+    re.compile(r"(?!)"),             # skriptům nic
+    "SOA Praha (eBadatelna) od 2. 11. 2026 nástroj rodokmen zakazuje (robots.txt, HTTP 403) – ebadatelna.py ani vlastní "
+    "skripty nepoužívej. Matriky čti v prohlížeči eBadatelny: výřez zápisu ze snímku, který prohlížeč načetl, a snímek "
+    "obrazovky (reference/portaly.md, SOA Praha). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
 UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Matriky a archiválie SOA Praha (eBadatelna, ebadatelna.soapraha.cz) bez prohlížeče a bez přihlášení.
 
+ZATÍM VYPNUTO: archiv od 2. 11. 2026 nástroj zakazuje (robots.txt „User-agent: rodokmen / Disallow: /“, HTTP 403)
+a brzda tools/slusne.py ho proto zastaví. Fungují jen link a a-link (bez sítě). Matriky čti v prohlížeči
+(reference/portaly.md, SOA Praha). Nástroj zůstává pro případ, že archiv přístup povolí.
+
 Použití (z kořene projektu):
   ebadatelna.py hledat "Obec"              -> lokality z našeptávače portálu (celý název „Obec - obec X - okres Y“);
                                             portál nemá číselná id lokalit, do „matriky“ dávej celý název

@@ -55,7 +55,8 @@ s přepisem a překladem, „Co hledáme“ a deník hledání. **[Podívejte se
   Linux by měl fungovat, ale vyzkoušený není.
 - Programy **Python 3, Node.js, ImageMagick a git**. Nemusíte je instalovat předem – Claude zkontroluje, co chybí,
   a pomůže s instalací (na Macu přes [Homebrew](https://brew.sh), na Windows přes winget).
-- Pro jižní Čechy a Moravu (SOA Třeboň, MZA Brno, ZA Opava) **prohlížeč pro Clauda** – doplněk Playwright.
+- Pro střední a jižní Čechy a Moravu (SOA Praha, SOA Třeboň, MZA Brno, ZA Opava) **prohlížeč pro Clauda** –
+  doplněk Playwright.
   Tyto archivy stahovací nástroje nepouštějí, Claude proto čte matriky přímo v jejich prohlížeči. Instalace
   v Claude Code: `/plugin install playwright@claude-plugins-official`, pak restart. Bez něj můžete Claudovi
   posílat snímky obrazovky sami.
@@ -141,12 +142,12 @@ skills/rodokmen/
 
 ## Co umí a co ne
 - **Hotové nástroje** (bez prohlížeče) mají: východní Čechy (SOA Zámrsk, ARON), západní Čechy (SOA Plzeň,
-  Porta fontium), střední Čechy (SOA Praha, eBadatelna – i urbáře a gruntovní knihy) a Prahu (AHMP a policejní
-  přihlášky 1850–1914). Pro severní Čechy (SOA Litoměřice) stahuje snímky nástrojem, knihu ale najde přes prohlížeč.
-  Pro Rakousko je postup přes Matriculu.
-- **Jen přes prohlížeč:** jižní Čechy (SOA Třeboň) a Morava (MZA Brno) – oba archivy od listopadu 2026 stahovací
-  nástroje odmítají, Claude proto zápis přiblíží v jejich prohlížeči a uloží snímek obrazovky. Opava taky přes
-  prohlížeč. Funguje to, ale je to pomalejší.
+  Porta fontium) a Prahu (AHMP a policejní přihlášky 1850–1914). Pro severní Čechy (SOA Litoměřice) stahuje
+  snímky nástrojem, knihu ale najde přes prohlížeč. Pro Rakousko je postup přes Matriculu.
+- **Jen přes prohlížeč:** střední Čechy (SOA Praha, eBadatelna – i urbáře a gruntovní knihy), jižní Čechy
+  (SOA Třeboň) a Morava (MZA Brno) – tyto archivy od listopadu 2026 stahovací nástroje odmítají, Claude proto
+  zápis přiblíží v jejich prohlížeči a uloží snímek obrazovky. Opava taky přes prohlížeč. Funguje to, ale je to
+  pomalejší.
 - U úředníků, vojáků a lékařů hledá i v **dobových novinách** (ANNO, Kramerius) – kariéra, vyznamenání, parte.
 - Umí načíst **rodinný strom z MyHeritage** a dalších služeb (export GEDCOM, z MyHeritage i zálohu stromu z programu
   Family Tree Builder) a udělat z něj plán hledání.
