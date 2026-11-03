@@ -15,5 +15,6 @@ x0,y0,x1,y1=map(float,box.split(','))
 if not (0<=x0<x1<=1 and 0<=y0<y1<=1): sys.exit(f'Oblast {box} musí být zlomky 0..1 (x0 < x1, y0 < y1), ne pixely.')
 if mode=='v': ym=(y0+y1)/2; parts=[(x0,y0,x1,ym+0.02),(x0,ym-0.02,x1,y1)]
 else: xm=(x0+x1)/2; parts=[(x0,y0,xm+0.02,y1),(xm-0.02,y0,x1,y1)]
+os.makedirs(os.path.dirname(os.path.abspath(pre)),exist_ok=True)  # výstupní složka (pracovni/overeni/…) nemusí existovat
 for i,(a,b,c,d) in enumerate(parts):
     o=f'{pre}_{i}.jpg'; subprocess.run([MAGICK,f,'-crop','%dx%d+%d+%d'%((c-a)*W,(d-b)*H,a*W,b*H),'+repage','-resize','1900x',o]); print(o)
