@@ -39,8 +39,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 ## SOA Třeboň (digi.ceskearchivy.cz) – jen v prohlížeči
 - **Od 2. 11. 2026 archiv nástroj odmítá** (HTTP 403 podle User-Agentu „rodokmen“), `trebon.py` je vypnutý a brzda
   skripty na digi.ceskearchivy.cz zastaví. Neobcházej to (jiný User-Agent, vlastní skript). Matriky čti v prohlížeči
-  (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo jako člověk, jen
-  stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky obrazovky uživatel.
+  (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo 5–10 s mezi
+  stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky
+  obrazovky uživatel.
 - Obec: `https://digi.ceskearchivy.cz/<Obec>` (bez diakritiky a mezer, např. `RatiborskeHory`) → stránka místa, vlevo
   „Matriční knihy“ (stránka je v rámci `ram_obsah`) → seznam knih s roky a obcemi; kliknutí otevře knihu v nové záložce.
   **Zkontroluj název a okres**: u stejnojmenných obcí portál vybere jinou (Buk → Bukovka), u měst i okres nebo synagogu.
@@ -93,7 +94,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - **Od 2. 11. 2026 archiv nástroj zakazuje** (robots.txt „User-agent: rodokmen – Disallow: /“, HTTP 403),
   `ebadatelna.py` je vypnutý (fungují jen `link`, `a-link`) a brzda skripty na soapraha.cz zastaví. Neobcházej to
   (jiný User-Agent, vlastní skript, stahování snímku z prohlížeče). Matriky čti v prohlížeči (nejlépe Playwright).
-  Tempo jako člověk, jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky obrazovky uživatel.
+  Tempo 5–10 s mezi stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče
+  ať pošle snímky obrazovky uživatel.
 - Hledání: Matriky → pole „lokalita“ vyplň obcí bez posledního písmene (`browser_type`) a poslední písmeno napiš
   se `slowly` (teprve to ukáže našeptávač; psaní po písmenech do prázdného pole se připojí k textu „lokalita“). Vyber
   celý název (`.ui-menu-item`, „Obec - obec X - okres Y“), Vyhledat. Seznam knih jedním `browser_evaluate`:
@@ -203,12 +205,12 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
     return location.href;
   }
   ```
-- Nezobrazuj celou stránku v plném rozlišení (velké okno) – stovky dlaždic naráz a MZA vrací 503. Tempo jako člověk,
-  jen stránky, které opravdu čteš. Když ověření nepustí nebo MZA hlásí chybu, skonči a řekni to uživateli.
+- Nezobrazuj celou stránku v plném rozlišení (velké okno) – stovky dlaždic naráz a MZA vrací 503. Tempo 5–10 s mezi
+  stránkami (SKILL.md, Šetrně k archivům), jen stránky, které opravdu čteš. Když ověření nepustí nebo MZA hlásí chybu, skonči a řekni to uživateli.
 - Trvalý odkaz = adresa v prohlížeči `…/matrika/detail/<id>?image=<soubor>.jp2` (soubor končí číslem snímku × 10:
   snímek 16 → `…-00160.jp2`). Svazek do `svazky.json` ručně (Ostatní portály, krok 4).
-- Adresa actapublica.eu bývá za Cloudflare zablokovaná podle IP; když blokuje i mza.cz, ať uživatel vypne VPN nebo zkusí
-  jinou síť.
+- Doména actapublica.eu MZA nepatří (MZA to potvrdila) – nepoužívej ji, jen www.mza.cz/actapublica. Když MZA nejde
+  načíst ani v prohlížeči, ať uživatel zkusí vypnout VPN nebo jinou síť.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.
@@ -279,7 +281,7 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
    Najdi fond „Sbírka matrik“ / „Matriky“ a svazek podle obce a let.
 2. **Snímek:** většina prohlížečů má tlačítko ke stažení obrázku – ulož do `pracovni/`. Když ne, podívej se v síťovém
    provozu, odkud se načítají dlaždice/obrázky (IIIF, DeepZoom, Zoomify), a stáhni celý obrázek touto cestou – jednotlivě,
-   jen snímky, které čteš. Krajní možnost: požádej uživatele, ať snímek uloží a dá do `pracovni/`.
+   jen snímky, které čteš, a jen když to archiv nezakazuje (`<portál>/robots.txt`, podmínky užití). Krajní možnost: požádej uživatele, ať snímek uloží a dá do `pracovni/`.
 3. **Trvalý odkaz** na snímek (tlačítko „trvalý odkaz“/permalink, jinak URL svazku + číslo snímku) dej do `odkaz` v zápisu.
 4. Svazek zapiš do `data/svazky.json` ručně: `"klic": {"archiv": "SOA Třeboň", "portal": "digi.ceskearchivy.cz",
    "svazek": "N Volary 1784–1820, sign. …", "popis": "obce…", "url": "<odkaz na svazek>"}`.

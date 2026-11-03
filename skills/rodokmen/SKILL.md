@@ -175,7 +175,14 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
 - **Hláška „slusne: … je zastavený“ (kód 3)** = archiv dal najevo, že ho zatěžujeme (429/503/403, stránka
   „zablokováno“, spojení odmítnuto). Nezkoušej to znovu, neobcházej to (jiný nástroj, prohlížeč), řekni to uživateli
   a dělej jinou práci. Stav: `slusne.py stav`. `slusne.py odblokuj` jen když víš, že šlo o tvou chybu (špatná adresa).
-- **V prohlížeči brzda neplatí:** nejvýš 1 dotaz za 2 s, žádné smyčky `fetch` ani `Promise.all`.
+- **V prohlížeči brzda neplatí, hlídáš se sám:** při cíleném hledání (konkrétní snímek, rejstřík) aspoň 5 s mezi
+  stránkami, při listování stránku po stránce 10 s. Na jednom archivu jen jeden prohlížeč, žádní pomocníci, žádné
+  smyčky `fetch` ani `Promise.all`.
+- **Archiv může zablokovat i prohlížeč** (403 po stovkách snímků za den). Když se snímek nenačte nebo stránka hlásí
+  chybu, podívej se do síťových požadavků (`browser_network_requests`). Při 403, 429 nebo 503 hned skonči, řekni to
+  uživateli a na tom archivu ten den už nepokračuj – brzda to v prohlížeči nevidí.
+- **Když nejde ani prohlížeč:** ať uživatel snímek otevře sám, uloží snímek obrazovky (nebo export snímku, má-li ho
+  portál) do `pracovni/` a pošle adresu stránky – z ní je kniha a číslo snímku pro `odkaz`.
 - **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
 
 ### Pomocníci (subagenti) – šetrně

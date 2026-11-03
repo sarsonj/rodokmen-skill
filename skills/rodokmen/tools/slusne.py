@@ -18,12 +18,13 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
     se web zastaví pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
     Stopka trvá 30 minut, při druhém odmítnutí webu během 24 h 2 hodiny, při třetím a dalším 8 hodin.
   - curl, python a bash spuštěné z Pythonu (subprocess) jdou taky přes brzdu.
-  - MZA Brno (mza.cz, actapublica.eu) skripty nepovoluje: skriptem jen hledání knih (…/actapublica/matrika/hledani…,
+  - MZA Brno (mza.cz) skripty nepovoluje: skriptem jen hledání knih (…/actapublica/matrika/hledani…,
     1 dotaz za 4 s), detail knihy a snímky jen v prohlížeči. Jiná adresa MZA nástroj hned ukončí (kód 3).
+    Doména actapublica.eu MZA nepatří – skripty na ni taky ne.
   - SOA Třeboň (digi.ceskearchivy.cz) nástroj od 2. 11. 2026 odmítá: skripty nic, jen prohlížeč.
   - SOA Praha (soapraha.cz, eBadatelna) nástroj od 2. 11. 2026 zakazuje (robots.txt): skripty nic, jen prohlížeč.
-localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Claude in Chrome) brzda neplatí –
-tam nejvýš 1 dotaz za 2 s a žádné smyčky fetch / Promise.all.
+localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Playwright, Claude in Chrome) brzda neplatí –
+tam aspoň 5–10 s mezi stránkami a žádné smyčky fetch / Promise.all (SKILL.md, Šetrně k archivům).
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
 """
 import http.client, io, json, os, re, shutil, socket, subprocess, sys, tempfile, threading, time
@@ -41,8 +42,12 @@ ZAKAZ = {                            # konec názvu webu: (cesty povolené skrip
              "(https://www.mza.cz/actapublica/matrika/hledani?typ=obec&search_by_obec=<obec>&page=<n>); detail knihy "
              "a snímky jen v prohlížeči Acta Publica – přiblížit zápis a uložit snímek obrazovky (reference/portaly.md, "
              "MZA Brno). Neobcházej to (jiná adresa, nástroj, hlavičky).")
-    for suffix in ("mza.cz", "actapublica.eu")
+    for suffix in ("mza.cz",)
 }
+ZAKAZ["actapublica.eu"] = (         # cizí doména s obsahem MZA (MZA 3. 11. 2026: „není v naší správě“)
+    re.compile(r"(?!)"),
+    "actapublica.eu není web MZA (doménu MZA nespravuje) – nepoužívej ji. Matriky MZA jsou na "
+    "https://www.mza.cz/actapublica (skriptem jen hledání knih, snímky v prohlížeči; reference/portaly.md, MZA Brno).")
 ZAKAZ["digi.ceskearchivy.cz"] = (   # SOA Třeboň: od 2. 11. 2026 vrací nástroji (User-Agent „rodokmen“) 403
     re.compile(r"(?!)"),             # skriptům nic
     "SOA Třeboň od 2. 11. 2026 nástroj rodokmen odmítá (HTTP 403) – trebon.py ani vlastní skripty nepoužívej. "
