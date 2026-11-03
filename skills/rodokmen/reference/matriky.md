@@ -30,11 +30,11 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    Posun „snímek – strana“ se v knize mění (vložené listy, chybějící strany) – přečti číslo strany na náhledu a dopočítej.
    U starých far se vyplatí nejdřív najít **souhrnný index** přes víc desetiletí (např. N/O/Z 1636–1746) – dovede
    rychle až do 17. století. Rejstříky bývají podle **německého pravopisu**: česká jména na O a V hledej i pod W
-   (Otava = Wotawa, Vávra = Wawra). Knihy pro více obcí bývají řazené po obcích, rejstřík na konci.
+   (Otava = Wotawa, Vávra = Wawra). Knihy pro více obcí bývají řazené po obcích, rejstřík na konci (viz níže).
    Velké fary mají rejstříky i jako **samostatné svazky** (např. rejstřík oddaných přes 300 let) – hledej je nejdřív.
    **Když matrika chybí** (není online nebo se nedochovala), zkus rejstřík – bývá vedený zvlášť a přežil i tam, kde kniha
    ne. Zápis v rejstříku dokládá datum, místo a otce; zapiš ho jako `prob` (opis, ne originál) a matriku zkus později.
-4. **Bez indexu: listuj chronologicky.** Odhadni pozici podle let na prvních a posledních snímcích svazku (půlení intervalu).
+4. **Bez indexu: listuj chronologicky** – ale nejdřív ověř, že kniha není řazená po vsích (níže). Odhadni pozici podle let na prvních a posledních snímcích svazku (půlení intervalu).
    Staré knihy svázané z **ročních výtahů** (Extractus, Consignatio, 18. stol.) nemusí jít po sobě a ročníky chybí;
    rok bývá jen v nadpisu výtahu. Než napíšeš „zápis tam není“, ověř hlavičky ročníků.
    **Nejisté datum** (číslice z pozdější poznámky): nejdřív projdi všechny možné roky v domovské farnosti, teprve pak
@@ -46,6 +46,25 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    evangelické sbory (a. v. i h. v.), jeden sbor pokrýval desítky obcí; v ARONu mají signatury „R …“ a `aron_search.py`
    je najde podle obce. Ve východních Čechách časté (Rychnovsko, Dobrušsko, Opočensko). Židovské matriky viz `portaly.md`.
    Ve 20. století (1920–1945) zkus i **civilní matriky** lidí bez vyznání u okresních úřadů (vyzkoušeno v SOA Třeboň, viz `portaly.md`).
+
+## Knihy řazené po vsích (časté 1784–1900, všechny archivy)
+Venkovské fary vedly knihu často **po vsích**: každá ves má vlastní oddíl s vlastním stránkováním (foliací) a roky běží
+jen uvnitř oddílu. Oddíly nejdou podle let, pokračují vzadu („ad pag. 70“, „vide reliquos pag.“) a oddíl jedné vsi bývá
+až na konci knihy. Odhad snímku podle roku pak selže a „zápis tam není“ bývá omyl (skutečné chyby: prošel se jen oddíl
+vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–405).
+1. **Popis knihy první:** eBadatelna „Obecný popis“ (rozvržení stran po vsích), MZA „Části matriky“, ARON „územní
+   rozsah“, Porta fontium `info`. Přechody vsí mezi farami mívají mezery – zápis z mezery hledej v obou farách.
+2. **Rejstřík fary:** uvádí ves (písmenem nebo „tom“ = kniha vsi, ne pořadí svazku) a **stranu uvnitř oddílu**, ne celé
+   knihy. Snímek ≈ začátek oddílu + strana/2 (folio/2), dolaď podle čísla na snímku. Uvnitř písmene jde rejstřík podle let.
+   Klíč písmeno/tom → ves zjistíš ze záhlaví stránek; sestav si tabulku do deníku.
+3. **Mapa knihy:** z každého 5.–30. snímku jen horní pruh (název vsi, rok) v malém rozlišení, slepit pod sebe s číslem
+   snímku → stavba celé knihy na jednom obrázku. Pak v plném rozlišení jen oddíl hledané vsi. Mapu oddílů zapiš do deníku.
+4. **Montáž sloupců:** uvnitř oddílu vyřízni sloupec se jmény (ženich/nevěsta, dítě, ves na okraji – aspoň 35 % šířky
+   strany, užší usekne jména) ze 4–8 snímků a slep vedle sebe; celý zápis čti jen u kandidátů. U vybledlých knih se
+   zápisy snadno přehlédnou – tam raději celé strany.
+5. **Pasti:** sňatek bývá v oddílu vsi nevěsty, ale některé fary řadily podle ženicha (Držkov); starší knihy mají
+   narozené, oddané a zemřelé proložené a bez obsahu; čísla stran v samostatném rejstříku nemusí sedět se stránkováním
+   knihy. Než napíšeš „nenalezeno“, zmapuj **všechny** oddíly.
 
 ## Čtení písma
 - Kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na čtvrtiny (sloupec jmen + data),
