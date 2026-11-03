@@ -46,6 +46,9 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    evangelické sbory (a. v. i h. v.), jeden sbor pokrýval desítky obcí; v ARONu mají signatury „R …“ a `aron_search.py`
    je najde podle obce. Ve východních Čechách časté (Rychnovsko, Dobrušsko, Opočensko). Židovské matriky viz `portaly.md`.
    Ve 20. století (1920–1945) zkus i **civilní matriky** lidí bez vyznání u okresních úřadů (vyzkoušeno v SOA Třeboň, viz `portaly.md`).
+   **Smíšená manželství:** od roku 1868 šli synové po otci a dcery po matce, pokud se rodiče nedohodli jinak.
+   Před rokem 1868 byly při katolickém otci katolické všechny děti. Dceru evangelíka a katoličky proto hledej
+   nejdřív v katolické matrice, syna v evangelické.
 
 ## Knihy řazené po vsích (časté 1784–1900, všechny archivy)
 Venkovské fary vedly knihu často **po vsích**: každá ves má vlastní oddíl s vlastním stránkováním (foliací) a roky běží
@@ -127,6 +130,10 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 ## Typické pasti (ze skutečného výzkumu)
 - Písař spletl jméno dědečka (Josef místo Václava) – rozhodne více zápisů téže rodiny.
 - Dítě zapsané pod jiným křestním jménem, než jakým ho volala rodina (Františka → v rodině Anna).
+- Předek v dospělosti „Jan“ byl pokřtěn jako Václav: starší Václav zemřel a mladší dítě dostalo jeho jméno, v dospělosti
+  ho volali jinak. V rejstříku proto hledej **všechny děti rodičů** (podle příjmení a domu), ne jen hledané jméno.
+- Rejstřík ukazuje „špatné“ křestní jméno ve správné rodině nebo domě? Otevři zápis – písař mohl jméno v matrice
+  opravit (přeškrtnuté Jan → František) a do rejstříku se opsalo to původní.
 - Sňatek pár měsíců před porodem nebo po něm – není chyba, jen „svatba na poslední chvíli“; zajímavost pro web.
 - Nemanželské dítě nese příjmení matky; otec chybí nebo je dopsán později (legitimace na okraji).
 - Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`.
