@@ -14,7 +14,7 @@ Archivy blokují IP adresu po sérii rychlých dotazů (MZA, ZA Opava…). Nást
                                                                       403/429/503) – zastaví i skripty a nástroje
 
 Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty na počítači – mají jednu IP adresu):
-  - dotazy (stránky, hledání, API) nejvýš 1 za 2 s (ZA Opava 1 za 4 s), obrázky a dlaždice nejvýš 10 za s;
+  - dotazy (stránky, hledání, API) nejvýš 1 za 2 s (ZA Opava a digi.nacr.cz 1 za 4 s), obrázky a dlaždice nejvýš 10 za s;
     omezuje se frekvence, ne souběh (vlákna stahování dlaždic nevadí),
   - po odpovědi 429/503 (u dotazu i 403), po stránce „zablokováno“ nebo po 3 nepovedených spojeních za sebou
     se web zastaví pro všechny procesy a nástroj hned skončí (kód 3). Nic se neopakuje, nic se neobchází.
@@ -37,6 +37,7 @@ LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
     "archives.cz": (4.0, 0.1),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min
     "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
     "mza.cz": (4.0, 4.0),            # MZA Brno – skriptem jen hledání knih (ZAKAZ níže), blokuje i za rychlé dotazy na katalog
+    "digi.nacr.cz": (4.0, 4.0),      # Národní archiv (policejní přihlášky) – po pár rychlých kartách přiškrcuje podle IP
 }
 ZAKAZ = {                            # konec názvu webu: (cesty povolené skriptům, hláška pro ostatní)
     suffix: (re.compile(r"/actapublica/matrika/hledani"),
