@@ -114,7 +114,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   v plném rozlišení. **Ulož ho jednou do mezipaměti a dál pracuj z disku** – archiv už nedostane žádný další dotaz.
   Při listování ulož každý zobrazený snímek hned (uložení archiv nic nestojí) a před dalším krokem se podívej, jestli
   další snímek už nemáš – pak ho čti z disku a v prohlížeči přejdi rovnou na adresu toho, který ještě nemáš:
-  1. Už ho máš? `python3 -I tools/cache.py najdi <adresa snímku>` – vypíše cestu, pak prohlížeč neotevírej.
+  1. Už ho máš? `python3 -I tools/cache.py najdi <adresa snímku> --nahled pracovni/nahled.jpg` – vypíše cestu
+     a udělá náhled (1600 px), pak prohlížeč neotevírej.
   2. Jinak otevři adresu, počkej na načtení (pár s) a ulož ho (`browser_evaluate` s `filename: "pracovni/ebad.json"`):
      ```js
      () => {
@@ -126,8 +127,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
                               data: c.toDataURL('image/jpeg', 0.92)});
      }
      ```
-     a `python3 -I tools/cache.py uloz pracovni/ebad.json` (soubor .json pak smaže).
-  3. Náhled a výřez z uloženého snímku bez sítě: `python3 -I tools/ebadatelna.py snimek <matrikaId> <snímek>
+     a `python3 -I tools/cache.py uloz pracovni/ebad.json --nahled pracovni/nahled.jpg` (uloží snímek, udělá náhled
+     1600 px ke čtení stránky a soubor .json smaže).
+  3. Jiný náhled nebo výřez z uloženého snímku bez sítě: `python3 -I tools/ebadatelna.py snimek <matrikaId> <snímek>
      pracovni/x.jpg [nahled] [x0,y0,x1,y1]` (archiválie `a-snimek`), dál `vyrez.py` jako u jiných archivů.
   Bez Playwrightu (Claude in Chrome neumí výsledek uložit do souboru) ať snímek uloží uživatel (snímek obrazovky).
 - Starší snímky bývají z mikrofilmu nebo silně vybledlé – čti se zvýšeným kontrastem:

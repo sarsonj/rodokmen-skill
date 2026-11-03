@@ -13,11 +13,13 @@ nejdéle nepoužité soubory se mažou samy. Celou složku lze kdykoli smazat, n
 
 Použití (z kořene projektu):
   cache.py stav                       -> kolik místa zabírá a kolik stažení z archivu ušetřila (podrobně slusne.py stav)
-  cache.py uloz <soubor.json> [vystup.jpg]
+  cache.py uloz <soubor.json> [vystup.jpg] [--nahled nahled.jpg]
                                       -> uloží snímek z prohlížeče eBadatelny (výsledek úryvku v reference/portaly.md,
                                          SOA Praha); soubor .json pak smaže
-  cache.py najdi <adresa snímku>      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…), jinak kód 1
+  cache.py najdi <adresa snímku> [--nahled nahled.jpg]
+                                      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…), jinak kód 1
                                          (nalezený snímek se počítá jako ušetřené otevření v prohlížeči)
+  --nahled nahled.jpg                 -> k tomu rovnou náhled široký 1600 px (k přečtení stránky, bez sítě)
 
 Počítá se jen to, co by jinak opravdu šlo z archivu znovu: u nástrojů přes brzdu každý obrázek vrácený z disku,
 u eBadatelny nalezení přes „najdi“ (ne výřezy a náhledy z ebadatelna.py, ty by se dělaly z disku i bez mezipaměti).
@@ -194,12 +196,36 @@ def _ze_souboru(path):
     return d
 
 
+NAHLED_PX = 1600
+
+
+def _nahled(src, out, sirka=None):
+    """Náhled široký NAHLED_PX (menší snímek se jen zkopíruje)."""
+    if not out:
+        return
+    if not sirka:
+        M = _magick()
+        r = subprocess.run([M, src + "[0]", "-format", "%w", "info:"], capture_output=True, text=True) if M else None
+        sirka = int(r.stdout) if r and r.stdout.strip().isdigit() else NAHLED_PX
+    if odvod(src, out, zmenseni=max(1, int(sirka) / NAHLED_PX)):
+        print("náhled:", out)
+    else:
+        print("náhled se nepovedl (chybí ImageMagick?) – snímek je uložený, náhled udělej přes ebadatelna.py snimek … nahled")
+
+
 def main(a):
     for s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8
         if hasattr(s, "reconfigure"):
             s.reconfigure(encoding="utf-8", errors="replace")
     if not a or a[0] in ("-h", "--help"):
         sys.exit(__doc__)
+    nahled = None
+    if "--nahled" in a:
+        i = a.index("--nahled")
+        if i + 1 >= len(a):
+            sys.exit("--nahled potřebuje soubor, např. --nahled pracovni/nahled.jpg")
+        nahled = a[i + 1]
+        a = a[:i] + a[i + 2:]
     if a[0] == "stav":
         n = s = 0
         for d, _, fs in os.walk(KOREN):
@@ -233,6 +259,7 @@ def main(a):
             os.makedirs(os.path.dirname(os.path.abspath(a[2])), exist_ok=True)
             shutil.copyfile(p, a[2])
             print(a[2])
+        _nahled(p, nahled, d.get("w"))
     elif a[0] == "najdi" and len(a) > 1:
         m = EBAD.search(a[1])
         p = cesta(klic_ebadatelna(*m.groups())) if m else None
@@ -241,6 +268,7 @@ def main(a):
         _pouzito(p)
         _zapocti(EBAD_WEB, os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči
         print(p)
+        _nahled(p, nahled)
     else:
         sys.exit(__doc__)
 
