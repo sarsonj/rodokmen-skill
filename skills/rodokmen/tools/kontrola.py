@@ -19,6 +19,28 @@ def jload(name, default):
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else default
 
 
+def research_log_stats(path):
+    """Count numbered research-log rows and return duplicate identifiers."""
+    identifier_re = re.compile(r"^\|\s*(\d+|[A-Za-z][A-Za-z0-9]*-\d+)\s*\|")
+    seen, duplicates = {}, set()
+    rows = 0
+    if not os.path.exists(path):
+        return rows, []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            match = identifier_re.match(line)
+            if not match:
+                continue
+            rows += 1
+            identifier = match.group(1)
+            normalized = identifier.casefold()
+            if normalized in seen:
+                duplicates.add(seen[normalized])
+            else:
+                seen[normalized] = identifier
+    return rows, sorted(duplicates, key=str.casefold)
+
+
 def main():
     err, warn = [], []
     ns = {}
@@ -145,7 +167,9 @@ def main():
                         f"(data/pribeh.md, reference/pribehy.md); koncept nejdřív ukaž uživateli v chatu")
 
     log = os.path.join(DATA, "research_log.md")
-    rows = sum(1 for l in open(log, encoding="utf-8") if re.match(r"^\| \d+ \|", l)) if os.path.exists(log) else 0
+    rows, duplicate_ids = research_log_stats(log)
+    if duplicate_ids:
+        err.append(f"deník obsahuje duplicitní identifikátory: {', '.join(duplicate_ids)}")
     print(f"{len(P)} osob, {len(zaz)} zápisů, {len(svazky)} svazků, {rows} řádků deníku")
     for e in err:
         print("CHYBA:", e)

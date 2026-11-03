@@ -6,7 +6,10 @@ Použití (z kořene projektu):
   python3 -I tools/ged_import.py dokumenty/strom.ged "Jméno Příjmení" -> předci této osoby s Kekulého čísly
                                                                         (1 = ona, 2 = otec, 3 = matka…), všechny
                                                                         události, poznámky a FRONTA ZÁPISŮ k vyhledání
+  Při shodných jménech spusť výpis osob bez jména a jako kořen zadej jejich GEDCOM ID (např. @I42@).
   … "Jméno Příjmení" --osoby   -> totéž jako kostra pro data/osoby.py (stav "fam", ke kontrole a doplnění)
+
+Výpis je podklad k ručnímu převzetí, osoby do projektu nepřidává. Počet osob ve vstupním souboru proto není počet nových osob.
 
 Fronta zápisů: u každého předka nejmladší známá událost s místem (úmrtí, pak sňatek, pak narození) –
 úmrtní a oddací zápisy uvádějí datum a místo narození i rodiče, proto se hledá od nejmladšího zápisu.

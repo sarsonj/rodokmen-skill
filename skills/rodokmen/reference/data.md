@@ -34,6 +34,8 @@ P = {
   `fam` od rodiny (i strom, který si rodina vede sama, např. GEDCOM z jejího MyHeritage), `mh` cizí strom z internetu, `unk`.
 - `LINES = {8: ("Novákové", "Kováři z Holic…"), …}` – jen čísla 8–15; název rodu = příjmení v množném čísle.
 - `SIDE` – sourozenci a další příbuzní: `dict(k=<číslo předka>, n="Josef Novák (1865–1920)", t="text", r=[klíče])`.
+  Nedoloženou samostatnou rodinu nepřipojuj do hlavního stromu; jako `SIDE` ji veď jen jako výslovně označenou stopu
+  u konkrétního možného příbuzného. Jinak ji ponech odděleně v deníku.
 - `ISSUES` – dvojice `("Otázka", "Vyřešeno: … / Hypotéza: … / Otevřené: …")` → stránka „Co hledáme“ (vyřešené se skryjí).
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.
@@ -49,6 +51,9 @@ P = {
 - `klic`: malá písmena bez diakritiky, `obec_druh_kdo_rok` (druh: krest, snatek, umrti, index, scitani…). Je to i název obrázku.
 - `druh`: N, O, Z, I (index/rejstřík), S (sčítání), J (jiný pramen).
 - `datum` jako v češtině („14. 2. 1890“, „3/1867“, „1797“) – web podle něj řadí.
+- `shrnuti` je stručný obsahový souhrn, ne doslovný přepis. Při předání výzkumu bez originálního snímku nepřepisuj
+  souhrn jako `orig` v `prepisy.json` a nevyráběj výřez ani rámeček; chybějící podklady výslovně poznamenej.
+  `kontrola.py` má dál hlásit chybějící výřez nebo přepis.
 
 ## `svazky.json`
 `{"1a0b2337": {"archiv": "SOA Zámrsk – Sbírka matrik…", "portal": "ARON", "svazek": "N Holice 1880–1900, sign. …",
@@ -58,6 +63,7 @@ P = {
 `{"<klic>": {"orig": "[Datum] 14. února 1890\n[Dům] 112\n[Otec] …", "cs": "Český překlad celou větou…"}}`
 - `orig` věrný přepis po sloupcích, `[Název sloupce]` v hranatých závorkách, nejisté „(?)“, nečitelné „[…]“, zkratky ponechat.
 - `cs` srozumitelný překlad pro rodinu; vysvětli staré pojmy (domkář, podruh).
+- Souhrn nalezený v předaných poznámkách není originál ani přepis. Bez snímku ponech `orig` nedoplněné a zdrojovou mezeru popiš.
 
 ## `zvyrazneni.json`
 `{"<klic>": {"boxes": [[x0, y0, x1, y1]], "status": "ok", "note": ""}}` – zlomky šířky/výšky obrázku `vyrezy/<klic>.jpg`.
@@ -81,7 +87,8 @@ Viz `web.md`.
 
 ## Markdown poznámky
 - `research_log.md` – tabulka `| # | datum | zdroj | rozsah | hledáno | výsledek | citace |`, nové řádky na konec, i negativní.
-  Web ji zobrazuje jako „Výzkumný deník“.
+  Web ji zobrazuje jako „Výzkumný deník“. První sloupec může mít číselné nebo textové ID (např. `BA-1`, `KA-1`,
+  `STR-10`); při slučování deníků zachovej původní ID nebo je uprav tak, aby byla v celém výsledném deníku jedinečná.
 - `zajimavosti.md` – `## Nadpis` + text, odkazy `[Jméno](/osoba/<slug>/)`.
 - `pribeh.md` – „Příběh <hlavního rodu>“: frontmatter `title`, `lead` + kapitoly `##`; když soubor neexistuje,
   položka menu se skryje. Jak psát: `pribehy.md`.
@@ -91,3 +98,5 @@ Viz `web.md`.
 ## Odkazy na osoby (slug)
 Slug = jméno bez diakritiky + rok, např. `jan-novak-1890`; při kolizi přidá číslo osoby. Přesné slugy po `npm run data`
 v `web/src/data/site.json` (`people`). Při přejmenování osoby se slug změní – oprav odkazy v textech.
+Při přečíslování předků promítni změny do `SIDE.k`, klíčů `LINES`, číselných odkazů v `web.json` i odkazů na osoby
+v příbězích; potom spusť kontrolu a znovu vytvoř web.

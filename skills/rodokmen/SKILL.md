@@ -95,6 +95,11 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - **Rodinný strom jako soubor GEDCOM** (`.ged`, export z MyHeritage/Geni/FamilySearch): `python3 -I tools/ged_import.py
   dokumenty/strom.ged "Jméno Příjmení"` vypíše předky s čísly, všechny události a poznámky a **frontu zápisů**
   (nejmladší známá událost u každého předka, a jestli už je v archivu). `--osoby` dá kostru pro `osoby.py`.
+  Jméno nemusí být jedinečné: spusť nejprve výpis osob bez jména a kořen vyber podle GEDCOM ID (např. `@I42@`),
+  ne jen podle shody jména. Import je podklad k posouzení, ne automatické přidání: počet osob ve vstupním stromu
+  není počet nových osob projektu.
+  Nedoloženou samostatnou rodinu automaticky nepřipojuj do `P` ani `LINES`. Jako `SIDE` ji veď jen jako
+  výslovně označenou stopu u konkrétního možného příbuzného; jinak ji ponech odděleně v deníku.
   Poznámky ve stromu bývají plné rodinných historek. Přečti je a vytěž do `udaje_od_rodiny.md`.
   Starší strom z **Brother's Keeper** (kódování ANSI a česká data „SRPEN 1945“ nástroj převede sám): místa tam bývají
   v 6. pádě („Táboře“) – do `osoby.py` je přepiš do 1. pádu. Kořenem takového stromu často nejsou uživatel, ale jeho děti
@@ -138,6 +143,8 @@ Základní smyčka pro každou osobu:
    4. rámeček čteného místa: `python3 -I tools/ramecek.py <klíč> x0,y0,x1,y1` a **prohlédni si** `pracovni/ramecek_<klíč>.jpg`,
    5. přepis originálu a český překlad do `data/prepisy.json` (nejistá místa „(?)“, nečitelná „[…]“),
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`.
+   Při převzetí staršího výzkumu bez původních snímků nevytvářej náhradní výřezy ani rámečky. Zachovej informaci,
+   že podklad chybí; souhrn obsahu není doslovný přepis a chybějící výřez či rámeček dál hlásí `kontrola.py`.
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
    Narazíš-li po cestě na **zjevně související výskyt** (vzácné příjmení rodu, stejný dům, jméno z rodinného
    vyprávění), zapiš ho do výsledku v deníku se snímkem – je to jen stopa, ne doklad. Když se hledání zasekne,
@@ -152,6 +159,8 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
   Nikdy `sed -i` ani skript, který soubor přepíše celý – rozbije formát a v historii je pak změněný celý soubor.
 - **`doc` jen to, co jsi četl přímo na snímku.** Shoda jména a doby bez přímého dokladu = `prob` + poznámka proč.
 - **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka).
+- Při změně Kekulého čísel zkontroluj a aktualizuj i odkazy na čísla osob: `SIDE.k`, klíče `LINES`,
+  číselné odkazy v `web.json` a odkazy na osoby v příbězích. Zkontroluj také `SAME` a další textové odkazy.
 - **Čti celý zápis včetně okrajů** – pozdější poznámky o úmrtí, sňatku, legitimaci bývají nejcennější.
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne „bey Hohenelbe“ = u Vrchlabí).
