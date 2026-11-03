@@ -48,6 +48,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   Malé osady portál nezná (Malá Chyška) – hledej farní nebo sousední obec a osadu v popisu knih.
 - Snímek: `https://digi.ceskearchivy.cz/<kniha>/<snímek>` (zároveň trvalý odkaz). Knihy mívají dobrovolnický jmenný
   rejstřík (stránka místa → „Rejstříky“) – obrovská úspora; ne každá kniha ho má.
+- **Každé zobrazení snímku stáhne všechny dlaždice znovu** – i šipka zpět na snímek, který byl právě na obrazovce
+  (rám se načte znovu s novým tokenem, mezipaměť prohlížeče nepomůže). Na snímku proto vyřiď všechno najednou (přibliž
+  a ulož všechny zápisy, které můžeš potřebovat) a na snímky, které už máš v `pracovni/`, se nevracej.
 - Prohlížeč je Zoomify v rámci `ram_obsah`. Postup: snímek okna (scale css) → odečti rohy zápisu → úryvek níže
   (browser_evaluate) schová panely Navigátor a Náhledy, přiblíží zápis a vrátí odkaz `/<kniha>/<snímek>/<x>/<y>/<zoom>/0`
   přímo na zápis (do `odkaz`) → snímek okna v rozlišení zařízení do `pracovni/trebon_<kniha>_<snímek>.png` → `vyrez.py`
@@ -189,6 +192,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Detail knihy má „Části matriky“ s rozsahy snímků (narození 1–43, index narozených 43–93, u knih pro víc obcí po obcích).
   Snímek s hledaným rokem odhadni (snímky ÷ roky). Rejstříky uvádějí stranu, ne snímek: přečti čísla stran na 1–2 snímcích
   a dopočítej (vztah bývá lineární, kniha od knihy jiný).
+- **Listuj v otevřené stránce** (`viewer.goToPage(n-1)`, šipky) – návrat na už zobrazený snímek jde z mezipaměti
+  prohlížeče a MZA nic nestojí. Stránku neobnovuj a adresu snímku znovu neotvírej: nové načtení dostane nový token
+  a stáhne všechny dlaždice znovu.
 - Prohlížeč je OpenSeadragon v proměnné `viewer`: `viewer.goToPage(n-1)`, `viewer.viewport.goHome(true)` a snímek okna
   (scale css) – rok a měsíc v záhlaví. U nalezeného zápisu odečti z aktuálního snímku okna rohy zápisu a přibliž ho
   úryvkem (browser_evaluate); pak ulož snímek prvního prvku `.openseadragon-container` v rozlišení zařízení do
