@@ -2,7 +2,8 @@
 """Matriky a archiválie SOA Praha (eBadatelna, ebadatelna.soapraha.cz) bez prohlížeče a bez přihlášení.
 
 ZATÍM VYPNUTO: archiv od 2. 11. 2026 nástroj zakazuje (robots.txt „User-agent: rodokmen / Disallow: /“, HTTP 403)
-a brzda tools/slusne.py ho proto zastaví. Fungují jen link a a-link (bez sítě). Matriky čti v prohlížeči
+a brzda tools/slusne.py ho proto zastaví. Fungují jen link a a-link (bez sítě) a snimek / a-snimek se snímky,
+které uložil prohlížeč do mezipaměti (výřez a náhled bez sítě). Matriky čti v prohlížeči
 (reference/portaly.md, SOA Praha). Nástroj zůstává pro případ, že archiv přístup povolí.
 
 Použití (z kořene projektu):
@@ -30,6 +31,7 @@ Portál má denní údržbu kolem 4:44 (asi 2 minuty). Ber ohled na server: stah
 import glob, html, http.client, http.cookiejar, json, os, re, shutil, subprocess, sys, tempfile, time, unicodedata
 import urllib.error, urllib.parse, urllib.request
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená mezipaměť snímků (tools/cache.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -305,19 +307,16 @@ def snimek(druh, xid, n, out, volby):
         except (ValueError, AssertionError):
             raise Chyba(f"výřez „{vyrez}“ má být x0,y0,x1,y1 jako zlomky 0–1 (x0<x1, y0<y1), např. 0,0,0.5,0.5.")
     ref = odkaz(druh, xid, n)
-    page, url = get(ref)
-    co = "matrika" if druh == "d" else "archiválie"
-    if NEEXISTUJE in page:
-        raise Chyba(f"{co} {xid} nenalezena – zkontroluj číslo.")
-    pc = re.search(r"var pageCount = (\d+);", page)
-    src = re.search(r'<img id="scanImage"[^>]*src="([^"]+)"', page)
-    if not pc or not src:
-        raise Chyba(f"stránka snímku nemá očekávaný obsah ({ref}).{udrzba()}")
-    if int(n) > int(pc.group(1)):
-        raise Chyba(f"snímek {n} neexistuje – {co} {xid} má snímky 1–{pc.group(1)}.")
-    data, _ = get(urllib.parse.urljoin(url, html.unescape(src.group(1))), referer=url, binary=True)
+    # archiv nástroj zakazuje (robots.txt): snímek jen z mezipaměti, kam ho uložil prohlížeč (reference/portaly.md)
+    ulozeny = cache.cesta(cache.klic_ebadatelna(druh, xid, n))
+    if not os.path.exists(ulozeny):
+        raise Chyba(f"snímek {ref} ještě není uložený – otevři ho v prohlížeči a ulož úryvkem z reference/portaly.md "
+                    "(SOA Praha), pak tento příkaz zopakuj. Archiv stahování nástrojem zakazuje.")
+    print("z mezipaměti, bez stahování:", ulozeny)
+    with open(ulozeny, "rb") as f:
+        data = f.read()
     if not (data[:3] == b"\xff\xd8\xff" or data[:8] == b"\x89PNG\r\n\x1a\n"):
-        raise Chyba(f"portál místo obrázku vrátil něco jiného ({len(data)} B) – snímek chybí nebo údržba?{udrzba()}")
+        raise Chyba(f"uložený snímek {ulozeny} je poškozený – smaž ho a ulož znovu z prohlížeče.")
     d = os.path.dirname(os.path.abspath(out))
     os.makedirs(d, exist_ok=True)
     jpeg_ven = os.path.splitext(out)[1].lower() in (".jpg", ".jpeg")

@@ -18,6 +18,7 @@ Ber ohled na server: stahuj jen snímky, které čteš.
 """
 import html, http.client, json, os, re, ssl, sys, time, unicodedata, urllib.error, urllib.parse, urllib.request
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
+import cache  # noqa: E402 – sdílená mezipaměť obrázků (tools/cache.py): výřez a náhled z uloženého snímku
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -152,20 +153,25 @@ def scan(kniha, n):
 
 def snimek(kniha, n, out, nahled=False, crop=None):
     kniha, _, path, link = scan(kniha, n)
-    region = "full"
     if crop:
         x0, y0, x1, y1 = crop
         if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
             sys.exit("výřez x0,y0,x1,y1 musí být zlomky 0–1 a x0 < x1, y0 < y1")
-        region = "pct:" + ",".join(f"{v * 100:.3f}" for v in (x0, y0, x1 - x0, y1 - y0))
-    size = "pct:25" if nahled else "full"
-    data = get(f"/fcgi-bin/iipsrv.fcgi?IIIF={urllib.parse.quote(path)}/{region}/{size}/0/default.jpg", binary=True)
-    if not data.startswith(b"\xff\xd8"):
-        sys.exit("Porta fontium nevrátil obrázek JPEG (zkus to později)")
-    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    with open(out, "wb") as f:
-        f.write(data)
-    print(out, f"{len(data) // 1024} kB", "odkaz:", BASE + link)
+    iiif = f"/fcgi-bin/iipsrv.fcgi?IIIF={urllib.parse.quote(path)}"
+    # celý snímek je po prvním stažení ve sdílené mezipaměti (brzda slusne.py, tools/cache.py) – výřez a náhled z něj
+    ulozeny = cache.najdi_url(BASE + iiif + "/full/full/0/default.jpg") if (crop or nahled) else None
+    if ulozeny and cache.odvod(ulozeny, out, crop, 4 if nahled else 1):
+        print("z mezipaměti, bez stahování:", ulozeny)
+    else:
+        region = "full" if not crop else "pct:" + ",".join(
+            f"{v * 100:.3f}" for v in (crop[0], crop[1], crop[2] - crop[0], crop[3] - crop[1]))
+        data = get(f"{iiif}/{region}/{'pct:25' if nahled else 'full'}/0/default.jpg", binary=True)
+        if not data.startswith(b"\xff\xd8"):
+            sys.exit("Porta fontium nevrátil obrázek JPEG (zkus to později)")
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+        with open(out, "wb") as f:
+            f.write(data)
+    print(out, f"{os.path.getsize(out) // 1024} kB", "odkaz:", BASE + link)
 
 
 def fara(slug):

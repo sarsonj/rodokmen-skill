@@ -296,19 +296,93 @@ def _host(conn):
     return getattr(conn, "_tunnel_host", None) or conn.host
 
 
+try:   # sdílená mezipaměť obrázků (tools/cache.py); bez ní brzda funguje dál, jen bez úspory
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import cache as _mezipamet
+except Exception:   # noqa: BLE001 – starší projekt bez cache.py
+    _mezipamet = None
+finally:
+    sys.path.pop(0)
+
+
+def _plna_url(conn, url):
+    if "://" in url:
+        return url
+    https = isinstance(conn, getattr(http.client, "HTTPSConnection", ()))
+    port = getattr(conn, "_tunnel_port", None) or conn.port
+    vychozi = 443 if https else 80
+    return f"{'https' if https else 'http'}://{_host(conn)}{'' if not port or port == vychozi else f':{port}'}{url}"
+
+
+def _zapocti(host, velikost):
+    """Statistika pro slusne.py stav: kolik obrázků a dat se vzalo z mezipaměti místo z archivu."""
+    skupina, _ = _skupina(host)
+    if not skupina:
+        return
+    path = _cesta(skupina)
+    try:
+        with _Zamek(path + ".lock"):
+            st = _nacti(path)
+            st["z_mezipameti"] = st.get("z_mezipameti", 0) + 1
+            st["usetreno_mb"] = round(st.get("usetreno_mb", 0) + velikost / 1024 ** 2, 2)
+            _uloz(path, st)
+    except OSError:
+        pass
+
+
+class _Soubor:   # „socket“ pro odpověď z mezipaměti
+    def __init__(self, data):
+        self.data = data
+
+    def makefile(self, *a, **k):
+        return io.BytesIO(self.data)
+
+
+def _odpoved_z_disku(path):
+    data = open(path, "rb").read()
+    typ = {".jpg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".tif": "image/tiff",
+           ".webp": "image/webp"}.get(os.path.splitext(path)[1], "application/octet-stream")
+    hlava = (f"HTTP/1.1 200 OK\r\nContent-Type: {typ}\r\nContent-Length: {len(data)}\r\n"
+             "X-Rodokmen: mezipamet\r\n\r\n").encode()
+    r = http.client.HTTPResponse(_Soubor(hlava + data), method="GET")
+    r.begin()
+    return r, len(data)
+
+
 def _zapni():
     C = http.client.HTTPConnection
     if getattr(C, "_slusne", False):
         return
     put, get, connect = C.putrequest, C.getresponse, C.connect
+    putheader, endheaders, send = C.putheader, C.endheaders, C.send
+    PRIMO = (C, getattr(http.client, "HTTPSConnection", C))   # odpověď z disku jen pro urllib (ne urllib3 a spol.)
 
     def putrequest(self, method, url, *a, **k):
         self._slusne_obr = je_obrazek(url)
+        self._slusne_disk = self._slusne_ulozit = None
         zakaz(_host(self), url)
+        if _mezipamet and method == "GET" and self._slusne_obr and _skupina(_host(self))[0]:
+            plna = _plna_url(self, url)
+            ulozeny = _mezipamet.najdi_url(plna) if type(self) in PRIMO else None
+            if ulozeny:   # z mezipaměti: na archiv nejde nic, ani čekání brzdy
+                self._slusne_disk = ulozeny
+                return None
+            self._slusne_ulozit = plna
         pockej(_host(self), self._slusne_obr)
         return put(self, method, url, *a, **k)
 
+    def putheader_(self, *a, **k):
+        return None if getattr(self, "_slusne_disk", None) else putheader(self, *a, **k)
+
+    def endheaders_(self, *a, **k):
+        return None if getattr(self, "_slusne_disk", None) else endheaders(self, *a, **k)
+
+    def send_(self, data, *a, **k):
+        return None if getattr(self, "_slusne_disk", None) else send(self, data, *a, **k)
+
     def connect_(self):
+        if getattr(self, "_slusne_disk", None):
+            return None
         try:
             return connect(self)
         except (ConnectionRefusedError, ConnectionResetError, TimeoutError, socket.timeout) as e:
@@ -316,6 +390,12 @@ def _zapni():
             raise
 
     def getresponse(self):
+        ulozeny = getattr(self, "_slusne_disk", None)
+        if ulozeny:
+            self._slusne_disk = None
+            r, velikost = _odpoved_z_disku(ulozeny)
+            _zapocti(_host(self), velikost)
+            return r
         r = get(self)
         host, obr = _host(self), getattr(self, "_slusne_obr", False)
         telo = None
@@ -324,9 +404,15 @@ def _zapni():
             telo = r.read()             # přečíst a vrátit zpět, aby volající dostal celé tělo
             r.fp, r.length, r.chunked, r.will_close = io.BytesIO(telo), len(telo), False, True
         kontroluj_odpoved(host, r.status, obr, telo)
+        plna = getattr(self, "_slusne_ulozit", None)
+        if plna and r.status == 200 and not r.getheader("Content-Encoding"):
+            data = r.read()             # obrázek uložit a vrátit volajícímu celý
+            r.fp, r.length, r.chunked, r.will_close = io.BytesIO(data), len(data), False, True
+            _mezipamet.uloz_url(plna, data)   # jen opravdový obrázek (podle prvních bajtů)
         return r
 
     C.putrequest, C.getresponse, C.connect, C._slusne = putrequest, getresponse, connect_, True
+    C.putheader, C.endheaders, C.send = putheader_, endheaders_, send_
 
 
 # --- brzda pro podprocesy: curl, python a bash spuštěné z Pythonu (úpravu http.client nedědí) ---------------------
@@ -511,6 +597,11 @@ def _stav():
                 print(f"  {f[:-5]}: odmítnutí za 24 h {len(odm)} (poslední {_cas(odm[-1])}), další stopka by trvala {delka}")
     if nic:
         print("  žádný web není zastavený")
+    usetreno = [(f[:-5], _nacti(os.path.join(d, f))) for f in sorted(os.listdir(d)) if f.endswith(".json")] if d else []
+    usetreno = [(w, st) for w, st in usetreno if st.get("z_mezipameti")]
+    if usetreno:
+        print("Z mezipaměti obrázků místo z archivu (tools/cache.py): " + ", ".join(
+            f"{w} {st['z_mezipameti']}× ({st.get('usetreno_mb', 0):g} MB)" for w, st in usetreno))
 
 
 def _odblokuj(web=None):

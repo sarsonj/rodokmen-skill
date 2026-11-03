@@ -92,8 +92,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 
 ## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – jen v prohlížeči
 - **Od 2. 11. 2026 archiv nástroj zakazuje** (robots.txt „User-agent: rodokmen – Disallow: /“, HTTP 403),
-  `ebadatelna.py` je vypnutý (fungují jen `link`, `a-link`) a brzda skripty na soapraha.cz zastaví. Neobcházej to
-  (jiný User-Agent, vlastní skript, stahování snímku z prohlížeče). Matriky čti v prohlížeči (nejlépe Playwright).
+  `ebadatelna.py` stahovat nesmí (fungují `link`, `a-link` a `snimek` ze snímků uložených z prohlížeče) a brzda
+  skripty na soapraha.cz zastaví. Neobcházej to (jiný User-Agent, vlastní skript, fetch). Matriky čti v prohlížeči
+  (nejlépe Playwright).
   Tempo 5–10 s mezi stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče
   ať pošle snímky obrazovky uživatel.
 - Hledání: Matriky → pole „lokalita“ vyplň obcí bez posledního písmene (`browser_type`) a poslední písmeno napiš
@@ -106,28 +107,24 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   po vsích **rozvržení stran** („1–48 Ves A, 49–82 Ves B …“, každá ves může mít vlastní stránkování) – neodhaduj snímek
   podle roku, ale podle stran vsi; je-li rejstřík, začni jím.
 - Snímek: `https://ebadatelna.soapraha.cz/d/<matrikaId>/<snímek>` (archiválie `/a/<archivalieId>/<snímek>`, zároveň
-  trvalý odkaz, do `odkaz`). Prohlížeč načte celý snímek v plném rozlišení (2–3 MB, chvíli trvá) a jen ho zmenší.
-  Postup: snímek okna (scale css) → odečti rohy zápisu → úryvek (`browser_evaluate`) vykreslí výřez z už načteného
-  snímku přes okno (bez dalšího dotazu na archiv) → snímek prvku `#rodokmen-vyrez` v rozlišení zařízení do
-  `pracovni/ebad_<id>_<snímek>.png` → `vyrez.py` jako u jiných archivů:
-  ```js
-  async () => {
-    const [x0, y0, x1, y1] = [60, 245, 600, 435];   // rohy zápisu na snímku okna (CSS px)
-    const im = document.getElementById('scanImage'), r = im.getBoundingClientRect();
-    const k = im.naturalWidth / r.width, w = (x1 - x0) * k, h = (y1 - y0) * k;
-    document.getElementById('rodokmen-vyrez')?.remove();
-    const c = document.createElement('canvas');
-    c.id = 'rodokmen-vyrez'; c.width = Math.round(w); c.height = Math.round(h);
-    c.getContext('2d').drawImage(im, (x0 - r.left) * k, (y0 - r.top) * k, w, h, 0, 0, c.width, c.height);
-    const s = Math.min(1, innerWidth / w, innerHeight / h);
-    Object.assign(c.style, {position: 'fixed', left: 0, top: 0, width: w * s + 'px', height: h * s + 'px',
-      zIndex: 99999, pointerEvents: 'none'});
-    document.body.append(c);
-    return [c.width, c.height, location.href];
-  }
-  ```
-  Souřadnice ber z aktuálního snímku okna; snímek neotáčej ani nepřibližuj (úryvek počítá s výchozím zobrazením).
-  Před dalším krokem výřez odstraň: `document.getElementById('rodokmen-vyrez').remove()`.
+  trvalý odkaz, do `odkaz`; otevírej vždy touto adresou). Prohlížeč načte celý snímek v plném rozlišení. **Ulož ho
+  jednou do mezipaměti a dál pracuj z disku** – archiv už nedostane žádný další dotaz:
+  1. Už ho máš? `python3 -I tools/cache.py najdi <adresa snímku>` – vypíše cestu, pak prohlížeč neotevírej.
+  2. Jinak otevři adresu, počkej na načtení (pár s) a ulož ho (`browser_evaluate` s `filename: "pracovni/ebad.json"`):
+     ```js
+     () => {
+       const im = document.getElementById('scanImage');
+       if (!im || !im.complete || !im.naturalWidth) return 'snímek se ještě načítá – zkus to za chvíli';
+       const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+       c.getContext('2d').drawImage(im, 0, 0);
+       return JSON.stringify({w: c.width, h: c.height, adresa: location.href.split(';')[0],
+                              data: c.toDataURL('image/jpeg', 0.92)});
+     }
+     ```
+     a `python3 -I tools/cache.py uloz pracovni/ebad.json` (soubor .json pak smaže).
+  3. Náhled a výřez z uloženého snímku bez sítě: `python3 -I tools/ebadatelna.py snimek <matrikaId> <snímek>
+     pracovni/x.jpg [nahled] [x0,y0,x1,y1]` (archiválie `a-snimek`), dál `vyrez.py` jako u jiných archivů.
+  Bez Playwrightu (Claude in Chrome neumí výsledek uložit do souboru) ať snímek uloží uživatel (snímek obrazovky).
 - Starší snímky bývají z mikrofilmu nebo silně vybledlé – čti se zvýšeným kontrastem:
   `magick x.png -colorspace Gray -contrast-stretch 2%x30% x_k.png` (výřez pak dělej z kontrastní verze a poznamenej to v přepisu).
 - Svazek do `svazky.json` ručně (Ostatní portály, krok 4, klíč `ebad_<matrikaId>`, archiválie `ebad_a_<id>`).

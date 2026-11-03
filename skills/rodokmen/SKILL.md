@@ -185,6 +185,10 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
 - **Když nejde ani prohlížeč:** ať uživatel snímek otevře sám, uloží snímek obrazovky (nebo export snímku, má-li ho
   portál) do `pracovni/` a pošle adresu stránky – z ní je kniha a číslo snímku pro `odkaz`.
 - **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
+- **Mezipaměť obrázků:** co se stáhne přes brzdu (snímky, dlaždice), uloží se a příště se vezme z disku
+  (`tools/cache.py`, společná pro všechny projekty). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`). U MZA
+  a Třeboně ukládej snímky obrazovky jako `pracovni/<archiv>_<kniha>_<snímek>.png` a před otevřením snímku se podívej
+  do `pracovni/` a do deníku, jestli už ho nemáš.
 
 ### Pomocníci (subagenti) – šetrně
 Na velké kolo (např. „projdi 5 svazků a najdi všechny Nováky“) můžeš pustit 2–4 pomocníky paralelně.
@@ -287,7 +291,8 @@ Nedělej to pořád. Postup:
 | `aron_img.py <apu> info / <snímek> 1 pracovni/x.jpg / link <n> / svazek` | stáhne snímek, dá odkaz, zapíše svazek |
 | `trebon.py …` | matriky SOA Třeboň – zatím vypnuto (archiv nástroj od 2. 11. 2026 odmítá), čti v prohlížeči (`portaly.md`) |
 | `portafontium.py fara / info / snimek / link / svazek` | matriky SOA Plzeň (západní Čechy, Porta fontium) bez prohlížeče (faru zjisti na portálu) |
-| `ebadatelna.py link / a-link` | trvalý odkaz na snímek SOA Praha – ostatní příkazy zatím vypnuto (archiv nástroj od 2. 11. 2026 zakazuje), čti v prohlížeči (`portaly.md`) |
+| `ebadatelna.py link / a-link`, `snimek / a-snimek` | trvalý odkaz; náhled a výřez ze snímku uloženého z prohlížeče – stahovat nástroj nesmí (archiv od 2. 11. 2026 zakazuje), postup v `portaly.md` |
+| `cache.py stav / najdi <adresa> / uloz <soubor.json>` | sdílená mezipaměť obrázků (ukládá ji brzda sama); uložení snímku eBadatelny z prohlížeče |
 | `ahmp_search.sh "dotaz"`, `ahmp_scan.py XID snímek out.jpg` | matriky Prahy (AHMP) |
 | `policie_prihlasky.py Příjmení [Jméno] [od] [do]`, `karta <pořadí> out.jpg …` | pražské policejní přihlášky 1850–1914 (rodiny s dětmi a adresami), stažení karty |
 | `soal_zoomify.py <cesta nebo adresa> 0 out.jpg` | snímek SOA Litoměřice nebo ZA Opava (knihu najdi v prohlížeči; pozor na blokování) |
