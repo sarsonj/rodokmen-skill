@@ -314,20 +314,26 @@ def _plna_url(conn, url):
     return f"{'https' if https else 'http'}://{_host(conn)}{'' if not port or port == vychozi else f':{port}'}{url}"
 
 
-def _zapocti(host, velikost):
-    """Statistika pro slusne.py stav: kolik obrázků a dat se vzalo z mezipaměti místo z archivu."""
+def zapocti(host, velikost, z_disku=True):
+    """Statistika pro slusne.py stav: obrázek vzatý z mezipaměti místo z archivu (z_disku=True), nebo stažený
+    z archivu a uložený do mezipaměti (z_disku=False). Volá ji i ebadatelna.py a cache.py (snímky z prohlížeče)."""
     skupina, _ = _skupina(host)
     if not skupina:
         return
+    pocet, mb = ("z_mezipameti", "usetreno_mb") if z_disku else ("stazeno", "stazeno_mb")
     path = _cesta(skupina)
     try:
         with _Zamek(path + ".lock"):
             st = _nacti(path)
-            st["z_mezipameti"] = st.get("z_mezipameti", 0) + 1
-            st["usetreno_mb"] = round(st.get("usetreno_mb", 0) + velikost / 1024 ** 2, 2)
+            st[pocet] = st.get(pocet, 0) + 1
+            st[mb] = round(st.get(mb, 0) + velikost / 1024 ** 2, 2)
+            st.setdefault("pocitano_od", time.strftime("%Y-%m-%d"))
             _uloz(path, st)
     except OSError:
         pass
+
+
+_zapocti = zapocti
 
 
 class _Soubor:   # „socket“ pro odpověď z mezipaměti
@@ -408,7 +414,8 @@ def _zapni():
         if plna and r.status == 200 and not r.getheader("Content-Encoding"):
             data = r.read()             # obrázek uložit a vrátit volajícímu celý
             r.fp, r.length, r.chunked, r.will_close = io.BytesIO(data), len(data), False, True
-            _mezipamet.uloz_url(plna, data)   # jen opravdový obrázek (podle prvních bajtů)
+            if _mezipamet.uloz_url(plna, data):   # jen opravdový obrázek (podle prvních bajtů)
+                zapocti(host, len(data), z_disku=False)
         return r
 
     C.putrequest, C.getresponse, C.connect, C._slusne = putrequest, getresponse, connect_, True
@@ -597,11 +604,33 @@ def _stav():
                 print(f"  {f[:-5]}: odmítnutí za 24 h {len(odm)} (poslední {_cas(odm[-1])}), další stopka by trvala {delka}")
     if nic:
         print("  žádný web není zastavený")
-    usetreno = [(f[:-5], _nacti(os.path.join(d, f))) for f in sorted(os.listdir(d)) if f.endswith(".json")] if d else []
-    usetreno = [(w, st) for w, st in usetreno if st.get("z_mezipameti")]
-    if usetreno:
-        print("Z mezipaměti obrázků místo z archivu (tools/cache.py): " + ", ".join(
-            f"{w} {st['z_mezipameti']}× ({st.get('usetreno_mb', 0):g} MB)" for w, st in usetreno))
+    _stav_mezipameti(d)
+
+
+def _stav_mezipameti(d):
+    """Kolik obrázků se stáhlo z archivu a kolikrát se místo dalšího stažení vzaly z disku (tools/cache.py)."""
+    weby = [(f[:-5], _nacti(os.path.join(d, f))) for f in sorted(os.listdir(d)) if f.endswith(".json")] if d else []
+    weby = [(w, st) for w, st in weby if st.get("z_mezipameti") or st.get("stazeno")]
+    if not weby:
+        return
+    od = min(st.get("pocitano_od", "?") for _, st in weby)
+    print(f"Mezipaměť obrázků (tools/cache.py), počítáno od {od}:")
+    sz = sd = mz = md = 0
+    for w, st in weby:
+        z, d_, m1, m2 = st.get("stazeno", 0), st.get("z_mezipameti", 0), st.get("stazeno_mb", 0), st.get("usetreno_mb", 0)
+        sz, sd, mz, md = sz + z, sd + d_, mz + m1, md + m2
+        print(f"  {w}: z archivu {z}× ({_mb(m1)}), z disku {d_}× ({_mb(m2)}){_podil(z, d_)}")
+    if len(weby) > 1:
+        print(f"  celkem: z archivu {sz}× ({_mb(mz)}), z disku {sd}× ({_mb(md)}){_podil(sz, sd)}")
+
+
+def _mb(m):
+    return f"{m:.0f} MB" if m >= 10 else f"{m:.1f} MB"
+
+
+def _podil(z, d):
+    """Podíl dotazů na obrázky, které archiv díky mezipaměti nedostal."""
+    return f" – ušetřeno {100 * d / (z + d):.0f} % stažení" if z + d else ""
 
 
 def _odblokuj(web=None):

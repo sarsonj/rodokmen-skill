@@ -12,11 +12,15 @@ Mezipaměť je společná pro všechny projekty na počítači: ~/.cache/rodokme
 nejdéle nepoužité soubory se mažou samy. Celou složku lze kdykoli smazat, nástroje si obrázky stáhnou znovu.
 
 Použití (z kořene projektu):
-  cache.py stav                       -> kolik místa zabírá (ušetřené dotazy vypíše slusne.py stav)
+  cache.py stav                       -> kolik místa zabírá a kolik stažení z archivu ušetřila (podrobně slusne.py stav)
   cache.py uloz <soubor.json> [vystup.jpg]
                                       -> uloží snímek z prohlížeče eBadatelny (výsledek úryvku v reference/portaly.md,
                                          SOA Praha); soubor .json pak smaže
   cache.py najdi <adresa snímku>      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…), jinak kód 1
+                                         (nalezený snímek se počítá jako ušetřené otevření v prohlížeči)
+
+Počítá se jen to, co by jinak opravdu šlo z archivu znovu: u nástrojů přes brzdu každý obrázek vrácený z disku,
+u eBadatelny nalezení přes „najdi“ (ne výřezy a náhledy z ebadatelna.py, ty by se dělaly z disku i bez mezipaměti).
 """
 import base64, glob, hashlib, json, os, re, shutil, subprocess, sys
 from urllib.parse import parse_qsl, urlencode, urlsplit
@@ -158,6 +162,27 @@ def odvod(src, out, crop=None, zmenseni=1):
 EBAD = re.compile(r"ebadatelna\.soapraha\.cz/(d|a)/(\d+)/(\d+)")
 
 
+EBAD_WEB = "ebadatelna.soapraha.cz"
+
+
+def _slusne():
+    """Brzda tools/slusne.py ze stejné složky (python -I nepřidává složku skriptu do cesty)."""
+    d = os.path.dirname(os.path.abspath(__file__))
+    if d not in sys.path:
+        sys.path.insert(0, d)
+    import slusne
+    return slusne
+
+
+def _zapocti(host, velikost, z_disku=True):
+    """Statistika pro slusne.py stav (stažené z archivu / vzaté z disku). Bez brzdy se nic nepočítá."""
+    try:
+        slusne = _slusne()
+        slusne.zapocti(host, velikost, z_disku)
+    except Exception:   # noqa: BLE001 – statistika nesmí zastavit práci
+        pass
+
+
 def klic_ebadatelna(druh, xid, n):
     return f"ebadatelna/{druh}/{xid}/sn{int(n):04d}.jpg"
 
@@ -183,16 +208,27 @@ def main(a):
                 s += os.path.getsize(os.path.join(d, f))
         print(f"{KOREN}: {n} souborů, {s / 1024 ** 2:.0f} MB z {LIMIT / 1024 ** 3:g} GB "
               "(nejdéle nepoužité se nad limitem mažou samy)")
+        try:
+            slusne = _slusne()
+            slusne._stav_mezipameti(slusne._slozka())
+        except Exception:   # noqa: BLE001
+            pass
     elif a[0] == "uloz" and len(a) > 1:
         d = _ze_souboru(a[1])
         m = EBAD.search(d.get("adresa", ""))
         if not m or not str(d.get("data", "")).startswith("data:image/"):
             sys.exit("soubor není výsledek úryvku pro eBadatelnu (chybí adresa snímku nebo obrázek)")
-        p = uloz(klic_ebadatelna(*m.groups()), base64.b64decode(d["data"].split(",", 1)[1]))
+        klic = klic_ebadatelna(*m.groups())
+        znovu = os.path.exists(cesta(klic))   # snímek už byl uložený – prohlížeč ho načetl z archivu zbytečně
+        data = base64.b64decode(d["data"].split(",", 1)[1])
+        p = uloz(klic, data)
+        _zapocti(EBAD_WEB, len(data), z_disku=False)
         if not p:
             sys.exit(f"do {KOREN} nejde zapisovat")
         os.remove(a[1])
         print("uloženo:", p, f"({d.get('w')} × {d.get('h')})")
+        if znovu:
+            print("pozor: tenhle snímek už v mezipaměti byl – příště se nejdřív zeptej „cache.py najdi <adresa>“")
         if len(a) > 2:
             os.makedirs(os.path.dirname(os.path.abspath(a[2])), exist_ok=True)
             shutil.copyfile(p, a[2])
@@ -202,6 +238,8 @@ def main(a):
         p = cesta(klic_ebadatelna(*m.groups())) if m else None
         if not p or not os.path.exists(p):
             sys.exit(1)
+        _pouzito(p)
+        _zapocti(EBAD_WEB, os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči
         print(p)
     else:
         sys.exit(__doc__)

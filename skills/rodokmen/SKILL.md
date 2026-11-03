@@ -187,6 +187,7 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
 - **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
 - **Mezipaměť obrázků:** co se stáhne přes brzdu (snímky, dlaždice), uloží se a příště se vezme z disku
   (`tools/cache.py`, společná pro všechny projekty). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`).
+  Kolik stažení z archivu ušetřila, ukáže `python3 -I tools/cache.py stav` (stažené vs. vzaté z disku, po webech).
 
 ### Pomocníci (subagenti) – šetrně
 Na velké kolo (např. „projdi 5 svazků a najdi všechny Nováky“) můžeš pustit 2–4 pomocníky paralelně.
