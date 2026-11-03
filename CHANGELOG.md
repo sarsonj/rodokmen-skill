@@ -6,6 +6,41 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.6.4 – 3. 11. 2026
+
+SOA Praha jen přes prohlížeč, orientace v knihách řazených po vsích, opravy nástrojů.
+
+**Nové**
+- SOA Praha (eBadatelna) od 2. 11. nástroj rodokmen zakazuje (robots.txt, HTTP 403). Skill proto čte středočeské
+  matriky a archiválie jen v prohlížeči eBadatelny: výřez zápisu vykreslí ze snímku, který prohlížeč už načetl,
+  a uloží snímek obrazovky. `ebadatelna.py` je zatím vypnutý (kromě odkazů) a brzda skripty na soapraha.cz
+  zastaví (#72).
+- Nástroj `mapa_knihy.py` pro knihy řazené po vsích: horní pruhy každého N-tého snímku pod sebou (stavba knihy
+  na jednom obrázku) nebo sloupec se jmény z několika snímků vedle sebe. ARON, Porta fontium, AHMP, nebo
+  z uložených snímků obrazovky (#12).
+- Brzda: `slusne.py zastav <web>` – když archiv odmítne prohlížeč, stopka platí i pro skripty a pomocníky.
+
+**Opravy**
+- Policejní přihlášky: když portál přiškrtí přístup, umí vrátit kartu úplně jiné osoby. Nástroj teď ověří,
+  že karta patří k hledání, jinak skončí chybou a nic neuloží. Brzda pro digi.nacr.cz 1 dotaz za 4 s.
+- Vějíř: předek, který je v rodokmenu dvakrát, má na obou místech celou větev předků (#31). Velký plakát
+  na pomalejším počítači už nehlásí falešnou chybu.
+- Import GEDCOM z MyHeritage: český znak rozdělený na konci řádku se už nerozbije.
+- `aron_img.py`: méně souběžných stahování (na macOS padal překlad adres), srozumitelné hlášky u svazku bez
+  snímků, neexistujícího svazku a výpadku certifikátu ARONu; bez argumentů vypíše nápovědu (stejně
+  `kramerius.py`).
+- `kontrola.py`: žádné falešné poplachy u „nejsou dluhy“ a u data dovětku.
+- `overit.py` si vytvoří výstupní složku sám.
+
+**Návody**
+- Čtení v prohlížeči: tempo 5–10 s mezi stránkami, jeden prohlížeč na archiv, při 403/429/503 hned skončit;
+  když nejde ani prohlížeč, pošle snímky obrazovky uživatel.
+- `matriky.md`: knihy řazené po vsích – nejdřív popis knihy a rejstřík, mapa knihy, montáž sloupců, pasti.
+- MZA: doména actapublica.eu archivu nepatří.
+
+Blokaci eBadatelny nahlásil george190321 (#72), chybu vějíře michalspondr (#31). Děkuji i všem, kdo poslali
+zkušenosti e-mailem.
+
 ## 0.6.3 – 3. 11. 2026
 
 Opravy po hlášeních z praxe.
