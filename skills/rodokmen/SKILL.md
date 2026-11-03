@@ -186,9 +186,7 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
   portál) do `pracovni/` a pošle adresu stránky – z ní je kniha a číslo snímku pro `odkaz`.
 - **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
 - **Mezipaměť obrázků:** co se stáhne přes brzdu (snímky, dlaždice), uloží se a příště se vezme z disku
-  (`tools/cache.py`, společná pro všechny projekty). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`). U MZA
-  a Třeboně ukládej snímky obrazovky jako `pracovni/<archiv>_<kniha>_<snímek>.png` a před otevřením snímku se podívej
-  do `pracovni/` a do deníku, jestli už ho nemáš.
+  (`tools/cache.py`, společná pro všechny projekty). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`).
 
 ### Pomocníci (subagenti) – šetrně
 Na velké kolo (např. „projdi 5 svazků a najdi všechny Nováky“) můžeš pustit 2–4 pomocníky paralelně.
