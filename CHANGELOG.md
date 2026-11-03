@@ -6,6 +6,34 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.7.0 – 3. 11. 2026
+
+Sdílená mezipaměť obrázků: každý snímek se z archivu stáhne jen jednou. A kontrola, která nenechá prázdné rody a mapu.
+
+**Nové**
+- Mezipaměť obrázků pro všechny projekty na počítači (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, staré se mažou
+  samy). Snímek nebo dlaždici, kterou už nějaký nástroj stáhl, vezme příště z disku bez dotazu na archiv. Porta
+  fontium dělá výřezy a náhledy z uloženého snímku. Kolik se ušetřilo, ukáže `cache.py stav` (#71, PR #60).
+- eBadatelna (SOA Praha): snímek načtený v prohlížeči se uloží do mezipaměti a dál se čte z disku. Při návratu
+  ke snímku (rejstřík, opakované čtení) už archiv nedostane žádný dotaz. `cache.py uloz … --nahled x.jpg` uloží
+  snímek a rovnou udělá náhled 1600 px.
+- `kontrola.py` hlásí známé pradědečky a prababičky (8–15) bez rodu v `LINES` a doložené předky, jejichž obec
+  chybí na mapě. Upozornění, že je čas napsat příběh rodu, přijde i bez vyplněných rodů.
+
+**Opravy**
+- Hlídač sítě už nezamítá heredoc, který jen obsahuje text „import http.client“ v řetězci.
+- `aron_img.py` si vytvoří výstupní složku sám.
+
+**Návody**
+- MZA: listovat v otevřené stránce (návrat je z mezipaměti prohlížeče), stránku neobnovovat. SOA Třeboň stahuje
+  při každém zobrazení snímku všechno znovu – přečíst všechny potřebné zápisy najednou.
+- Fáze 2: rod do `LINES` hned, jak je znám pradědeček nebo prababička, a každou novou obec do mapy.
+- `matriky.md`: náboženství dětí ze smíšených manželství, jiné křestní jméno než v dospělosti, jméno opravené
+  v zápisu, ale původní v rejstříku.
+
+Mezipaměť navrhl MarekLu (#71) a první verzi napsal AdamFiser (PR #60). Děkuji i všem, kdo poslali zkušenosti
+e-mailem.
+
 ## 0.6.4 – 3. 11. 2026
 
 SOA Praha jen přes prohlížeč, orientace v knihách řazených po vsích, opravy nástrojů.
