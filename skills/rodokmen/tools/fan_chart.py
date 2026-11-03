@@ -80,6 +80,21 @@ def gen(k):
     return k.bit_length() - 1
 
 
+# Předek v rodokmenu vícekrát (SAME = {alias: hlavní číslo}): na místě aliasu kresli hlavní osobu i celou její větev
+# předků (alias << d | (k − (hlavní << d))), jinak by sektory nad aliasem zůstaly prázdné (#31).
+SAME = ns.get("SAME", {})
+VLASTNI = set(P) - set(SAME)   # osoby bez zrcadlených kopií – pro statistiku
+for _a, _c in sorted(SAME.items()):
+    for _k in sorted(P):
+        _d = gen(_k) - gen(_c)
+        if _d >= 0 and _k >> _d == _c:
+            _t = (_a << _d) | (_k - (_c << _d))
+            if _d == 0 or _t not in P:
+                P[_t] = P[_k]
+            if _k in HREFS:
+                HREFS.setdefault(_t, HREFS[_k])
+
+
 def angles(k):
     g = gen(k); n = 2 ** g; i = k - n
     span = 360 / n
@@ -181,7 +196,7 @@ for k in slots:
             texts.append(f'<g {tw}><text y="{f1 * 0.35:.1f}" text-anchor="middle" font-size="{f1:.1f}" font-weight="600" {style}>{html.escape(name)}</text></g>')
 
 # statistics
-known = [k for k, p in P.items() if k > 1 and not p["n"].startswith("otec neuveden")]
+known = [k for k in VLASTNI if k > 1 and not P[k]["n"].startswith("otec neuveden")]
 doc = [k for k in known if P[k].get("st") == "doc"]
 zpath = os.path.join(ROOT, "data", "zaznamy.json")
 recs = json.load(open(zpath, encoding="utf-8")) if os.path.exists(zpath) else []
