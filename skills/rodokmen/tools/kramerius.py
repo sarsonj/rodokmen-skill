@@ -6,6 +6,7 @@ import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abs
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
+if len(sys.argv)<2 or sys.argv[1] in ('-h','--help'): sys.exit(__doc__)
 q=sys.argv[1]; rows=sys.argv[2] if len(sys.argv)>2 else '30'
 p={'q':q+' AND fedora.model:page','fl':'PID,root_title,root_pid,datum_str,details,dostupnost','rows':rows,'wt':'json','hl':'true','hl.fl':'text_ocr','hl.fragsize':'250'}
 u='https://kramerius5.nkp.cz/search/api/v5.0/search?'+urllib.parse.urlencode(p)

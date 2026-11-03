@@ -11,7 +11,7 @@ Použití:
 
 Popis svazků se ukládá do pracovni/.cache_aron/<apu_id>.json (ve složce projektu).
 """
-import glob, json, math, os, shutil, subprocess, sys, tempfile, time, urllib.request
+import glob, json, math, os, shutil, ssl, subprocess, sys, tempfile, time, urllib.error, urllib.request
 import concurrent.futures as cf
 import xml.etree.ElementTree as ET
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
@@ -131,11 +131,34 @@ def bez_snimku(vol, tiles, n):
     sys.exit(f"Snímek {n} ve svazku není – svazek má snímky {min(tiles)}–{max(tiles)} (aron_img.py <apu_id> info).")
 
 
+SIT = (urllib.error.URLError, ssl.SSLError, ConnectionError, TimeoutError)   # chyby sítě (ne místních souborů)
+
+
+def chyba_archivu(e):
+    """Výpadek na straně ARONu (certifikát, jiná stránka místo snímku, server neodpovídá): hláška místo tracebacku."""
+    duvod = getattr(e, "reason", e)
+    if isinstance(duvod, ssl.SSLError) or isinstance(e, ET.ParseError):
+        sys.exit("ARON: obrázkový server má neplatný certifikát nebo místo snímku vrací jinou stránku – chyba na straně "
+                 f"archivu ({type(duvod).__name__}). Zkus to později; info a link fungují dál, svazky jde plánovat. "
+                 "Kontrolu certifikátu nevypínej.")
+    if isinstance(e, urllib.error.HTTPError):
+        sys.exit(f"ARON vrátil chybu HTTP {e.code} – chyba na straně archivu, zkus to později.")
+    sys.exit(f"ARON neodpovídá ({duvod}) – zkus to později.")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3 or sys.argv[1] in ("-h", "--help"):
         sys.exit(__doc__)
     apu = sys.argv[1]
-    vol = volume(apu)
+    try:
+        vol = volume(apu)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            sys.exit(f"Svazek {apu} v ARONu není (HTTP 404) – zkontroluj apu_id (celé id z aron_search.py); "
+                     "některé svazky z hledání ARON samotný nezveřejňuje, zkus jiný svazek fary.")
+        chyba_archivu(e)
+    except SIT + (ValueError,) as e:
+        chyba_archivu(e)
     tiles = tiles_by_order(vol)
     if sys.argv[2] == "info":
         print(vol["name"], "|", vol.get("description"))
@@ -167,5 +190,8 @@ if __name__ == "__main__":
     crop = tuple(float(v) for v in sys.argv[5].split(",")) if len(sys.argv) > 5 else None
     if n not in tiles:
         bez_snimku(vol, tiles, n)
-    path, dims = fetch_image(tiles[n], lo, out, crop)
+    try:
+        path, dims = fetch_image(tiles[n], lo, out, crop)
+    except SIT + (ET.ParseError,) as e:
+        chyba_archivu(e)
     print(path, "full size", dims)
