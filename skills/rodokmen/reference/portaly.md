@@ -107,8 +107,10 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   po vsích **rozvržení stran** („1–48 Ves A, 49–82 Ves B …“, každá ves může mít vlastní stránkování) – neodhaduj snímek
   podle roku, ale podle stran vsi; je-li rejstřík, začni jím.
 - Snímek: `https://ebadatelna.soapraha.cz/d/<matrikaId>/<snímek>` (archiválie `/a/<archivalieId>/<snímek>`, zároveň
-  trvalý odkaz, do `odkaz`; otevírej vždy touto adresou). Prohlížeč načte celý snímek v plném rozlišení. **Ulož ho
-  jednou do mezipaměti a dál pracuj z disku** – archiv už nedostane žádný další dotaz:
+  trvalý odkaz, do `odkaz`; šipky „<“ a „>“ v prohlížeči na tuto adresu taky přejdou). Prohlížeč načte celý snímek
+  v plném rozlišení. **Ulož ho jednou do mezipaměti a dál pracuj z disku** – archiv už nedostane žádný další dotaz.
+  Při listování ulož každý zobrazený snímek hned (uložení archiv nic nestojí) a před dalším krokem se podívej, jestli
+  další snímek už nemáš – pak ho čti z disku a v prohlížeči přejdi rovnou na adresu toho, který ještě nemáš:
   1. Už ho máš? `python3 -I tools/cache.py najdi <adresa snímku>` – vypíše cestu, pak prohlížeč neotevírej.
   2. Jinak otevři adresu, počkej na načtení (pár s) a ulož ho (`browser_evaluate` s `filename: "pracovni/ebad.json"`):
      ```js
@@ -117,7 +119,7 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
        if (!im || !im.complete || !im.naturalWidth) return 'snímek se ještě načítá – zkus to za chvíli';
        const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
        c.getContext('2d').drawImage(im, 0, 0);
-       return JSON.stringify({w: c.width, h: c.height, adresa: location.href.split(';')[0],
+       return JSON.stringify({w: c.width, h: c.height, adresa: location.origin + new URL(im.src).pathname.split(';')[0],
                               data: c.toDataURL('image/jpeg', 0.92)});
      }
      ```
