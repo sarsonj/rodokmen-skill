@@ -16,9 +16,17 @@ PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python3?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)
 SHELL = re.compile(CMD + r"(?:(?:bash|sh|zsh)\s+|\./)(\S+\.sh)\b")
 SIT_MOD = r"(?:requests|httpx|aiohttp|urllib3|pycurl|socket|urllib\.request|http\.client)\b"
 ZAC = r"(?:^|[;\"'])\s*"   # začátek řádku, příkazu za středníkem nebo kódu v python -c "…"
-SIT_PY = re.compile(ZAC + r"from\s+" + SIT_MOD +
-                    "|" + ZAC + r"import\s+(?:[\w.]+(?:\s+as\s+\w+)?\s*,\s*)*" + SIT_MOD +   # i „import json, urllib.request“
-                    "|" + ZAC + r"from\s+urllib\s+import\s+.*\brequest\b|urllib\.request\.|urlopen\(", re.M)
+
+
+def _sit_py(zac):
+    return re.compile(zac + r"from\s+" + SIT_MOD +
+                      "|" + zac + r"import\s+(?:[\w.]+(?:\s+as\s+\w+)?\s*,\s*)*" + SIT_MOD +   # i „import json, urllib.request“
+                      "|" + zac + r"from\s+urllib\s+import\s+.*\brequest\b|urllib\.request\.|urlopen\(", re.M)
+
+
+SIT_PY = _sit_py(ZAC)
+SIT_PY_RADEK = _sit_py(r"(?:^|;)\s*")   # kód v heredocu: import jen na začátku řádku, ne „import http.client“ v řetězci
+HEREDOC = re.compile(r"<<-?\s*['\"]?\w+|@['\"]\s*\n")   # bash <<EOF, PowerShell @' … '@
 PS = re.compile(r"\b(Invoke-WebRequest|Invoke-RestMethod|iwr|irm|curl\.exe|wget|Start-BitsTransfer|Net\.WebClient|"
                 r"HttpClient|DownloadString|DownloadFile)\b", re.I)
 URL = re.compile(r"https?://([^/\s\"'`:;)]+)", re.I)
@@ -76,7 +84,7 @@ def posoudit(tool, cmd, cwd):
                 continue
             if SIT_PY.search(obsah):
                 return f"Python skript {args[0]} používá síť"
-        if SIT_PY.search(cmd):                   # python -c "…" nebo heredoc s kódem v příkazu
+        if (SIT_PY_RADEK if HEREDOC.search(cmd) and " -c" not in cmd else SIT_PY).search(cmd):   # heredoc / python -c "…"
             return "Python se síťovým importem přímo v příkazu"
     for m in SHELL.finditer(cmd):
         obsah = cist(m.group(1), cwd)

@@ -83,6 +83,8 @@ PRIPADY = [
     ("Bash", "grep -n urllib tools/aron_img.py && cat tools/ahmp_search.sh", P),
     ("Bash", "git commit -m \"$(cat <<'EOF'\nUse curl https://x.cz and python tools/aron_img.py, it's fine\nEOF\n)\"", P),
     ("Bash", "python -I -X utf8 - <<'EOF'\nimport json\nprint(json.dumps({}))\nEOF", P),
+    ("Bash", "python3 - <<'EOF'\ns = open('x.py').read().replace(\"import http.client\", \"import http.client, ssl\")\nEOF", P),
+    ("Bash", "python3 - <<'EOF'\nimport os; import http.client\nEOF", Z),
     ("Bash", "cd web && npm run data", P),
     ("Bash", 'echo "curl https://example.com" >> pracovni/poznamka.txt', P),
     ("Bash", 'echo "Plaňany, Všeruby, Dolní Bělá" > pracovni/x.txt', P),
