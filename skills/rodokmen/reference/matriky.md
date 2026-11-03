@@ -58,9 +58,12 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
    knihy. Snímek ≈ začátek oddílu + strana/2 (folio/2), dolaď podle čísla na snímku. Uvnitř písmene jde rejstřík podle let.
    Klíč písmeno/tom → ves zjistíš ze záhlaví stránek; sestav si tabulku do deníku.
 3. **Mapa knihy:** z každého 5.–30. snímku jen horní pruh (název vsi, rok) v malém rozlišení, slepit pod sebe s číslem
-   snímku → stavba celé knihy na jednom obrázku. Pak v plném rozlišení jen oddíl hledané vsi. Mapu oddílů zapiš do deníku.
+   snímku → stavba celé knihy na jednom obrázku: `python3 -I tools/mapa_knihy.py aron|pf|ahmp <kniha> <od> <do> [krok]`
+   (u archivů jen v prohlížeči z uložených snímků obrazovky: `mapa_knihy.py soubory pracovni/x_*.png`). Pak v plném
+   rozlišení jen oddíl hledané vsi. Mapu oddílů zapiš do deníku.
 4. **Montáž sloupců:** uvnitř oddílu vyřízni sloupec se jmény (ženich/nevěsta, dítě, ves na okraji – aspoň 35 % šířky
-   strany, užší usekne jména) ze 4–8 snímků a slep vedle sebe; celý zápis čti jen u kandidátů. U vybledlých knih se
+   strany, užší usekne jména) ze 4–8 snímků a slep vedle sebe (`mapa_knihy.py … <od> <do> 1 --vedle --ostre --vyrez
+   x0,y0,x1,y1`); celý zápis čti jen u kandidátů. U vybledlých knih se
    zápisy snadno přehlédnou – tam raději celé strany.
 5. **Pasti:** sňatek bývá v oddílu vsi nevěsty, ale některé fary řadily podle ženicha (Držkov); starší knihy mají
    narozené, oddané a zemřelé proložené a bez obsahu; čísla stran v samostatném rejstříku nemusí sedět se stránkováním
