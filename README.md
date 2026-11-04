@@ -93,7 +93,7 @@ Pak Claude Code restartujte (do běžící relace se nový plugin nenačte).
   O nových verzích se dozvíte přes **Watch → Custom → Releases** na GitHubu.
 
 Po aktualizaci Claude Code restartujte. Rozpracovaný projekt pak Claude při další práci sám nabídne aktualizovat
-na novou verzi (vaše data zůstanou, změněné soubory webu zazálohuje do `pracovni/`).
+na novou verzi (vaše data i vlastní úpravy webu a nástrojů zůstanou, změny šablony se do nich sloučí).
 
 ### Varianta B – ručně
 Stáhněte repozitář (zelené tlačítko **Code → Download ZIP** na GitHubu, nebo `git clone`) a zkopírujte složku

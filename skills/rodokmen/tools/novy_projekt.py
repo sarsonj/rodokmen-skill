@@ -11,10 +11,14 @@ vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (
 a .claude/launch.json (náhled v Claude desktop). Do .claude/settings.json doplní zákaz přímého curl/wget
 (stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
 Existující data nepřepisuje.
-Aktualizace staršího projektu (znovu spustit na stejnou složku): tools/ se přepíše vždy a soubory webu,
-které se liší od nové šablony, taky – jejich staré verze se nejdřív uloží do pracovni/zaloha_web_<datum>/.
+Do .skill_sablona/ uloží kopii šablony web/ a tools/, ze které projekt vznikl (patří do gitu s projektem).
+Aktualizace staršího projektu (znovu spustit na stejnou složku) rozhodne o každém souboru web/ a tools/ podle
+tří verzí (uložená šablona, projekt, nová šablona): neupravený soubor přepíše, vlastní úpravu nechá, když se šablona
+nezměnila, a jinak sloučí po řádcích (git merge-file). Při konfliktu soubor nechá a novou verzi uloží do
+pracovni/zaloha_<datum>/nova_sablona/. Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze
+změněných souborů uloží do pracovni/zaloha_<datum>/puvodni/.
 """
-import filecmp, json, os, shutil, sys, time
+import json, os, shutil, subprocess, sys, tempfile, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -28,25 +32,106 @@ def copy(src, out):
     shutil.copy2(src, out)
 
 
-def copy_tree(src, dst, backup=None):
-    """Zkopíruje chybějící soubory. S backup= přepíše i ty, které se liší, a starou verzi uloží do backup/."""
-    changed = []
+SKIP = ("node_modules", "dist", ".astro", "__pycache__")
+SABLONA = ".skill_sablona"   # kopie šablony, ze které projekt vznikl (základ pro tříčestnou aktualizaci)
+
+
+def copy_tree(src, dst):
+    """Zkopíruje chybějící soubory."""
     for base, dirs, files in os.walk(src):
-        dirs[:] = [d for d in dirs if d not in ("node_modules", "dist", ".astro", "__pycache__")]
+        dirs[:] = [d for d in dirs if d not in SKIP]
         rel = os.path.relpath(base, src)
         os.makedirs(os.path.join(dst, rel), exist_ok=True)
         for f in files:
             new, out = os.path.join(base, f), os.path.join(dst, rel, f)
             if not os.path.lexists(out):
                 copy(new, out)
-            elif backup and (os.path.islink(out) or not filecmp.cmp(new, out, shallow=False)):
-                keep = os.path.join(backup, os.path.normpath(os.path.join(rel, f)))
-                os.makedirs(os.path.dirname(keep), exist_ok=True)
-                if not os.path.islink(out):
-                    shutil.copy2(out, keep)
-                copy(new, out)
-                changed.append(os.path.normpath(os.path.join(rel, f)))
-    return changed
+
+
+def soubory(src):
+    """Relativní cesty souborů šablony (bez závislostí a buildu)."""
+    for base, dirs, files in os.walk(src):
+        dirs[:] = [d for d in dirs if d not in SKIP]
+        for f in files:
+            yield os.path.relpath(os.path.join(base, f), src)
+
+
+def cti(p):
+    with open(p, "rb") as f:
+        return f.read()
+
+
+def zapis(p, data, mode_z=None):
+    if os.path.islink(p):   # nepsat přes symlink mimo projekt
+        os.remove(p)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "wb") as f:
+        f.write(data)
+    if mode_z:
+        shutil.copymode(mode_z, p)
+
+
+def lf(data):
+    """Konce řádků LF – CRLF z gitu na Windows se nepočítá jako úprava (binární soubory beze změny)."""
+    return data if b"\0" in data else data.replace(b"\r\n", b"\n")
+
+
+def sloucit(nase, zaklad, nova):
+    """Sloučí po řádcích přes `git merge-file`. Vrátí (výsledek, bez konfliktu); bez gitu nebo při chybě (None, False)."""
+    git = shutil.which("git")
+    if not git:
+        return None, False
+    d = tempfile.mkdtemp(prefix="slouceni_")
+    try:
+        cesty = [os.path.join(d, n) for n in ("projekt", "puvodni_sablona", "nova_sablona")]
+        for p, data in zip(cesty, (nase, zaklad, nova)):
+            zapis(p, data)
+        r = subprocess.run([git, "merge-file", "-p", "-L", "projekt", "-L", "puvodni_sablona", "-L", "nova_sablona",
+                            *cesty], capture_output=True)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    if not 0 <= r.returncode <= 127:   # chyba (např. binární soubor); 1–127 = počet konfliktů
+        return None, False
+    return r.stdout, r.returncode == 0
+
+
+def aktualizuj(src, dst, cast, jmena, zaloha, vysl):
+    """Aktualizuje soubory `jmena` ze src do dst/cast podle tří verzí: původní šablona (dst/.skill_sablona/cast),
+    projekt a nová šablona. Novou šablonu pak uloží jako původní. Výsledek přidá do vysl[kategorie]."""
+    for rel in jmena:
+        new, out, puv = os.path.join(src, rel), os.path.join(dst, cast, rel), os.path.join(dst, SABLONA, cast, rel)
+        nova = cti(new)
+        if rel.endswith(".sh"):   # skill naklonovaný na Windows (core.autocrlf) má CRLF – Git Bash by skript nespustil
+            nova = nova.replace(b"\r\n", b"\n")
+        nase = lf(cti(out)) if os.path.isfile(out) and not os.path.islink(out) else None   # symlink jen přepsat
+        zaklad = lf(cti(puv)) if os.path.isfile(puv) else None
+        jmeno = cast + "/" + rel.replace(os.sep, "/")
+        if nase is None or nase == zaklad:   # chybí, nebo bez vlastních úprav
+            if nase != lf(nova):
+                if os.path.lexists(out):
+                    vysl["prepsano"].append(jmeno)
+                zapis(out, nova, new)
+        elif nase == lf(nova):
+            pass
+        elif zaklad == lf(nova):   # šablona beze změny
+            vysl["ponechano"].append(jmeno)
+        elif zaklad is None:   # projekt ze starší verze bez uložené šablony: přepsat, starou verzi zazálohovat
+            keep = os.path.join(zaloha, "puvodni", cast, rel)
+            os.makedirs(os.path.dirname(keep), exist_ok=True)
+            shutil.copy2(out, keep)
+            zapis(out, nova, new)
+            vysl["zalohovano"].append(jmeno)
+        else:
+            sloucene, ok = sloucit(nase, zaklad, lf(nova))
+            if ok:
+                zapis(out, sloucene)
+                vysl["slouceno"].append(jmeno)
+            else:   # konflikt: projekt nechat, novou verzi (a návrh s konflikty) uložit do zálohy
+                zapis(os.path.join(zaloha, "nova_sablona", cast, rel), nova, new)
+                if sloucene is not None:
+                    zapis(os.path.join(zaloha, "nova_sablona", cast, rel + ".konflikt"), sloucene)
+                vysl["konflikt"].append(jmeno)
+        zapis(puv, nova, new)
 
 
 SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
@@ -120,19 +205,21 @@ def main():
             src = os.path.join(SKILL, "template", "ukazka_" + sub)
             if os.path.isdir(src):
                 copy_tree(src, os.path.join(dst, sub))
-    web = os.path.join(dst, "web")
-    backup = os.path.join(dst, "pracovni", "zaloha_web_" + time.strftime("%Y%m%d-%H%M%S"))
-    changed = copy_tree(os.path.join(SKILL, "template", "web"), web, backup if os.path.isdir(web) else None)
+    zaloha = os.path.join(dst, "pracovni", "zaloha_" + time.strftime("%Y%m%d-%H%M%S"))
+    vysl = {k: [] for k in ("prepsano", "zalohovano", "slouceno", "ponechano", "konflikt")}
+    sablona_webu = os.path.join(SKILL, "template", "web")
+    aktualizuj(sablona_webu, dst, "web", sorted(soubory(sablona_webu)), zaloha, vysl)
     tools = os.path.join(dst, "tools")
     os.makedirs(tools, exist_ok=True)
-    for f in os.listdir(os.path.join(SKILL, "tools")):
-        if f.endswith((".py", ".sh")) and f != "novy_projekt.py":
-            copy(os.path.join(SKILL, "tools", f), os.path.join(tools, f))   # nástroje vždy aktualizovat
-            if f.endswith(".sh"):   # skill naklonovaný na Windows (core.autocrlf) má CRLF – Git Bash by skript nespustil
-                p = os.path.join(tools, f)
-                data = open(p, "rb").read()
-                if b"\r\n" in data:
-                    open(p, "wb").write(data.replace(b"\r\n", b"\n"))
+    nastroje = sorted(f for f in os.listdir(os.path.join(SKILL, "tools"))
+                      if f.endswith((".py", ".sh")) and f != "novy_projekt.py")
+    aktualizuj(os.path.join(SKILL, "tools"), dst, "tools", nastroje, zaloha, vysl)
+    for f in nastroje:   # i ponechaný vlastní .sh s CRLF: Git Bash by skript nespustil
+        p = os.path.join(tools, f)
+        if f.endswith(".sh") and os.path.isfile(p) and not os.path.islink(p):
+            data = cti(p)
+            if b"\r\n" in data:
+                zapis(p, data.replace(b"\r\n", b"\n"))
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
@@ -144,11 +231,19 @@ def main():
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)
-    if changed:
-        print(f"Web aktualizován na novou šablonu ({len(changed)} souborů). Původní verze jsou v {backup}:")
-        for f in changed:
-            print("  web/" + f)
-        print("Pokud jste vzhled webu upravovali, převezměte úpravy ze zálohy. Pak `npm install` a `npm run data` ve web/.")
+    for k, popis in (("prepsano", "Přepsáno novou verzí (bez vlastních úprav)"),
+                     ("zalohovano", "Přepsáno, původní verze je v " + os.path.join(zaloha, "puvodni")
+                      + " (projekt neměl uloženou šablonu – vlastní úpravy převezměte ze zálohy)"),
+                     ("slouceno", "Sloučeno (vlastní úpravy i změny šablony)"),
+                     ("ponechano", "Ponecháno (vlastní úpravy, šablona beze změny)"),
+                     ("konflikt", "Ke kontrole (konflikt: soubor zůstal beze změny, nová verze a návrh sloučení"
+                      " s konflikty jsou v " + os.path.join(zaloha, "nova_sablona") + ")")):
+        if vysl[k]:
+            print(f"{popis}, {len(vysl[k])}:")
+            for f in vysl[k]:
+                print("  " + f)
+    if any(f.startswith("web/") for k in ("prepsano", "zalohovano", "slouceno") for f in vysl[k]):
+        print("Ve web/ pak `npm install` a `npm run data`.")
 
 
 if __name__ == "__main__":
