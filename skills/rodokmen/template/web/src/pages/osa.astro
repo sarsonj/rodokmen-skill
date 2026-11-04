@@ -36,9 +36,11 @@ function geo(r) {
     if (b.from == null) [s, s1] = [b.to - 5, b.to];            // „* před 1720“
     else if (b.to == null) [s, s1] = [b.from, b.from + 5];     // „* po 1700“
     else [s, s1] = [b.from, wide(b) ? b.to : b.from];
-  } else if (d) {
-    [s, s1] = [e0 - 10, e0];                                    // známe jen úmrtí: krátký pruh s vybledlým začátkem
-  } else return null;
+  } else {                                                      // bez narození: krátký pruh s vybledlým začátkem
+    const first = d ? e0 : r.marriage ? (r.marriage.from ?? r.marriage.to) : null;   // před úmrtím nebo sňatkem
+    if (first == null) return null;
+    [s, s1] = [first - 10, first];
+  }
   e = Math.max(e, s + 1);
   s1 = Math.min(s1, e);
   e0 = Math.min(Math.max(e0, s1), e);
@@ -54,10 +56,13 @@ function vek(e, b) {
 const geos = T.rows.map(geo);
 const rows = T.rows.map((r, i) => {
   const g = geos[i];
-  const kid = r.k > 1 ? geos[idx[r.k >> 1]] : null;
+  const kidRow = r.k > 1 && idx[r.k >> 1] != null ? T.rows[idx[r.k >> 1]] : null;
+  const kid = kidRow ? geos[idx[r.k >> 1]] : null;
   const lx = g ? x(g.s) + 3 : kid ? x(kid.s) + 3 : PAD;   // osoba bez dat: jméno u narození dítěte
   const tip = [`${r.name}${r.years ? ` (${r.years})` : ''}`, r.birth && `* ${r.birth.text}`,
-    r.marriage && `× ${r.marriage.text}${vek(r.marriage, r.birth)}`, r.death && `† ${r.death.text}${vek(r.death, r.birth)}`,
+    r.marriage && `× ${r.marriage.text}${vek(r.marriage, r.birth)}`,
+    kidRow?.birth && `dítě ${kidRow.name} * ${kidRow.birth.text}${vek(kidRow.birth, r.birth)}`,
+    r.death && `† ${r.death.text}${vek(r.death, r.birth)}`,
     r.living && 'žije'].filter(Boolean).join('\n');
   const parents = [idx[2 * r.k], idx[2 * r.k + 1]];
   return { r, i, g, lx, tip, y: cy(i), c: color(r), op: r.uncertain ? 0.3 : 0.55, parents };
@@ -76,7 +81,7 @@ for (let y = Math.ceil(T.from / 10) * 10; y <= T.to; y += 10) decades.push(y);
         {decades.map((y) => <line x1={x(y)} x2={x(y)} y1={y % 50 ? 16 : 12} y2="22" />)}
         {decades.filter((y) => y % 20 === 0).map((y) => <text x={x(y)} y="11" text-anchor="middle">{y}</text>)}
       </svg>
-      <svg class="osa" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Časová osa předků">
+      <svg class="osa" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-label="Časová osa předků">
         <defs>
           {rows.filter((o) => o.g).map(({ i, g, c, op }) => (
             <linearGradient id={`og${i}`} gradientUnits="userSpaceOnUse" x1={x(g.s)} x2={x(g.e)} y1="0" y2="0">
