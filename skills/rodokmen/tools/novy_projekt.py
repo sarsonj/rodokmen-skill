@@ -14,9 +14,12 @@ Existující data nepřepisuje.
 Do .skill_sablona/ uloží kopii šablony web/ a tools/, ze které projekt vznikl (patří do gitu s projektem).
 Aktualizace staršího projektu (znovu spustit na stejnou složku) rozhodne o každém souboru web/ a tools/ podle
 tří verzí (uložená šablona, projekt, nová šablona): neupravený soubor přepíše, vlastní úpravu nechá, když se šablona
-nezměnila, a jinak sloučí po řádcích (git merge-file). Při konfliktu soubor nechá a novou verzi uloží do
-pracovni/zaloha_<datum>/nova_sablona/. Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze
-změněných souborů uloží do pracovni/zaloha_<datum>/puvodni/.
+nezměnila, a jinak sloučí po řádcích (git merge-file). Při konfliktu, bez gitu, u souboru přidaného projektem
+i šablonou a u souboru smazaného v projektu, který šablona změnila, soubor nechá a novou verzi uloží do
+pracovni/zaloha_<datum>/nova_sablona/ (s gitem i návrh se značkami konfliktů); hlásí ho, dokud změnu nepřevezmete.
+Soubor, který šablona už nemá, přesune do pracovni/zaloha_<datum>/odstraneno/ (upravený nechá).
+Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze změněných souborů uloží do
+pracovni/zaloha_<datum>/puvodni/.
 """
 import json, os, shutil, subprocess, sys, tempfile, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -95,43 +98,71 @@ def sloucit(nase, zaklad, nova):
     return r.stdout, r.returncode == 0
 
 
-def aktualizuj(src, dst, cast, jmena, zaloha, vysl):
-    """Aktualizuje soubory `jmena` ze src do dst/cast podle tří verzí: původní šablona (dst/.skill_sablona/cast),
-    projekt a nová šablona. Novou šablonu pak uloží jako původní. Výsledek přidá do vysl[kategorie]."""
-    for rel in jmena:
-        new, out, puv = os.path.join(src, rel), os.path.join(dst, cast, rel), os.path.join(dst, SABLONA, cast, rel)
-        nova = cti(new)
-        if rel.endswith(".sh"):   # skill naklonovaný na Windows (core.autocrlf) má CRLF – Git Bash by skript nespustil
+def aktualizuj(src, dst, cast, jmena, zaloha, vysl, stary):
+    """Aktualizuje dst/cast podle tří verzí: původní šablona (dst/.skill_sablona/cast), projekt a nová šablona
+    (soubory `jmena` ze src). Projde i soubory, které nová šablona už nemá. Uloženou šablonu posune jen tam, kde se
+    nová verze do projektu dostala. stary=True: projekt bez .skill_sablona/. Výsledek přidá do vysl[kategorie]."""
+    puvodni = os.path.join(dst, SABLONA, cast)
+    for rel in sorted(set(jmena) | set(soubory(puvodni) if os.path.isdir(puvodni) else ())):
+        new, out, puv = os.path.join(src, rel), os.path.join(dst, cast, rel), os.path.join(puvodni, rel)
+        nova = cti(new) if rel in jmena else None
+        if nova is not None and rel.endswith(".sh"):   # skill naklonovaný na Windows (core.autocrlf) má CRLF
             nova = nova.replace(b"\r\n", b"\n")
-        nase = lf(cti(out)) if os.path.isfile(out) and not os.path.islink(out) else None   # symlink jen přepsat
+        nase = lf(cti(out)) if os.path.isfile(out) and not os.path.islink(out) else None
         zaklad = lf(cti(puv)) if os.path.isfile(puv) else None
         jmeno = cast + "/" + rel.replace(os.sep, "/")
-        if nase is None or nase == zaklad:   # chybí, nebo bez vlastních úprav
-            if nase != lf(nova):
-                if os.path.lexists(out):
-                    vysl["prepsano"].append(jmeno)
-                zapis(out, nova, new)
+        nova_zal = os.path.join(zaloha, "nova_sablona", cast, rel)   # při konfliktu sem nová verze, projekt zůstane
+        if nova is None:   # šablona soubor odstranila
+            if nase is not None and nase == zaklad:
+                keep = os.path.join(zaloha, "odstraneno", cast, rel)
+                os.makedirs(os.path.dirname(keep), exist_ok=True)
+                shutil.move(out, keep)
+                vysl["odstraneno"].append(jmeno)
+            elif nase is not None:
+                vysl["odstraneno_upraveno"].append(jmeno)
+            os.remove(puv)
+            continue
+        if os.path.islink(out) or (nase is None and zaklad is None):   # symlink jen přepsat; nový soubor doplnit
+            if os.path.lexists(out):
+                vysl["prepsano"].append(jmeno)
+            zapis(out, nova, new)
+        elif nase is None:   # smazaný v projektu
+            if zaklad == lf(nova):
+                vysl["smazano"].append(jmeno)
+                continue
+            zapis(nova_zal, nova, new)
+            vysl["konflikt"].append(jmeno + " (smazáno v projektu)")
+            continue
         elif nase == lf(nova):
             pass
+        elif nase == zaklad:   # bez vlastních úprav
+            vysl["prepsano"].append(jmeno)
+            zapis(out, nova, new)
         elif zaklad == lf(nova):   # šablona beze změny
             vysl["ponechano"].append(jmeno)
-        elif zaklad is None:   # projekt ze starší verze bez uložené šablony: přepsat, starou verzi zazálohovat
+            continue
+        elif zaklad is None and stary:   # projekt ze starší verze bez uložené šablony: přepsat, starou verzi zazálohovat
             keep = os.path.join(zaloha, "puvodni", cast, rel)
             os.makedirs(os.path.dirname(keep), exist_ok=True)
             shutil.copy2(out, keep)
             zapis(out, nova, new)
             vysl["zalohovano"].append(jmeno)
+        elif zaklad is None:   # soubor přidal projekt i nová šablona
+            zapis(nova_zal, nova, new)
+            vysl["konflikt"].append(jmeno + " (nový v šabloně i v projektu)")
+            continue
         else:
             sloucene, ok = sloucit(nase, zaklad, lf(nova))
-            if ok:
-                zapis(out, sloucene)
-                vysl["slouceno"].append(jmeno)
-            else:   # konflikt: projekt nechat, novou verzi (a návrh s konflikty) uložit do zálohy
-                zapis(os.path.join(zaloha, "nova_sablona", cast, rel), nova, new)
+            if not ok:
+                zapis(nova_zal, nova, new)
                 if sloucene is not None:
-                    zapis(os.path.join(zaloha, "nova_sablona", cast, rel + ".konflikt"), sloucene)
+                    zapis(nova_zal + ".konflikt", sloucene)   # s gitem i návrh se značkami konfliktů
                 vysl["konflikt"].append(jmeno)
-        zapis(puv, nova, new)
+                continue
+            zapis(out, sloucene)
+            vysl["slouceno"].append(jmeno)
+        if zaklad != lf(nova) or not os.path.isfile(puv):   # nová verze je v projektu: posunout uloženou šablonu
+            zapis(puv, nova, new)
 
 
 SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
@@ -206,14 +237,16 @@ def main():
             if os.path.isdir(src):
                 copy_tree(src, os.path.join(dst, sub))
     zaloha = os.path.join(dst, "pracovni", "zaloha_" + time.strftime("%Y%m%d-%H%M%S"))
-    vysl = {k: [] for k in ("prepsano", "zalohovano", "slouceno", "ponechano", "konflikt")}
+    vysl = {k: [] for k in ("prepsano", "zalohovano", "slouceno", "ponechano", "smazano", "odstraneno",
+                            "odstraneno_upraveno", "konflikt")}
+    stary = not os.path.isdir(os.path.join(dst, SABLONA))   # projekt ze starší verze (nebo nový)
     sablona_webu = os.path.join(SKILL, "template", "web")
-    aktualizuj(sablona_webu, dst, "web", sorted(soubory(sablona_webu)), zaloha, vysl)
+    aktualizuj(sablona_webu, dst, "web", sorted(soubory(sablona_webu)), zaloha, vysl, stary)
     tools = os.path.join(dst, "tools")
     os.makedirs(tools, exist_ok=True)
     nastroje = sorted(f for f in os.listdir(os.path.join(SKILL, "tools"))
                       if f.endswith((".py", ".sh")) and f != "novy_projekt.py")
-    aktualizuj(os.path.join(SKILL, "tools"), dst, "tools", nastroje, zaloha, vysl)
+    aktualizuj(os.path.join(SKILL, "tools"), dst, "tools", nastroje, zaloha, vysl, stary)
     for f in nastroje:   # i ponechaný vlastní .sh s CRLF: Git Bash by skript nespustil
         p = os.path.join(tools, f)
         if f.endswith(".sh") and os.path.isfile(p) and not os.path.islink(p):
@@ -236,13 +269,17 @@ def main():
                       + " (projekt neměl uloženou šablonu – vlastní úpravy převezměte ze zálohy)"),
                      ("slouceno", "Sloučeno (vlastní úpravy i změny šablony)"),
                      ("ponechano", "Ponecháno (vlastní úpravy, šablona beze změny)"),
-                     ("konflikt", "Ke kontrole (konflikt: soubor zůstal beze změny, nová verze a návrh sloučení"
-                      " s konflikty jsou v " + os.path.join(zaloha, "nova_sablona") + ")")):
+                     ("smazano", "Smazáno v projektu, ponecháno smazané (šablona beze změny)"),
+                     ("odstraneno", "Odstraněno (šablona ho už nemá), přesunuto do " + os.path.join(zaloha, "odstraneno")),
+                     ("odstraneno_upraveno", "Šablona už nemá, ale v projektu je upravený – ponechán"),
+                     ("konflikt", "Ke kontrole (soubor zůstal beze změny, nová verze je v "
+                      + os.path.join(zaloha, "nova_sablona") + ", s gitem i návrh sloučení se značkami jako .konflikt;"
+                      " hlásí se znovu, dokud změny šablony nepřevezmete)")):
         if vysl[k]:
             print(f"{popis}, {len(vysl[k])}:")
             for f in vysl[k]:
                 print("  " + f)
-    if any(f.startswith("web/") for k in ("prepsano", "zalohovano", "slouceno") for f in vysl[k]):
+    if any(f.startswith("web/") for k in ("prepsano", "zalohovano", "slouceno", "odstraneno") for f in vysl[k]):
         print("Ve web/ pak `npm install` a `npm run data`.")
 
 

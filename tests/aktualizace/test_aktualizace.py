@@ -10,6 +10,7 @@ import glob, os, shutil, subprocess, sys, tempfile, traceback
 
 SKILL = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "skills/rodokmen")
 RADKY = [f"radek {i}" for i in range(1, 21)]
+POCET = 12   # počet případů v pripady()
 
 
 def zapis(p, text, nl="\n"):
@@ -41,7 +42,9 @@ def falesny_skill(koren):
     zapis(os.path.join(s, "tools", "nastroj.py"), text(RADKY))
     zapis(os.path.join(s, "tools", "skript.sh"), "#!/bin/sh\necho ahoj\n", nl="\r\n")   # skill z Windows s CRLF
     zapis(os.path.join(s, "template", "web", "src", "styl.css"), text(RADKY))
-    zapis(os.path.join(s, "template", "web", "src", "index.astro"), text(RADKY))
+    zapis(os.path.join(s, "tools", "stary.py"), "print('zrusim')\n")
+    for n in ("index.astro", "uvod.astro", "zrus.astro"):
+        zapis(os.path.join(s, "template", "web", "src", n), text(RADKY))
     zapis(os.path.join(s, "template", "web", "node_modules", "x.js"), "nekopirovat\n")
     zapis(os.path.join(s, "template", "data", "STAV.md"), "# Stav\n")
     for n in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
@@ -70,7 +73,7 @@ def sekce(vystup, zacatek):
 
 
 def zalohy(projekt, *cesta):
-    return glob.glob(os.path.join(projekt, "pracovni", "zaloha_*", *cesta))
+    return sorted(glob.glob(os.path.join(projekt, "pracovni", "zaloha_*", *cesta)))   # poslední je nejnovější
 
 
 def pripady(koren):
@@ -123,18 +126,67 @@ def pripady(koren):
     assert cti(proj("web", "src", "styl.css")) == pred, out
     assert "web/src/styl.css" in sekce(out, "Ke kontrole"), out
     nova = zalohy(p, "nova_sablona", "web", "src", "styl.css")
-    assert nova and cti(nova[0]) == text(zmen(nove2, 10, "radek 11 jinak v sablone")), out
+    assert nova and cti(nova[-1]) == text(zmen(nove2, 10, "radek 11 jinak v sablone")), out
     yield "konflikt nechá projekt, novou verzi uloží do zálohy a vypíše"
 
-    # 6. bez gitu v PATH se nesloučí ani nepřekrývající se změny: projekt zůstane a soubor je ke kontrole
-    pred = cti(proj("web", "src", "styl.css"))
-    zapis(sab("src", "styl.css"), text(zmen(zmen(nove2, 10, "radek 11 jinak v sablone"), 0, "radek 1 bez gitu")))
-    out = spust(s, p, env={**os.environ, "PATH": os.path.dirname(sys.executable)})
+    # 6. nevyřešený konflikt se při dalším spuštění hlásí znovu (uložená šablona se neposune)
+    out = spust(s, p)
     assert cti(proj("web", "src", "styl.css")) == pred, out
     assert "web/src/styl.css" in sekce(out, "Ke kontrole"), out
-    yield "bez gitu: projekt zůstane, soubor ke kontrole"
+    assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(nove2), out
+    yield "nevyřešený konflikt se hlásí znovu"
 
-    # 7. projekt s CRLF (git na Windows), obsahem stejný jako šablona → bere se jako neupravený
+    # 7. bez gitu v PATH se nesloučí ani nepřekrývající se změny; s gitem se sloučí při dalším spuštění
+    vlastni_uvod = zmen(RADKY, 2, "radek 3 vlastni")
+    zapis(proj("web", "src", "uvod.astro"), text(vlastni_uvod))
+    zapis(sab("src", "uvod.astro"), text(zmen(RADKY, 17, "radek 18 novy")))
+    out = spust(s, p, env={**os.environ, "PATH": os.path.dirname(sys.executable)})
+    assert cti(proj("web", "src", "uvod.astro")) == text(vlastni_uvod), out
+    assert "web/src/uvod.astro" in sekce(out, "Ke kontrole"), out
+    out = spust(s, p)
+    assert cti(proj("web", "src", "uvod.astro")) == text(zmen(vlastni_uvod, 17, "radek 18 novy")), out
+    assert "web/src/uvod.astro" in sekce(out, "Sloučeno"), out
+    yield "bez gitu: soubor ke kontrole, s gitem se pak sloučí"
+
+    # 8. soubor, který přidal uživatel i nová šablona → nechat uživatelův, verzi šablony do zálohy, hlásit i příště
+    zapis(proj("web", "src", "fotky.astro"), "moje fotky\n")
+    zapis(sab("src", "fotky.astro"), "fotky ze sablony\n")
+    for _ in range(2):
+        out = spust(s, p)
+        assert cti(proj("web", "src", "fotky.astro")) == "moje fotky\n", out
+        assert any(f.startswith("web/src/fotky.astro") for f in sekce(out, "Ke kontrole")), out
+    nova = zalohy(p, "nova_sablona", "web", "src", "fotky.astro")
+    assert nova and cti(nova[-1]) == "fotky ze sablony\n", out
+    yield "nový soubor v šabloně i v projektu: zůstane uživatelův"
+
+    # 9. soubor smazaný v projektu: nevrátit; změní-li se šablona, novou verzi jen do zálohy a hlásit
+    os.remove(proj("web", "src", "uvod.astro"))
+    out = spust(s, p)
+    assert not os.path.exists(proj("web", "src", "uvod.astro")), out
+    assert "web/src/uvod.astro" in sekce(out, "Smazáno v projektu"), out
+    zapis(sab("src", "uvod.astro"), text(zmen(RADKY, 0, "radek 1 po smazani")))
+    out = spust(s, p)
+    assert not os.path.exists(proj("web", "src", "uvod.astro")), out
+    assert any(f.startswith("web/src/uvod.astro") for f in sekce(out, "Ke kontrole")), out
+    nova = zalohy(p, "nova_sablona", "web", "src", "uvod.astro")
+    assert nova and cti(nova[-1]) == text(zmen(RADKY, 0, "radek 1 po smazani")), out
+    yield "smazaný soubor se nevrátí"
+
+    # 10. šablona soubor odstranila: neupravený přesunout do zálohy, upravený nechat a hlásit
+    zapis(proj("web", "src", "zrus.astro"), text(zmen(RADKY, 4, "radek 5 vlastni")))
+    os.remove(os.path.join(s, "tools", "stary.py"))
+    os.remove(sab("src", "zrus.astro"))
+    out = spust(s, p)
+    assert not os.path.exists(proj("tools", "stary.py")), out
+    assert not os.path.exists(proj(".skill_sablona", "tools", "stary.py")), out
+    zal = zalohy(p, "odstraneno", "tools", "stary.py")
+    assert zal and cti(zal[-1]) == "print('zrusim')\n", out
+    assert "tools/stary.py" in sekce(out, "Odstraněno"), out
+    assert cti(proj("web", "src", "zrus.astro")) == text(zmen(RADKY, 4, "radek 5 vlastni")), out
+    assert "web/src/zrus.astro" in sekce(out, "Šablona už nemá"), out
+    yield "soubor odstraněný ze šablony: neupravený do zálohy, upravený zůstane"
+
+    # 11. projekt s CRLF (git na Windows), obsahem stejný jako šablona → bere se jako neupravený
     zapis(proj("web", "src", "index.astro"), text(RADKY), nl="\r\n")
     zapis(sab("src", "index.astro"), text(zmen(RADKY, 5, "radek 6 novy")))
     out = spust(s, p)
@@ -142,14 +194,14 @@ def pripady(koren):
     assert "web/src/index.astro" in sekce(out, "Přepsáno"), out
     yield "konce řádků CRLF se nepočítají jako vlastní úprava"
 
-    # 8. starý projekt bez .skill_sablona/: přepsat jako dřív, ale zálohovat i tools/
+    # 12. starý projekt bez .skill_sablona/: přepsat jako dřív, ale zálohovat i tools/
     shutil.rmtree(proj(".skill_sablona"))
     zapis(proj("tools", "nastroj.py"), text(zmen(RADKY, 3, "radek 4 vlastni")))
     zapis(os.path.join(s, "tools", "nastroj.py"), text(zmen(RADKY, 15, "radek 16 novy")))
     out = spust(s, p)
     assert cti(proj("tools", "nastroj.py")) == text(zmen(RADKY, 15, "radek 16 novy")), out
     zal = zalohy(p, "puvodni", "tools", "nastroj.py")
-    assert zal and cti(zal[0]) == text(zmen(RADKY, 3, "radek 4 vlastni")), out
+    assert zal and cti(zal[-1]) == text(zmen(RADKY, 3, "radek 4 vlastni")), out
     assert "tools/nastroj.py" in sekce(out, "Přepsáno, původní verze"), out
     assert os.path.isfile(proj(".skill_sablona", "tools", "nastroj.py"))
     yield "starý projekt bez uložené šablony: tools/ se zálohují"
@@ -166,8 +218,8 @@ def main():
         print("  [CHYBA] případ", ok + 1, "\n", traceback.format_exc())
     finally:
         shutil.rmtree(koren, ignore_errors=True)
-    print(f"== aktualizace: {ok} z 8 správně")
-    sys.exit(0 if ok == 8 else 1)
+    print(f"== aktualizace: {ok} z {POCET} správně")
+    sys.exit(0 if ok == POCET else 1)
 
 
 if __name__ == "__main__":
