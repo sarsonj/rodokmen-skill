@@ -182,8 +182,48 @@ def test_ukazka_bez_varovani():
     assert kontrola(ns["P"], ns.get("SAME", {})) == []
 
 
+# --- nálezy závěrečné revize -------------------------------------------------------------------------------------
+def test_po_v_y_je_umrti_po():
+    u = udalosti({8: dict(n="A B", y="po 1921", f=[])}, 8)
+    assert u["narozeni"] is None and (u["umrti"].od, u["umrti"].do) == (date(1921, 1, 1), MAX)
+
+
+def test_spojovnik_v_y():
+    u = udalosti({8: dict(n="A B", y="1930-2015", f=[])}, 8)
+    assert u["narozeni"].od.year == 1930 and u["umrti"].od.year == 2015
+
+
+def test_rok_nula_nespadne():
+    assert datum("* 0000 Holice") is None
+    assert udalosti({8: dict(n="A B", y="asi 0003", f=["† 0000"])}, 8) == {"narozeni": None, "snatek": None, "umrti": None}
+
+
+def test_matka_narozena_po_diteti():
+    v = kontrola(rodina(matka=["* 1895"]))
+    assert [(x.k, x.pravidlo) for x in v] == [(8, "vek-matky")]
+    assert v[0].text == "Barbora Malá se podle údajů narodila (1895) až po narození syna (Jan Novák, 1890)" + JISTE
+
+
+def test_otec_narozen_po_diteti():
+    v = kontrola(rodina(otec=["* 1895"]))
+    assert [(x.k, x.pravidlo) for x in v] == [(8, "vek-otce")]
+    assert v[0].text == "Václav Novák se podle údajů narodil (1895) až po narození syna (Jan Novák, 1890)" + JISTE
+
+
+def test_snatek_pred_narozenim():
+    v = kontrola({8: dict(n="Jan Novák", f=["* 1900", "× 1890 Holice"])})
+    assert [(x.k, x.pravidlo) for x in v] == [(8, "snatek-mlady")]
+    assert v[0].text == "Jan Novák: sňatek (1890) je dřív než narození (1900)" + JISTE
+
+
 if __name__ == "__main__":
     testy = [f for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
+    chyby = 0
     for t in testy:
-        t()
-    print(f"OK {len(testy)} testů")
+        try:
+            t()
+        except Exception as e:  # noqa: BLE001 – vypsat všechny selhané testy, ne jen první
+            chyby += 1
+            print(f"FAIL {t.__name__}: {type(e).__name__} {e}")
+    print(f"OK {len(testy)} testů" if not chyby else f"{chyby} z {len(testy)} testů selhalo")
+    sys.exit(1 if chyby else 0)

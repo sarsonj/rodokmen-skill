@@ -32,6 +32,13 @@ def _cast(text):
     m = _DATUM.match(text.strip())
     if not m:
         return None
+    try:
+        return _interval(m)
+    except ValueError:   # rok 0000, „asi 0003“ – překlep, ne datum
+        return None
+
+
+def _interval(m):
     if m["r"]:
         y = int(m["r"])
         od, do = date(y, 1, 1), date(y, 12, 31)
@@ -68,9 +75,10 @@ def _z_y(y):
         return None, _cast(y[1:])
     if y.startswith("*"):
         return _cast(y[1:]), None
+    y = re.sub(r"(?<=\d)\s*-\s*", " – ", y.replace("—", "–"))   # „1930-2015“, „1930—2015“ jako „1930–2015“
     head, dash, tail = y.partition("–")
-    if not dash and re.match(r"po\b", y):   # „po 1921“ = ještě žil, ne narození
-        return None, None
+    if not dash and re.match(r"po\b", y):   # „po 1921“ = ještě žil, zemřel až po roce 1921
+        return None, _cast(y)
     return _cast(head), (_cast(tail) if dash else None)
 
 
@@ -154,8 +162,8 @@ def kontrola(P, SAME=None):
         if b and d and d.do < b.od:
             pridej(k, "umrti-pred-narozenim", f"{n}: úmrtí ({d.text}) je dřív než narození ({b.text})", (b, d), (k,))
         if b and m and _vek(b.od, m.do) < 15:
-            pridej(k, "snatek-mlady", f"{n}: při sňatku ({m.text}) by {jemu} bylo nejvýš {_let(_vek(b.od, m.do))}",
-                   (b, m), (k,))
+            pridej(k, "snatek-mlady", f"{n}: sňatek ({m.text}) je dřív než narození ({b.text})" if m.do < b.od else
+                   f"{n}: při sňatku ({m.text}) by {jemu} bylo nejvýš {_let(_vek(b.od, m.do))}", (b, m), (k,))
         if m and d and m.od > d.do:
             pridej(k, "snatek-po-umrti", f"{n}: sňatek ({m.text}) je až po úmrtí ({d.text})", (m, d), (k,))
         if not b:
@@ -168,8 +176,9 @@ def kontrola(P, SAME=None):
             if od_ and (b.od - od_.do).days > POHROBEK_DNI:
                 pridej(k, "otec-zemrel", f"{on} zemřel {od_.text}, {syn} {n} se {narodil} {b.text}", (b, od_), (k, o))
             if ob and _vek(ob.od, b.do) < 15:
-                pridej(k, "vek-otce", f"{on}: při narození {syna} ({n}, {b.text}) by mu bylo nejvýš {_let(_vek(ob.od, b.do))}",
-                       (b, ob), (k, o))
+                pridej(k, "vek-otce", f"{on} se podle údajů narodil ({ob.text}) až po narození {syna} ({n}, {b.text})"
+                       if b.do < ob.od else
+                       f"{on}: při narození {syna} ({n}, {b.text}) by mu bylo nejvýš {_let(_vek(ob.od, b.do))}", (b, ob), (k, o))
         if ma:
             mb, md = ud[ma]["narozeni"], ud[ma]["umrti"]
             mn = P[ma]["n"]
@@ -178,7 +187,10 @@ def kontrola(P, SAME=None):
             if mb:
                 kolik = (f"nejvýš {_let(_vek(mb.od, b.do))}" if _vek(mb.od, b.do) < 15 else
                          f"nejméně {_let(_vek(mb.do, b.od))}" if _vek(mb.do, b.od) > 50 else None)
-                if kolik:
+                if b.do < mb.od:
+                    pridej(k, "vek-matky", f"{mn} se podle údajů narodila ({mb.text}) až po narození {syna} ({n}, {b.text})",
+                           (b, mb), (k, ma))
+                elif kolik:
                     pridej(k, "vek-matky", f"{mn}: při narození {syna} ({n}, {b.text}) by jí bylo {kolik}", (b, mb), (k, ma))
     return out
 
