@@ -23,19 +23,39 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
  "nazev": "Rodokmen Novákových",
  "popis": "Popis pro vyhledávače a sdílení (web je ale noindex).",
  "zapati": "Dohledáno v digitalizovaných matrikách SOA Zámrsk (portál ARON)",
- "kontakt": {"jmeno": "Petrovi", "email": "petr@example.cz"},
- "prihlaseni": {"uvod": "Tenhle web je jen pro rodinu.", "otazka": "Jak se jmenoval pes u babičky v Holicích?", "odpoved": "Alík"},
+ "kontakt": {"jmeno": "Petrovi", "kdo": "Petr", "email": "petr@example.cz"},
+ "prihlaseni": {"uvod": "Tenhle web je jen pro rodinu.", "adresa": "https://novakovi.netlify.app",
+                "otazka": "Jak se jmenoval pes u babičky v Holicích?", "odpoved": "Alík"},
  "uvod": {"nadpis": "Lákavý nadpis", "odstavce": ["2–3 věty, které chytí"], "foto": "klic_obrazku_ve_vyrezech", "foto_popis": "…"},
  "pribeh": {"menu": "Příběh Nováků", "rod": 8, "tlacitko": "Přečíst příběh Nováků"},
  "zajimavosti_na_uvodu": [{"nadpis": "Nejstarší předek", "text": "Kovář Jan, asi 1825."}]
 }
 ```
-- `kontakt.jmeno` je ve 3. pádě („Napište Petrovi na …“).
-- **Přihlášení:** otázka, na kterou zná odpověď jen rodina (ne snadno dohledatelná na sociálních sítích).
-  Odpověď se porovnává bez diakritiky a velkých písmen. Na serveru i v cookie prohlížeče je jen její otisk (SHA-256),
-  samotná odpověď se nikam neukládá. Krátkou nebo běžnou odpověď (jméno, obec) ale jde z otisku uhádnout zkoušením,
-  proto ať ji uživatel nepoužívá jako heslo jinde. Bez odpovědi nasazení (`npm run nasadit`, `deploy-caprover`)
-  skončí chybou; otevřený web jen výslovně přes `"otevreny": true` v `prihlaseni`.
+- `kontakt.jmeno` je ve 3. pádě („Napište Petrovi na …“), `kontakt.kdo` v 1. pádě („odkaz posílá Petr“; bez něj
+  „správce rodokmenu“).
+- **Přihlášení** má dvě cesty, platí obě najednou. Stačí nastavit jednu z nich.
+  - **Rodinná otázka:** otázka, na kterou zná odpověď jen rodina (ne snadno dohledatelná na sociálních sítích).
+    Odpověď se porovnává bez diakritiky a velkých písmen. Na serveru i v cookie prohlížeče je jen její otisk (SHA-256),
+    samotná odpověď se nikam neukládá. Krátkou nebo běžnou odpověď (jméno, obec) ale jde z otisku uhádnout zkoušením,
+    proto ať ji uživatel nepoužívá jako heslo jinde. Odpověď je jedna pro všechny a jednomu člověku ji vzít nejde.
+  - **Osobní odkazy** (`tools/pozvanky.py`): každý příbuzný dostane vlastní odkaz `https://<web>/?k=<klíč>`. Klíč je
+    náhodný (128 bitů), uhádnout ho nejde. Odkaz jde jednomu člověku zrušit nebo vyměnit, ostatním odkazy fungují dál.
+    Po otevření odkazu si web zapamatuje prohlížeč na rok. Funguje jen na Netlify (viz Vlastní server).
+    ```
+    python3 -I tools/pozvanky.py pridej "Teta Jana"        # nový odkaz, vypíše se jen jednou – hned ho předej uživateli
+    python3 -I tools/pozvanky.py seznam                    # kdo má odkaz (bez odkazů samotných)
+    python3 -I tools/pozvanky.py prejmenuj p1 "Jana Nováková"
+    python3 -I tools/pozvanky.py nova p1                   # ztracený odkaz: nový, starý přestane platit
+    python3 -I tools/pozvanky.py zrus p1
+    ```
+    Adresa odkazu se bere z `prihlaseni.adresa` (adresa webu, např. `https://<název>.netlify.app`). V
+    `data/pozvanky.json` je u odkazu jen jméno, datum a otisk klíče (SHA-256), proto může jít do gitu. Klíč samotný
+    nástroj nikam neukládá: kdo odkaz ztratí, dostane nový (`nova`). Každá změna platí až po `npm run nasadit`, potom
+    zrušený odkaz přestane fungovat i v prohlížečích, kde už byl otevřený.
+    Přihlašovací stránka bez otázky jen vysvětlí, že se vstupuje odkazem, a podle `kontakt` poradí, jak získat nový.
+    S otázkou ukáže formulář jako dřív a k němu větu, že osobní odkaz stačí otevřít.
+  Bez otázky i bez odkazu nasazení (`npm run nasadit`, `deploy-caprover`) skončí chybou; otevřený web jen výslovně
+  přes `"otevreny": true` v `prihlaseni` (jen `true`, ne `"true"` ani `"ano"`; otevře web i s nastavenou otázkou).
   Je to lehká ochrana proti náhodným návštěvníkům, ne bankovní zabezpečení – citlivé věci na web nepatří.
 - `uvod.foto` = klíč obrázku ve `vyrezy/` (ulož přes `vyrez.py`).
 - `pribeh`: `menu` a `tlacitko` pojmenuj podle hlavního rodu („Příběh Novákových“), `rod` = číslo rodu (8–15).
@@ -56,10 +76,12 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
    **Windows:** když `!` běží ve Windows PowerShellu 5.1 (`&&` tam nefunguje a `npx` blokuje Execution Policy), ať uživatel
    otevře PowerShell 7 nebo Příkazový řádek, přejde do složky `web` a spustí `npx -y netlify-cli@latest login` (a `sites:create`).
 4. Nasazení: `cd web && npm run nasadit` (můžeš spustit sám; vypíše adresu webu).
-5. Ověř: otevři adresu **v anonymním okně** → musí se ukázat rodinná přihlašovací otázka; po správné odpovědi web.
+5. Ověř: otevři adresu **v anonymním okně** → musí se ukázat přihlašovací stránka (s otázkou, nebo bez ní jen s radou
+   k osobnímu odkazu); po správné odpovědi web. Jsou-li osobní odkazy, vytvoř si zkušební (`pozvanky.py pridej "Zkouška"`),
+   nasaď, otevři ho v novém anonymním okně (musí se ukázat web a z adresy zmizet `?k=`), pak ho zruš (`zrus`) a znovu nasaď.
    Ukáže-li se místo ní přihlášení k Netlify (401, „Login Redirect“), zdědil web ochranu týmu („Team protection“).
    Uživatel ji vypne v administraci webu: Project configuration → Access & security → Visitor access. Web pak chrání
-   rodinná otázka – proto znovu ověř v anonymním okně, že se ukáže.
+   rodinná otázka nebo osobní odkazy – proto znovu ověř v anonymním okně, že se ukáže přihlašovací stránka.
    Přihlášení zajišťuje Netlify Edge Function `web/netlify/edge-functions/brana.js` (generuje ji export).
 Další aktualizace = jen `npm run nasadit`. Vlastní doménu lze nastavit v administraci Netlify.
 
@@ -74,6 +96,8 @@ zkus v `launch.json` `"runtimeExecutable": "node"` a `"runtimeArgs": ["web/node_
 ## Vlastní server (pokročilé)
 - Docker: `web/Dockerfile` (build Astro → nginx s `nginx.conf` z `nginx.sablona.conf`). Před buildem image vždy `npm run data`.
 - CapRover: `npm run deploy-caprover` (vyžaduje nainstalovaný a přihlášený `caprover` CLI).
+- Přihlášení tu hlídá nginx a ten umí jen rodinnou otázku. Osobní odkazy nefungují: s otázkou pustí jen přes ni,
+  bez otázky nepustí nikoho. Export to při každém spuštění připomene hláškou POZOR.
 
 ## Úpravy vzhledu
 Styly `web/src/styles/global.css` (barvy v `:root`), rozložení `web/src/layouts/Base.astro`, stránky `web/src/pages/`.
@@ -117,4 +141,5 @@ nebo složku na místě zálohy skript odmítne s hláškou POZOR a soubory za n
    (ne jen starší stav šablony), nabídni jejich převzetí do nové verze.
 3. **Sloučeno:** prohlédni výsledek (`git diff`), jestli dává smysl.
 4. Ve `web/` `npm install`, `npm run data` a `npm run build`, pak `python3 -I tools/kontrola.py`.
-Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci.
+Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci, stejně jako šablonu bez osobních odkazů,
+když už nějaké jsou v `data/pozvanky.json`.
