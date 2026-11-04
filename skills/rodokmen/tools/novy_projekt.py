@@ -3,7 +3,7 @@
 
 Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [--hlidac | --bez-hlidace]
   --ukazka        nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
-  --hlidac        zapne hlídač sítě (hook v .claude/settings.json, tools/hlidac_site.py): zamítne příkazy,
+  --hlidac        zapne hlídač sítě (hook v .claude/settings.json a .devin/hooks.v1.json, tools/hlidac_site.py): zamítne příkazy,
                   které jdou na web archivu mimo brzdu tools/slusne.py; --bez-hlidace ho vypne
        python3 <skill>/tools/novy_projekt.py <složka projektu> --vyreseno <soubor> [--vyreseno <soubor> …]
   --vyreseno      po ručním převzetí změn šablony (soubor „ke kontrole“, např. web/src/pages/index.astro) uloží
@@ -336,9 +336,56 @@ def hook_hlidace():
     return {"type": "command", "command": HLIDAC, "timeout": 10}
 
 
-def nastaveni(dst, hlidac):
-    """Doplní do .claude/settings.json zákaz curl/wget; hlidac=True/False zapne/vypne hook, None nechá, jak je."""
-    path = os.path.join(dst, ".claude", "settings.json")
+# Devin: DEVIN_PROJECT_DIR má přednost (Claude ho nenastavuje), fallback CLAUDE_PROJECT_DIR pro sdílený projekt
+KOD_D = ("import os,runpy;d=os.environ.get('DEVIN_PROJECT_DIR') or os.environ.get('CLAUDE_PROJECT_DIR','.');"
+         "p=os.path.join(d,'tools','hlidac_site.py');os.path.isfile(p) and runpy.run_path(p,run_name='__main__')")
+
+
+def _devin_hook():
+    """Hook hlídače pro Devin: v hooks.v1.json je "command" jeden shellový řetězec (bez "args" jako v .claude)."""
+    p = _python_windows().replace("\\", "/") if os.name == "nt" else "python3"
+    return {"type": "command", "command": f'"{p}" -I -X utf8 -c "{KOD_D}"', "timeout": 10}
+
+
+AGENTI = {   # kam se hlídač zapíše; rozdíly jsou jen v této specifikaci, logika zápisu je pro oba stejná
+    "claude": {"soubor": os.path.join(".claude", "settings.json"), "klic": "hooks", "matcher": MATCHER,
+               "hook": hook_hlidace, "deny": SIT_ZAKAZ, "tiskni": True},
+    "devin": {"soubor": os.path.join(".devin", "hooks.v1.json"), "klic": None,   # celý soubor je objekt hooks
+              "matcher": "^exec$",   # shellový nástroj Devinu se jmenuje "exec", ne "Bash"
+              "hook": _devin_hook, "deny": ("Exec(curl)", "Exec(wget)"),   # Devin syntaxe Exec(příkaz)
+              "deny_soubor": os.path.join(".devin", "config.json"),   # permissions nejsou v hooks.v1.json
+              "tiskni": False},
+}
+
+
+def _pridej_deny(path, pravidla):
+    """Do JSON souboru nastavení doplní permissions.deny a uloží ho (u Devina .devin/config.json)."""
+    data = {}
+    if os.path.exists(path):
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except ValueError:
+            print(f"POZOR: {path} není platný JSON – zákaz curl/wget jsem nedoplnil.")
+            return
+    if not isinstance(data, dict):
+        print(f"POZOR: {path} nemá očekávaný obsah – zákaz curl/wget jsem nedoplnil.")
+        return
+    deny = data.setdefault("permissions", {}).setdefault("deny", []) if isinstance(data.get("permissions", {}), dict) else None
+    if not isinstance(deny, list):
+        print(f"POZOR: {path} nemá očekávaný obsah – zákaz curl/wget jsem nedoplnil.")
+        return
+    nove = [r for r in pravidla if r not in deny]
+    if nove:
+        deny += nove
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+
+def nastaveni(dst, hlidac, cil):
+    """Doplní do nastavení agenta cil (položka AGENTI) zákaz curl/wget a hook hlídače; hlidac=True/False zapne/vypne, None nechá, jak je; vrátí stav."""
+    path = os.path.join(dst, cil["soubor"])
     data = {}
     if os.path.exists(path):
         try:
@@ -346,28 +393,53 @@ def nastaveni(dst, hlidac):
         except ValueError:
             print(f"POZOR: {path} není platný JSON – nastavení brzdy jsem nedoplnil. Oprav ho a spusť znovu.")
             return
+    if not isinstance(data, dict):
+        print(f"POZOR: {path} nemá očekávaný obsah – nastavení brzdy jsem nedoplnil.")
+        return
     puvodni = json.dumps(data, sort_keys=True)
-    deny = data.setdefault("permissions", {}).setdefault("deny", [])
-    deny += [r for r in SIT_ZAKAZ if r not in deny]
-    pre = data.setdefault("hooks", {}).setdefault("PreToolUse", [])
-    nase = [h for h in pre if "hlidac_site.py" in json.dumps(h)]
+    try:
+        if cil["deny"]:
+            if "deny_soubor" in cil:   # Devin má permissions v jiném souboru než hooky
+                _pridej_deny(os.path.join(dst, cil["deny_soubor"]), cil["deny"])
+            else:
+                deny = data.setdefault("permissions", {}).setdefault("deny", [])
+                deny += [r for r in cil["deny"] if r not in deny]
+        hooks = data if cil["klic"] is None else data.setdefault(cil["klic"], {})
+        pre = hooks.setdefault("PreToolUse", [])
+    except (AttributeError, TypeError):   # položky souboru mají jiný typ, než nastavení čeká
+        pre = None
+    if not isinstance(pre, list):
+        print(f"POZOR: {path} nemá očekávaný obsah – nastavení brzdy jsem nedoplnil.")
+        return
+    nase = [h for h in pre if isinstance(h, dict) and "hlidac_site.py" in json.dumps(h)]
     for h in nase:   # aktualizace projektu: hook obnovit (cesta k Pythonu i tvar se mohly změnit)
-        h["matcher"] = MATCHER
-        h["hooks"] = [hook_hlidace()]
+        h["matcher"] = cil["matcher"]
+        h["hooks"] = [cil["hook"]()]
     if hlidac is True and not nase:
-        pre.append({"matcher": MATCHER, "hooks": [hook_hlidace()]})
+        pre.append({"matcher": cil["matcher"], "hooks": [cil["hook"]()]})
     elif hlidac is False:
         pre[:] = [h for h in pre if h not in nase]
     if not pre:
-        del data["hooks"]["PreToolUse"]
-    if not data["hooks"]:
-        del data["hooks"]
+        del hooks["PreToolUse"]
+    if cil["klic"] and not hooks:
+        del data[cil["klic"]]
+    if not data:   # hooks.v1.json je celý jen o hacích – po vypnutí soubor smazat, ať nezůstane mrtvý hook
+        if os.path.exists(path):
+            os.remove(path)
+            try:
+                os.rmdir(os.path.dirname(path))
+            except OSError:
+                pass
+        return False
     if json.dumps(data, sort_keys=True) != puvodni:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.write("\n")
-    zapnuty = any("hlidac_site.py" in json.dumps(h) for h in data.get("hooks", {}).get("PreToolUse", []))
-    print("Hlídač sítě:", "zapnutý" if zapnuty else "vypnutý (zapnout: --hlidac)")
+    zapnuty = any("hlidac_site.py" in json.dumps(h) for h in hooks.get("PreToolUse", []))
+    if cil["tiskni"]:
+        print("Hlídač sítě:", "zapnutý" if zapnuty else "vypnutý (zapnout: --hlidac)")
+    return zapnuty
 
 
 def main():
@@ -412,7 +484,9 @@ def main():
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
-    nastaveni(dst, True if "--hlidac" in sys.argv else False if "--bez-hlidace" in sys.argv else None)
+    hlidac = True if "--hlidac" in sys.argv else False if "--bez-hlidace" in sys.argv else None
+    zapnuty = nastaveni(dst, hlidac, AGENTI["claude"])
+    nastaveni(dst, hlidac if hlidac is not None else zapnuty, AGENTI["devin"])   # bez přepínače kopíruje stav .claude
     with open(os.path.join(dst, ".skill_verze"), "w", encoding="utf-8") as f:   # SKILL.md podle něj nabídne aktualizaci
         f.write(open(os.path.join(SKILL, "VERZE"), encoding="utf-8").read())
     print("Projekt připraven:", dst)
