@@ -52,16 +52,6 @@ ZAKAZ["actapublica.eu"] = (         # cizí doména s obsahem MZA (MZA 3. 11. 20
     re.compile(r"(?!)"),
     "actapublica.eu není web MZA (doménu MZA nespravuje) – nepoužívej ji. Matriky MZA jsou na "
     "https://www.mza.cz/actapublica (skriptem jen hledání knih, snímky v prohlížeči; reference/portaly.md, MZA Brno).")
-ZAKAZ["digi.ceskearchivy.cz"] = (   # SOA Třeboň: od 2. 11. 2026 vrací nástroji (User-Agent „rodokmen“) 403
-    re.compile(r"(?!)"),             # skriptům nic
-    "SOA Třeboň od 2. 11. 2026 nástroj rodokmen odmítá (HTTP 403) – trebon.py ani vlastní skripty nepoužívej. "
-    "Matriky čti v prohlížeči digi.ceskearchivy.cz: přiblížit zápis a uložit snímek obrazovky (reference/portaly.md, "
-    "SOA Třeboň). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
-ZAKAZ["soapraha.cz"] = (            # SOA Praha (eBadatelna): od 2. 11. 2026 robots.txt „User-agent: rodokmen / Disallow: /“, 403
-    re.compile(r"(?!)"),             # skriptům nic
-    "SOA Praha (eBadatelna) od 2. 11. 2026 nástroj rodokmen zakazuje (robots.txt, HTTP 403) – ebadatelna.py ani vlastní "
-    "skripty nepoužívej. Matriky čti v prohlížeči eBadatelny: výřez zápisu ze snímku, který prohlížeč načetl, a snímek "
-    "obrazovky (reference/portaly.md, SOA Praha). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
 UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)
