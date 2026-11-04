@@ -29,7 +29,7 @@ localhost, vlastní web (Netlify), GitHub a npm se nebrzdí. V prohlížeči (Pl
 tam aspoň 5–10 s mezi stránkami a žádné smyčky fetch / Promise.all (SKILL.md, Šetrně k archivům).
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
 """
-import http.client, io, json, os, re, shutil, socket, subprocess, sys, tempfile, threading, time
+import http.client, io, json, os, re, runpy, shutil, socket, subprocess, sys, tempfile, threading, time
 from urllib.parse import urlsplit
 
 DOTAZ, OBRAZEK = 2.0, 0.1            # výchozí rozestup v sekundách
@@ -64,7 +64,7 @@ ZAKAZ["soapraha.cz"] = (            # SOA Praha (eBadatelna): od 2. 11. 2026 rob
     "obrazovky (reference/portaly.md, SOA Praha). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
-UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)
+UA = runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "_useragent.py"))["UA"]   # tools/_useragent.py
 STOPKY = (30 * 60, 2 * 3600, 8 * 3600)   # stopka po 1., 2. a 3. (i každém dalším) odmítnutí webu během OKNO
 OKNO = 24 * 3600
 BAN_TEXT = {"archives.cz": re.compile(rb"zablokov[a\xc3\xa1]n|byl[a ]+zablokov|blocked", re.I)}

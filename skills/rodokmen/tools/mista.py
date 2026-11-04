@@ -32,7 +32,7 @@ VZDALENE_KM = 50   # nový bod dál než tohle od všech ostatních míst projek
 
 def nominatim(par):
     url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode(par)
-    req = urllib.request.Request(url, headers={"User-Agent": "rodokmen-skill/1.0 (family genealogy map, occasional geocoding)"})
+    req = urllib.request.Request(url, headers={"User-Agent": slusne.UA})
     with urllib.request.urlopen(req, timeout=30) as r:
         res = json.load(r)
     time.sleep(1.1)

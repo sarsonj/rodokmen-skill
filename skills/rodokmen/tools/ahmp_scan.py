@@ -15,7 +15,7 @@ MAGICK=magick()
 xid,scan,out=sys.argv[1],int(sys.argv[2]),sys.argv[3]
 down=int(sys.argv[4]) if len(sys.argv)>4 else 0
 reg=[float(v) for v in sys.argv[5].split(',')] if len(sys.argv)>5 else [0,0,1,1]  # x0,y0,x1,y1 zlomky
-UA={'User-Agent':'Mozilla/5.0 genealogy-research'}
+UA={'User-Agent':slusne.UA}
 def get(u):
     return urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60).read()
 pl=get(f'https://katalog.ahmp.cz/pragapublica/permalink?xid={xid}&scan={scan}').decode('utf-8','replace')

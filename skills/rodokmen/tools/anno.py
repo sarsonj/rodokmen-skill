@@ -13,7 +13,7 @@ for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (
 B='https://anno.onb.ac.at/anno-suche/rest/search/'
 def get(path, params):
     u=B+path+'?'+urllib.parse.urlencode(params)
-    with urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'genealogy-research'}),timeout=90) as r:
+    with urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':slusne.UA}),timeout=90) as r:
         return json.load(r)
 args=[a for a in sys.argv[1:] if a!='--snip']; snip='--snip' in sys.argv
 q=args[0]; yf=args[1] if len(args)>1 else ''; yt=args[2] if len(args)>2 else ''

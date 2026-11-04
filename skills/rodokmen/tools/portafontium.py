@@ -27,7 +27,7 @@ BASE = "https://www.portafontium.eu"
 ARCHIV = "soap-pn"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "pracovni", ".cache_pf")
-UA = {"User-Agent": "Mozilla/5.0 (rodokmen)"}   # bez prohlížečového User-Agentu portál vrací 403
+UA = {"User-Agent": slusne.UA}   # bez prohlížečového User-Agentu portál vrací 403
 PAUZA = 0.5   # s před každým požadavkem – ohled na server i při volání ve smyčce
 
 # Server portálu posílá jen svůj certifikát bez mezilehlého (prohlížeče a curl si ho dohledají, Python ne →
