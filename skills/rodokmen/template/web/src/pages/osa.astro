@@ -1,0 +1,315 @@
+---
+// Časová osa předků: pruh života každého předka na společné ose let a pod ní, co spolu časově nesedí.
+// Data i pravidla připravuje tools/export_web.py (tools/chronologie.py), tady se kreslí statické SVG.
+// Posuvník roků nad osou (malý skript dole) jen přepočítá vodorovné souřadnice podle atributů data-y / data-s / data-e.
+import Base from '../layouts/Base.astro';
+import { timeline, people, lineByK, href } from '../lib/data.js';
+
+const T = timeline ?? { from: 1900, to: new Date().getFullYear(), rows: [], warnings: [] };
+const PX = 4, RH = 18, PAD = 24;                        // nejmenší px na rok, výška řádku, okraj vlevo (⚠)
+const x = (y) => PAD + (y - T.from) * PX;
+const W = Math.round(x(T.to) + 16);
+const H = T.rows.length * RH + 8;
+const cy = (i) => 4 + i * RH + RH / 2;
+const idx = Object.fromEntries(T.rows.map((r, i) => [r.k, i]));
+const hi = (e) => e.to ?? e.from;
+const mid = (e) => (e.from != null && e.to != null ? (e.from + e.to) / 2 : e.from ?? e.to);
+const wide = (e) => e.from == null || e.to == null || e.to - e.from > 1.01;   // „asi“, „před“, „po“ (rok ještě ne)
+const color = (r) => lineByK[r.line]?.color ?? 'var(--unk)';
+const let_ = (n) => (n === 1 ? 'rok' : n >= 2 && n <= 4 ? 'roky' : 'let');
+
+/** Pruh od s do e; s → s1 náběh a e0 → e doběh do průhlednosti (nejisté nebo neznámé datum). */
+function geo(r) {
+  const b = r.birth, d = r.death;
+  const kid = r.k > 1 && idx[r.k >> 1] != null ? T.rows[idx[r.k >> 1]] : null;
+  let s, s1, e, e0;
+  if (d) {
+    if (d.to == null) [e0, e] = [d.from, d.from + 5];          // „† po 1921“
+    else if (d.from == null) [e0, e] = [d.to - 5, d.to];       // „† před 1740“
+    else [e0, e] = [wide(d) ? d.from : d.to, d.to];
+  } else if (r.living) {
+    [e0, e] = [T.to, T.to];
+  } else {                                                      // úmrtí neznámé: k poslední známé události a vybledne
+    const last = Math.max(...[b, r.marriage, kid?.birth].filter(Boolean).map(hi));
+    if (!Number.isFinite(last)) return null;
+    [e0, e] = [last, last + 5];
+  }
+  if (b) {
+    if (b.from == null) [s, s1] = [b.to - 5, b.to];            // „* před 1720“
+    else if (b.to == null) [s, s1] = [b.from, b.from + 5];     // „* po 1700“
+    else [s, s1] = [b.from, wide(b) ? b.to : b.from];
+  } else {                                                      // bez narození: krátký pruh s vybledlým začátkem
+    const first = d ? e0 : r.marriage ? (r.marriage.from ?? r.marriage.to) : null;   // před úmrtím nebo sňatkem
+    if (first == null) return null;
+    [s, s1] = [first - 10, first];
+  }
+  e = Math.max(e, s + 1);
+  s1 = Math.min(s1, e);
+  e0 = Math.min(Math.max(e0, s1), e);
+  return { s, s1, e0, e };
+}
+
+function vek(e, b) {
+  if (!b || !e || [b.from, b.to, e.from, e.to].includes(null)) return '';
+  const lo = Math.max(0, Math.floor(e.from - b.to)), hiAge = Math.floor(e.to - b.from);
+  return lo === hiAge ? ` (${lo} ${let_(lo)})` : ` (${lo}–${hiAge} ${let_(hiAge)})`;
+}
+
+const geos = T.rows.map(geo);
+const rows = T.rows.map((r, i) => {
+  const g = geos[i];
+  const kidRow = r.k > 1 && idx[r.k >> 1] != null ? T.rows[idx[r.k >> 1]] : null;
+  const kid = kidRow ? geos[idx[r.k >> 1]] : null;
+  const tip = [`${r.name}${r.years ? ` (${r.years})` : ''}`, r.birth && `* ${r.birth.text}`,
+    r.marriage && `× ${r.marriage.text}${vek(r.marriage, r.birth)}`,
+    kidRow?.birth && `dítě ${kidRow.name} * ${kidRow.birth.text}${vek(kidRow.birth, r.birth)}`,
+    r.death && `† ${r.death.text}${vek(r.death, r.birth)}`,
+    r.living && 'žije'].filter(Boolean).join('\n');
+  const parents = [idx[2 * r.k], idx[2 * r.k + 1]].filter((p) => p != null);
+  return { r, i, g, kid, tip, y: cy(i), c: color(r), op: r.uncertain ? 0.3 : 0.55, parents };
+});
+// Rodiče dítěte: svislý spoj mezi jejich řádky v roce sňatku (kroužky na obou), od něj tečkovaně k pruhu dítěte.
+// Když sňatek neznáme, spoj vede v roce narození dítěte. Sňatek se bere ten nejpřesněji zapsaný z obou rodičů.
+const width = (e) => (e.from == null || e.to == null ? Infinity : e.to - e.from);
+const withWed = new Set();
+const couples = rows.filter((o) => o.parents.length).map((o) => {
+  const mar = o.parents.map((p) => T.rows[p].marriage).filter(Boolean).sort((a, b) => width(a) - width(b))[0];
+  const at = mar ? mid(mar) : o.g && o.r.birth ? o.g.s : null;
+  if (at == null) return null;
+  if (mar) o.parents.forEach((p) => withWed.add(p));
+  return { at, mar: !!mar, top: cy(Math.min(o.i, ...o.parents)), bot: cy(Math.max(o.i, ...o.parents)),
+    parents: o.parents, child: o };
+}).filter(Boolean);
+const ticks = [];
+for (let y = Math.ceil(T.from / 5) * 5; y <= T.to; y += 5) ticks.push(y);
+---
+<Base title="Časová osa" wide>
+  <h1>Časová osa</h1>
+  <p class="lead">Každý řádek je jeden předek: otec je nad dítětem, matka pod ním. Pruh vede od narození do úmrtí.
+    Svislá čára s kroužky spojuje manžele v roce sňatku a tečkovaně vede k narození jejich dítěte (když sňatek neznáme,
+    stojí čára v roce narození). Vybledlý konec znamená, že datum neznáme přesně, čárkovaný pruh žijícího.
+    Posuvníkem vyberete roky, tažením myší nebo kolečkem nad posuvníkem (nad osou se Shiftem) osu posouváte,
+    klepnutím na pruh otevřete stránku osoby.</p>
+  {T.rows.length ? (
+    <>
+      <div class="osa-bar" hidden>
+        <span class="osa-roky">Roky <output id="osa-od">{T.from}</output> – <output id="osa-do">{T.to}</output></span>
+        <div class="osa-range">
+          <div class="osa-track"><div class="osa-sel"></div></div>
+          <input type="range" id="osa-a" min={T.from} max={T.to} value={T.from} step="1" aria-label="Osa od roku" />
+          <input type="range" id="osa-b" min={T.from} max={T.to} value={T.to} step="1" aria-label="Osa do roku" />
+        </div>
+        <button type="button" id="osa-cela">Celá osa</button>
+      </div>
+      <div class="osa-wrap" data-pagefind-ignore data-pad={PAD} data-px={PX}>
+        <svg class="osa-axis" width={W} height="22" viewBox={`0 0 ${W} 22`} aria-hidden="true">
+          {ticks.map((y) => <line data-tick="grid" data-y={y} x1={x(y)} x2={x(y)} y1={y % 50 ? 16 : 12} y2="22"
+            visibility={y % 10 ? 'hidden' : undefined} />)}
+          {ticks.map((y) => <text data-tick="label" data-y={y} x={x(y)} y="11" text-anchor="middle"
+            visibility={y % 20 ? 'hidden' : undefined}>{y}</text>)}
+        </svg>
+        <svg class="osa" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-label="Časová osa předků">
+          <defs>
+            {rows.filter((o) => o.g).map(({ i, g, c, op }) => (
+              <linearGradient id={`og${i}`} x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" style={`stop-color:${c};stop-opacity:${g.s1 > g.s ? 0 : op}`} />
+                <stop offset={(g.s1 - g.s) / (g.e - g.s)} style={`stop-color:${c};stop-opacity:${op}`} />
+                <stop offset={(g.e0 - g.s) / (g.e - g.s)} style={`stop-color:${c};stop-opacity:${op}`} />
+                <stop offset="1" style={`stop-color:${c};stop-opacity:${g.e > g.e0 ? 0 : op}`} />
+              </linearGradient>
+            ))}
+          </defs>
+          {ticks.map((y) => <line class="osa-grid" data-tick="grid" data-y={y} x1={x(y)} x2={x(y)} y1="0" y2={H}
+            visibility={y % 10 ? 'hidden' : undefined} />)}
+          {rows.map(({ r, i, g, kid, tip, y, c }) => (
+            <a href={href.person(r.slug)}>
+              <title>{tip}</title>
+              {g ? (
+                <rect data-s={g.s} data-e={g.e} x={x(g.s)} y={y - 6} width={(g.e - g.s) * PX} height="12" rx="3"
+                  fill={`url(#og${i})`} stroke={r.living ? c : 'none'} stroke-dasharray={r.living ? '4 3' : undefined} />
+              ) : (
+                <text class="osa-name" data-y={kid?.s} data-dx="3" x={kid ? x(kid.s) + 3 : PAD} y={y + 3.5}>{r.name} – bez dat</text>
+              )}
+            </a>
+          ))}
+          <g class="osa-top">
+            {couples.map(({ at, top, bot }) => <line class="osa-birth" data-y={at} x1={x(at)} x2={x(at)} y1={top} y2={bot} />)}
+            {couples.filter((c) => c.mar && c.child.g).map(({ at, child }) => (
+              <line class="osa-lead" data-y1={at} data-y2={child.g.s} x1={x(at)} x2={x(child.g.s)} y1={child.y} y2={child.y} />
+            ))}
+            <g aria-hidden="true">
+              {rows.filter((o) => o.g).map(({ r, g, y }) => (
+                <text class="osa-name" data-s={g.s} data-e={g.e} x={x(g.s) + 3} y={y + 3.5}>{r.name}{r.years ? ` ${r.years}` : ''}</text>
+              ))}
+            </g>
+            {couples.map(({ at, mar, parents }) => parents.map((p) => mar
+              ? <circle class="osa-wed" data-y={at} cx={x(at)} cy={cy(p)} r="3.5" />
+              : <circle class="osa-joint" data-y={at} cx={x(at)} cy={cy(p)} r="2" />))}
+            {rows.filter((o) => o.g && o.r.marriage && !withWed.has(o.i)).map(({ r, y }) => (
+              <circle class="osa-wed" data-y={mid(r.marriage)} cx={x(mid(r.marriage))} cy={y} r="3.5" />
+            ))}
+            {rows.filter((o) => o.g && o.r.warn).map(({ g, y }) => (
+              <text class="osa-warn" data-y={g.s} data-dx="-4" x={x(g.s) - 4} y={y + 4} text-anchor="end">⚠</text>
+            ))}
+          </g>
+        </svg>
+      </div>
+    </>
+  ) : (
+    <p class="muted">Zatím tu nikdo není – osa se ukáže, až budou v rodokmenu předci s daty.</p>
+  )}
+
+  <h2>Co časově nesedí</h2>
+  {T.warnings.length ? (
+    <>
+      <p class="small muted">Údaje, které spolu časově nesedí. Jeden z nich je možná špatně přečtený, nebo patří jinému
+        člověku. Víte, jak to bylo? Dejte nám vědět.</p>
+      <ul class="osa-warnings">
+        {T.warnings.map((w) => (
+          <li class={w.maybe ? 'maybe' : ''}>⚠ {w.text}{' '}
+            <span class="small">({w.people.map((s, j) => <>{j ? ', ' : ''}<a href={href.person(s)}>{people[s]?.name ?? s}</a></>)})</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  ) : (
+    <p class="muted">Kontrola nenašla nic, co by časově nesedělo.</p>
+  )}
+
+  <script>
+    // Posuvník roků: výběr od–do roztáhne osu na šířku rámečku (nejméně 4 px na rok, jinak se posouvá do strany).
+    // Tažení myší posouvá osu: svisle řádky, vodorovně roky (při přiblížení) nebo obsah rámečku (celá osa).
+    // Tažením vybraného úseku na posuvníku se posune celé okno let.
+    const wrap = document.querySelector<HTMLElement>('.osa-wrap');
+    const bar = document.querySelector<HTMLElement>('.osa-bar');
+    if (wrap && bar) {
+      const A = document.getElementById('osa-a') as HTMLInputElement;
+      const B = document.getElementById('osa-b') as HTMLInputElement;
+      const od = document.getElementById('osa-od')!, doo = document.getElementById('osa-do')!;
+      const sel = bar.querySelector<HTMLElement>('.osa-sel')!, track = bar.querySelector<HTMLElement>('.osa-track')!;
+      const from = +A.min, to = +A.max, PAD = +wrap.dataset.pad!, MINPX = +wrap.dataset.px!, SPAN = Math.min(10, to - from);
+      const svgs = [...wrap.querySelectorAll('svg')];
+      const points = [...wrap.querySelectorAll<SVGElement>('[data-y]')].filter((el) => el.dataset.y !== '');
+      const leads = [...wrap.querySelectorAll<SVGElement>('[data-y1]')];
+      const spans = [...wrap.querySelectorAll<SVGElement>('[data-s]')];
+      const ticks = [...wrap.querySelectorAll<SVGElement>('[data-tick]')];
+      const step = (px: number, min: number) => [5, 10, 20, 50, 100].find((s) => s * px >= min) ?? 100;
+      let a = from, b = to, px = MINPX, fits = false;   // a, b smí být i necelé roky (plynulé posouvání tažením)
+
+      const render = () => {
+        const fit = (wrap.clientWidth - PAD - 16) / (b - a);
+        fits = fit >= MINPX;
+        px = Math.max(MINPX, fit);
+        const X = (y: number) => PAD + (y - a) * px;
+        const W = String(Math.round(X(b) + 16));
+        for (const s of svgs) {
+          s.setAttribute('width', W);
+          s.setAttribute('viewBox', `0 0 ${W} ${s.viewBox.baseVal.height}`);
+        }
+        for (const el of points) {
+          const v = String(X(+el.dataset.y!) + +(el.dataset.dx ?? 0));
+          if (el.tagName === 'line') { el.setAttribute('x1', v); el.setAttribute('x2', v); }
+          else el.setAttribute(el.tagName === 'circle' ? 'cx' : 'x', v);
+        }
+        for (const el of leads) {
+          el.setAttribute('x1', String(X(+el.dataset.y1!)));
+          el.setAttribute('x2', String(X(+el.dataset.y2!)));
+        }
+        for (const el of spans) {
+          const s = X(+el.dataset.s!), e = X(+el.dataset.e!);
+          if (el.tagName === 'rect') { el.setAttribute('x', String(s)); el.setAttribute('width', String(e - s)); }
+          else el.setAttribute('x', String((s < PAD && e > PAD ? PAD : s) + 3));   // jméno zůstane vidět u levého okraje
+        }
+        const lab = step(px, 44), grid = step(px, 30);
+        for (const el of ticks) {
+          el.setAttribute('visibility', +el.dataset.y! % (el.dataset.tick === 'label' ? lab : grid) ? 'hidden' : 'visible');
+        }
+        od.textContent = String(Math.round(a)); doo.textContent = String(Math.round(b));
+        sel.style.left = `${((a - from) / (to - from)) * 100}%`;
+        sel.style.width = `${((b - a) / (to - from)) * 100}%`;
+        wrap.classList.toggle('osa-zoom', fits && b - a < to - from);
+      };
+      const setRange = (na: number, nb: number) => {
+        a = na; b = nb;
+        A.value = String(Math.round(a)); B.value = String(Math.round(b));
+        render();
+      };
+      const fromSliders = (moved: HTMLInputElement) => {
+        let na = +A.value, nb = +B.value;
+        if (nb - na < SPAN) {
+          if (moved === B) nb = Math.min(to, na + SPAN), na = nb - SPAN;
+          else na = Math.max(from, nb - SPAN), nb = na + SPAN;
+        }
+        setRange(na, nb);
+        wrap.scrollLeft = 0;
+      };
+      const shift = (a0: number, b0: number, years: number) => {   // posun okna let o daný počet let, v mezích osy
+        const na = Math.min(Math.max(a0 + years, from), to - (b0 - a0));
+        setRange(na, na + (b0 - a0));
+      };
+      A.addEventListener('input', () => fromSliders(A));
+      B.addEventListener('input', () => fromSliders(B));
+      document.getElementById('osa-cela')!.addEventListener('click', () => { setRange(from, to); wrap.scrollLeft = 0; });
+      addEventListener('resize', render);
+
+      // tažení myší po ose (dotyk posouvá rámeček sám, nativně)
+      let drag: { x: number; y: number; a: number; b: number; top: number; left: number; id: number; moved: boolean } | null = null;
+      let noClick = false;
+      wrap.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        drag = { x: e.clientX, y: e.clientY, a, b, top: wrap.scrollTop, left: wrap.scrollLeft, id: e.pointerId, moved: false };
+      });
+      wrap.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (!drag.moved) {
+          if (Math.abs(dx) + Math.abs(dy) < 5) return;   // malý pohyb je ještě klepnutí na pruh
+          drag.moved = true;
+          try { wrap.setPointerCapture(drag.id); } catch { /* ukazatel už není aktivní */ }
+          wrap.classList.add('osa-drag');
+        }
+        wrap.scrollTop = drag.top - dy;
+        if (fits) shift(drag.a, drag.b, -dx / px);
+        else wrap.scrollLeft = drag.left - dx;
+      });
+      const end = () => {
+        if (drag?.moved) {
+          wrap.classList.remove('osa-drag');
+          noClick = true;                                 // tažení neotevře stránku osoby pod kurzorem
+          setTimeout(() => { noClick = false; }, 0);
+        }
+        drag = null;
+      };
+      wrap.addEventListener('pointerup', end);
+      wrap.addEventListener('pointercancel', end);
+      wrap.addEventListener('click', (e) => { if (noClick) { e.preventDefault(); e.stopPropagation(); } }, true);
+      wrap.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // tažení vybraného úseku na posuvníku (myší i prstem)
+      sel.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        sel.setPointerCapture(e.pointerId);
+        const x0 = e.clientX, a0 = a, b0 = b, perPx = (to - from) / track.clientWidth;
+        const move = (ev: PointerEvent) => { shift(a0, b0, (ev.clientX - x0) * perPx); wrap.scrollLeft = 0; };
+        const up = () => { sel.removeEventListener('pointermove', move); sel.removeEventListener('pointerup', up); };
+        sel.addEventListener('pointermove', move);
+        sel.addEventListener('pointerup', up);
+        sel.addEventListener('pointercancel', up, { once: true });
+      });
+
+      // kolečko: na posuvníku posouvá okno let, na ose vodorovně (Shift + kolečko nebo vodorovné kolečko / touchpad)
+      const wheel = (e: WheelEvent, onBar: boolean) => {
+        const d = (e.deltaX || (onBar || e.shiftKey ? e.deltaY : 0)) * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientWidth : 1);
+        if (!d || b - a >= to - from || (!onBar && !fits)) return;   // celá osa: vodorovně posune rámeček prohlížeč sám
+        e.preventDefault();
+        shift(a, b, d / px);
+        wrap.scrollLeft = 0;
+      };
+      wrap.addEventListener('wheel', (e) => wheel(e, false), { passive: false });
+      bar.addEventListener('wheel', (e) => wheel(e, true), { passive: false });
+
+      bar.hidden = false;
+      render();
+    }
+  </script>
+</Base>
