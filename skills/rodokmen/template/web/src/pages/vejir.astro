@@ -1,7 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import fan from '../generated/fan.svg?raw';
-import { people } from '../lib/data.js';
+import { people, lines, href } from '../lib/data.js';
+// data pro vějíř kreslený v prohlížeči (vějíř od libovolné osoby): absolutní číslo → jméno, roky, stav, odkaz
+const fanData = Object.fromEntries(Object.values(people).filter((p) => p.k).map((p) => [p.k, { name: p.name, years: p.years || '', st: p.st, href: href.person(p.slug), slug: p.slug }]));
+const lineNames = Object.fromEntries(Object.values(lines).map((l) => [l.k, l.name]));
 const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) => p.name))].sort((a, b) => a.localeCompare(b, 'cs'));
 ---
 <Base title="Vějíř předků" full>
@@ -17,16 +20,98 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       <button type="button" data-z="0.667" aria-label="Oddálit">−</button>
       <button type="button" data-z="0">Celý</button>
     </span>
-    <span class="small muted fan-hint">Kolečkem myši přibližujte, tažením posouvejte, klepnutím na jméno otevřete stránku.</span>
+    <span class="fan-od" hidden>Vějíř od: <strong></strong> <button type="button" class="fan-home">← zpět na celý rodokmen</button></span>
+    <span class="small muted fan-hint">Kolečkem myši přibližujte, tažením posouvejte, klepnutím otevřete stránku osoby; podržením myši (na mobilu klepnutím) nabídku s vějířem od dané osoby.</span>
   </div>
+  <div class="fan-menu" hidden><strong></strong><a class="fan-menu-page" href="#">Stránka osoby →</a><button type="button" class="fan-menu-fan">Vějíř od této osoby</button></div>
+  <script is:inline type="application/json" id="fan-data" set:html={JSON.stringify({ people: fanData, lineNames })}></script>
   <div class="fan-stage" set:html={fan} />
 
   <script>
+    import { renderFan } from '../lib/fan.js';
     const stage = document.querySelector<HTMLElement>('.fan-stage')!;
-    const svg = stage.querySelector('svg')!;
+    let svg = stage.querySelector('svg')!;
+    const staticFan = stage.innerHTML;
+    // jméno z <title> přesunout do data-t / aria-label a <title> smazat – jinak prohlížeč ukazuje
+    // vlastní bublinu navíc k naší nabídce
+    const untitle = () => svg.querySelectorAll<SVGAElement>('.fan-links a').forEach((a) => {
+      const t = a.querySelector('title');
+      if (!t) return;
+      a.dataset.t = t.textContent ?? '';
+      a.setAttribute('aria-label', a.dataset.t);
+      t.remove();
+    });
+    untitle();
     const full = svg.viewBox.baseVal;
-    const home = { x: full.x, y: full.y, w: full.width, h: full.height };
+    let home = { x: full.x, y: full.y, w: full.width, h: full.height };
     let vb = { ...home };
+    const data = JSON.parse(document.getElementById('fan-data')!.textContent!);
+    const bySlug: Record<string, number> = Object.fromEntries(Object.entries(data.people).map(([k, p]: [string, any]) => [p.slug, Number(k)]));
+    const odBox = document.querySelector<HTMLElement>('.fan-od')!;
+    /** Vějíř od osoby s číslem k (1 = celý rodokmen = předgenerovaný vějíř). */
+    const showFrom = (k: number, push = true) => {
+      stage.innerHTML = k === 1 ? staticFan : renderFan(data.people, k, data.lineNames);
+      svg = stage.querySelector('svg')!;
+      untitle();
+      const v = svg.viewBox.baseVal;
+      home = { x: v.x, y: v.y, w: v.width, h: v.height };
+      vb = { ...home }; apply();
+      odBox.hidden = k === 1;
+      if (k !== 1) odBox.querySelector('strong')!.textContent = `${data.people[k].name} ${data.people[k].years}`;
+      if (push) {
+        const url = new URL(location.href);
+        if (k === 1) url.searchParams.delete('od'); else url.searchParams.set('od', data.people[k].slug);
+        history.pushState({ k }, '', url);
+      }
+    };
+    window.addEventListener('popstate', (e) => showFrom(e.state?.k ?? 1, false));
+    document.querySelector('.fan-home')!.addEventListener('click', () => showFrom(1));
+
+    // malá nabídka nad polem: stránka osoby, nebo vějíř od ní.
+    // Myš (počítač): nabídka po chvilce podržení nad polem, klik vede rovnou na stránku osoby.
+    // Dotyk (mobil): klepnutí otevře nabídku.
+    const menu = document.querySelector<HTMLElement>('.fan-menu')!;
+    const hover = matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const kOf = (a: Element) => Number((a as SVGAElement).dataset.k || 0) || bySlug[(a.getAttribute('href') || '').split('/osoba/')[1]?.replace(/\/$/, '')] || 0;
+    let menuFor: Element | null = null, openT = 0, closeT = 0;
+    const openMenu = (a: Element, x: number, y: number) => {
+      const k = kOf(a);
+      menuFor = a;
+      menu.querySelector('strong')!.textContent = (a as SVGAElement).dataset.t ?? '';
+      (menu.querySelector('.fan-menu-page') as HTMLAnchorElement).href = a.getAttribute('href')!;
+      const fb = menu.querySelector<HTMLButtonElement>('.fan-menu-fan')!;
+      fb.hidden = !k || (data.people[2 * k] === undefined && data.people[2 * k + 1] === undefined);
+      fb.onclick = () => { closeMenu(); showFrom(k); };
+      menu.hidden = false;
+      menu.style.left = Math.min(x + 12, innerWidth - menu.offsetWidth - 8) + 'px';
+      menu.style.top = Math.min(y + 12, innerHeight - menu.offsetHeight - 8) + 'px';
+    };
+    const closeMenu = () => { menu.hidden = true; menuFor = null; };
+    if (hover) {
+      stage.addEventListener('pointerover', (e) => {
+        const a = (e.target as Element).closest?.('.fan-links a');
+        clearTimeout(openT);
+        if (!a) return;
+        clearTimeout(closeT);
+        if (a === menuFor) return;
+        const { clientX: x, clientY: y } = e;
+        openT = window.setTimeout(() => { if (!pts.size) openMenu(a, x, y); }, 400);
+      });
+      const leave = () => { clearTimeout(openT); clearTimeout(closeT); closeT = window.setTimeout(closeMenu, 350); };
+      stage.addEventListener('pointerout', (e) => { if (!menu.contains(e.relatedTarget as Node)) leave(); });
+      menu.addEventListener('pointerenter', () => clearTimeout(closeT));
+      menu.addEventListener('pointerleave', (e) => { if (!(e.relatedTarget as Element)?.closest?.('.fan-links a')) leave(); });
+      stage.addEventListener('wheel', () => { clearTimeout(openT); closeMenu(); });
+    } else {
+      stage.addEventListener('click', (e) => {
+        const a = (e.target as Element).closest?.('.fan-links a');
+        if (!a || moved > 4) return;
+        e.preventDefault();
+        openMenu(a, e.clientX, e.clientY);
+      });
+      document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !menu.contains(e.target as Node) && !(e.target as Element).closest?.('.fan-links a')) closeMenu(); });
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
     const apply = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
     const toSvg = (cx: number, cy: number) => {
       const r = svg.getBoundingClientRect();
@@ -68,6 +153,8 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
     stage.addEventListener('pointerup', up);
     stage.addEventListener('pointercancel', up);
     stage.addEventListener('click', (e) => { if (moved > 4) { e.preventDefault(); e.stopPropagation(); } }, true);
+    const start = new URL(location.href).searchParams.get('od');
+    if (start && bySlug[start] && bySlug[start] !== 1) { showFrom(bySlug[start], false); history.replaceState({ k: bySlug[start] }, ''); }
 
     document.querySelectorAll<HTMLButtonElement>('.fan-btns button').forEach((b) =>
       b.addEventListener('click', () => { const z = Number(b.dataset.z); if (z) zoomAt(z); else { vb = { ...home }; apply(); } })
@@ -80,7 +167,7 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       const q = norm((e.currentTarget as HTMLFormElement).querySelector('input')!.value.trim());
       if (!q) return;
       svg.querySelectorAll('.fan-links a.hit').forEach((a) => a.classList.remove('hit'));
-      const hits = [...svg.querySelectorAll<SVGAElement>('.fan-links a')].filter((a) => norm(a.querySelector('title')?.textContent ?? '').includes(q));
+      const hits = [...svg.querySelectorAll<SVGAElement>('.fan-links a')].filter((a) => norm((a as SVGAElement).dataset.t ?? '').includes(q));
       if (!hits.length) return;
       hits.forEach((a) => a.classList.add('hit'));
       const bb = (hits[0].lastElementChild as SVGGraphicsElement).getBBox();
@@ -89,4 +176,13 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       apply();
     });
   </script>
+  <style is:global>
+    .fan-menu { position: fixed; z-index: 50; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.18);
+      padding: .6rem .8rem; display: flex; flex-direction: column; gap: .35rem; max-width: 20rem; font-size: .95rem; }
+    .fan-menu[hidden] { display: none; }
+    .fan-menu strong { color: #3b2e22; }
+    .fan-menu button { font: inherit; text-align: left; border: 0; background: none; color: var(--accent, #8a5a2b); padding: 0; cursor: pointer; text-decoration: underline; }
+    .fan-menu button[hidden] { display: none; }
+    .fan-od button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: .1rem .5rem; cursor: pointer; }
+  </style>
 </Base>
