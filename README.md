@@ -12,8 +12,8 @@ Vznikl při skutečném hledání předků jedné rodiny.
 **Autor a správce:** Jindřich Šaršon ([sarsonj@gmail.com](mailto:sarsonj@gmail.com), [GitHub](https://github.com/sarsonj))
 
 **Aktuální verze: 0.8.0 (vydána 4. 11. 2026).** Skill se průběžně vyvíjí – opravuji chyby a doplňuji postupy pro další archivy
-podle toho, na co narazíte vy. Jak aktualizovat, najdete v části [Instalace](#instalace), seznam změn
-v [historii repozitáře](https://github.com/sarsonj/rodokmen-skill/commits/main).
+podle toho, na co narazíte vy. Jak aktualizovat, najdete v části [Instalace](#instalace), přehled změn
+po verzích v [CHANGELOG.md](CHANGELOG.md).
 
 > **Než začnete**
 >
