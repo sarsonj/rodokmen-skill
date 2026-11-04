@@ -1,5 +1,7 @@
 <!doctype html>
-<!-- Šablona přihlašovací stránky. Vyplňuje ji tools/export_web.py z data/web.json do public/prihlaseni.html. -->
+<!-- Šablona přihlašovací stránky. Vyplňuje ji tools/export_web.py z data/web.json do public/prihlaseni.html.
+     Části mezi značkami nechá podle nastavení: otazka = je rodinná otázka, odkazy = vstup jen osobním odkazem,
+     odkaz = vedle otázky existují i osobní odkazy (tools/pozvanky.py). -->
 <html lang="cs">
 <head>
   <meta charset="utf-8" />
@@ -23,20 +25,52 @@
     .err { color: #b3261e; min-height: 1.4em; margin-top: 0.6rem; }
     .small { font-size: 0.88rem; }
     a { color: var(--accent); }
+    .klic { color: var(--ink); margin-top: 1rem; }
+    .vadny { margin: 1rem 0 0.4rem; padding: 0.7rem 0.85rem; background: #fbeeec; border: 1px solid #ecc9c4;
+      border-radius: 8px; color: #8c1d16; }
+    .vadny strong { display: block; }
+    .odkazy .small { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+    .vadny, .je-neplatny .bez { display: none; }
+    .je-neplatny .vadny { display: block; }
   </style>
 </head>
 <body>
   <main>
     <h1>{{NAZEV}}</h1>
     <p>{{UVOD}}</p>
+    <div class="vadny" role="alert"><strong>Tenhle odkaz už neplatí.</strong>
+      Mohl být nahrazený novým, zrušený, nebo se při kopírování zkrátil.</div>
+<!--otazka-->
     <form id="f">
       <label for="a">{{OTAZKA}}</label>
       <input id="a" name="a" autocomplete="off" autofocus required />
       <button type="submit">Vstoupit</button>
       <p class="err" id="err" role="alert"></p>
     </form>
+<!--odkaz-->
+    <p class="small bez">Máte osobní odkaz? Stačí ho otevřít, odpověď pak není potřeba.</p>
+<!--/odkaz-->
     <p class="small">{{NAPOVEDA}}</p>
+<!--/otazka-->
+<!--odkazy-->
+    <div class="odkazy">
+      <p class="klic bez">Na web se vstupuje osobním odkazem, který posílá {{KDO}}. Otevřete ho ze zprávy nebo
+        e&#8209;mailu a web si vás na tomto zařízení zapamatuje.</p>
+      <p class="small"><span class="bez">Odkaz nemáte nebo se ztratil? </span>{{NAPOVEDA_ODKAZ}}</p>
+    </div>
+<!--/odkazy-->
   </main>
+  <script>
+    // Brána tuto stránku vrací místo webu i při neplatném odkazu /?k=…; klíč z adresy pak zmizí.
+    var q = new URLSearchParams(location.search);
+    if (q.has('k')) {
+      document.querySelector('main').classList.add('je-neplatny');
+      q.delete('k');
+      // úvodní lomítka sloučit jako v bráně: „//cizi.web/“ by replaceState odmítl
+      history.replaceState(null, '', location.pathname.replace(/^[\/\\]+/, '/') + (q.toString() ? '?' + q : ''));
+    }
+  </script>
+<!--otazka-->
   <script>
     if (new URLSearchParams(location.search).has('spatne')) {
       document.getElementById('err').textContent = 'To není ono – zkuste to znovu.';
@@ -67,5 +101,6 @@
       });
     });
   </script>
+<!--/otazka-->
 </body>
 </html>
