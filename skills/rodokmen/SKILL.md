@@ -290,7 +290,6 @@ Nedělej to pořád. Postup:
 |---|---|
 | `aron_search.py "Obec"` | najde svazky matrik na ARON (SOA Zámrsk); `"Obec,Fara"` zúží stejnojmenné obce |
 | `aron_img.py <apu> info / <snímek> 1 pracovni/x.jpg / link <n> / svazek` | stáhne snímek, dá odkaz, zapíše svazek |
-| `trebon.py …` | matriky SOA Třeboň – zatím vypnuto (archiv nástroj od 2. 11. 2026 odmítá), čti v prohlížeči (`portaly.md`) |
 | `portafontium.py fara / info / snimek / link / svazek` | matriky SOA Plzeň (západní Čechy, Porta fontium) bez prohlížeče (faru zjisti na portálu) |
 | `ebadatelna.py link / a-link`, `snimek / a-snimek` | trvalý odkaz; náhled a výřez ze snímku uloženého z prohlížeče – stahovat nástroj nesmí (archiv od 2. 11. 2026 zakazuje), postup v `portaly.md` |
 | `cache.py stav / najdi <adresa> / uloz <soubor.json>`, `--nahled x.jpg` | sdílená mezipaměť obrázků (ukládá ji brzda sama); uložení snímku eBadatelny z prohlížeče, rovnou s náhledem 1600 px |

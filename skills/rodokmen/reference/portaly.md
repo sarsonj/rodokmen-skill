@@ -39,7 +39,7 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Ber ohled na server: stahuj jen to, co čteš; žádné hromadné stahování celých svazků.
 
 ## SOA Třeboň (digi.ceskearchivy.cz) – jen v prohlížeči
-- **Od 2. 11. 2026 archiv nástroj odmítá** (HTTP 403 podle User-Agentu „rodokmen“), `trebon.py` je vypnutý a brzda
+- **Od 2. 11. 2026 archiv nástroj odmítá** (HTTP 403 podle User-Agentu „rodokmen“), `trebon.py` je odstraněn a brzda
   skripty na digi.ceskearchivy.cz zastaví. Neobcházej to (jiný User-Agent, vlastní skript). Matriky čti v prohlížeči
   (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo 5–10 s mezi
   stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky
