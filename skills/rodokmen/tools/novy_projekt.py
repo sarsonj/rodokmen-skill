@@ -43,6 +43,7 @@ def copy(src, out):
 SKIP = ("node_modules", "dist", ".astro", "__pycache__")
 SABLONA = ".skill_sablona"   # kopie šablony, ze které projekt vznikl (základ pro tříčestnou aktualizaci)
 CEKAJICI = "cekajici.json"   # v .skill_sablona/: návrhy z konfliktů, které čekají na --vyreseno
+VZDY_SABLONA = {"web/package-lock.json"}   # mění ho npm install, ne uživatel: neslučovat, vzít nový (starý do zálohy)
 NEROZLISUJE = os.name == "nt" or sys.platform == "darwin"   # disk běžně nerozlišuje velikost písmen
 
 
@@ -207,6 +208,15 @@ def aktualizuj(src, dst, cast, jmena, zaloha, vysl, stary, cek):
         cek.pop(jmeno, None)
         nase = lf(cti(out)) if os.path.isfile(out) and not os.path.islink(out) else None
         zaklad = lf(cti(puv)) if os.path.isfile(puv) else None
+        if (jmeno in VZDY_SABLONA and nova is not None and nase is not None and zaklad is not None
+                and nase not in (zaklad, lf(nova)) and zaklad != lf(nova)):   # změnil ho npm i šablona
+            if not zalohuj(dst, puvz, z=out):   # bez zálohy nepřepisovat
+                vysl["konflikt"].append(jmeno + " (zálohu nešlo zapsat, soubor zůstal)")
+                continue
+            zapis(out, nova, new)
+            zapis(puv, nova, new)
+            vysl["prepsano"].append(jmeno + " (generuje npm, starý v záloze puvodni/)")
+            continue
         if nova is None:   # šablona soubor odstranila: nic nemazat, hlásit, dokud ho --vyreseno nepřevezme
             if os.path.lexists(out):
                 vysl["odstraneno"].append(jmeno)

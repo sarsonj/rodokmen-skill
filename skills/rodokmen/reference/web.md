@@ -107,4 +107,14 @@ o každém souboru a vypíše seznam:
 Odkaz (symlink, junction) ve `web/`, `tools/`, `.skill_sablona/` nebo `pracovni/`, který vede mimo projekt, a odkaz
 nebo složku na místě zálohy skript odmítne s hláškou POZOR a soubory za nimi přeskočí (bez zálohy nic nepřepíše).
 
-Pak ověř web a ve `web/` spusť `npm install` a `npm run data`. Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci.
+`web/package-lock.json` (mění ho `npm install`) se neslučuje: změnila-li ho šablona, vezme se nový a starý jde do zálohy.
+
+**Po aktualizaci projdi výpis s uživatelem** (skript řeší jen mechanické případy):
+1. **Ke kontrole:** porovnej, co změnila šablona (`.skill_sablona/<soubor>` proti `nova_sablona/<soubor>` v záloze)
+   a co projekt (`.skill_sablona/<soubor>` proti souboru v projektu). Uživateli řekni jednou dvěma větami, co je nového
+   a co je jeho úprava, navrhni sloučení a po souhlasu ho udělej a spusť `--vyreseno`.
+2. **Přepsáno, původní verze v záloze:** porovnej `puvodni/<soubor>` s novou verzí. Jsou-li v ní vlastní úpravy
+   (ne jen starší stav šablony), nabídni jejich převzetí do nové verze.
+3. **Sloučeno:** prohlédni výsledek (`git diff`), jestli dává smysl.
+4. Ve `web/` `npm install`, `npm run data` a `npm run build`, pak `python3 -I tools/kontrola.py`.
+Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci.

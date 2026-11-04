@@ -10,7 +10,7 @@ import glob, os, shutil, subprocess, sys, tempfile, time, traceback
 
 SKILL = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "skills/rodokmen")
 RADKY = [f"radek {i}" for i in range(1, 21)]
-POCET = 19   # počet případů v pripady()
+POCET = 20   # počet případů v pripady()
 PRESKOCENO = "přeskočeno: "   # případ, který tu nejde vyzkoušet (počítá se zvlášť)
 
 
@@ -264,6 +264,20 @@ def pripady(koren):
     assert "tools/nastroj.py" in sekce(out, "Přepsáno, původní verze"), out
     assert os.path.isfile(proj(".skill_sablona", "tools", "nastroj.py"))
     yield "starý projekt bez uložené šablony: tools/ se zálohují"
+
+    # 12b. package-lock.json mění npm install: změněný jen v projektu zůstane, změněný i v šabloně se nahradí (bez slučování)
+    zapis(sab("package-lock.json"), text(RADKY))
+    spust(s, p)
+    zapis(proj("web", "package-lock.json"), text(zmen(RADKY, 5, "radek 6 od npm")))
+    out = spust(s, p)
+    assert cti(proj("web", "package-lock.json")) == text(zmen(RADKY, 5, "radek 6 od npm")), out
+    zapis(sab("package-lock.json"), text(zmen(RADKY, 18, "radek 19 nova sablona")))
+    out = spust(s, p)
+    assert cti(proj("web", "package-lock.json")) == text(zmen(RADKY, 18, "radek 19 nova sablona")), out
+    assert not any("package-lock" in f for f in sekce(out, "Ke kontrole")), out
+    zal = zalohy(p, "puvodni", "web", "package-lock.json")
+    assert zal and cti(zal[-1]) == text(zmen(RADKY, 5, "radek 6 od npm")), out
+    yield "package-lock.json se neslučuje: nový ze šablony, starý v záloze"
 
     # 13. .skill_sablona/tools jako odkaz (symlink, na Windows junction) mimo projekt: nic venku nesmazat ani nezapsat
     venku = os.path.join(koren, "venku")
