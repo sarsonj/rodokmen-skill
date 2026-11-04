@@ -88,7 +88,8 @@ for (let y = Math.ceil(T.from / 5) * 5; y <= T.to; y += 5) ticks.push(y);
   <p class="lead">Každý řádek je jeden předek: otec je nad dítětem, matka pod ním. Pruh vede od narození do úmrtí.
     Svislá čára s kroužky spojuje manžele v roce sňatku a tečkovaně vede k narození jejich dítěte (když sňatek neznáme,
     stojí čára v roce narození). Vybledlý konec znamená, že datum neznáme přesně, čárkovaný pruh žijícího.
-    Posuvníkem vyberete roky, tažením myší osu posouváte, klepnutím na pruh otevřete stránku osoby.</p>
+    Posuvníkem vyberete roky, tažením myší nebo kolečkem nad posuvníkem (nad osou se Shiftem) osu posouváte,
+    klepnutím na pruh otevřete stránku osoby.</p>
   {T.rows.length ? (
     <>
       <div class="osa-bar" hidden>
@@ -295,6 +296,17 @@ for (let y = Math.ceil(T.from / 5) * 5; y <= T.to; y += 5) ticks.push(y);
         sel.addEventListener('pointerup', up);
         sel.addEventListener('pointercancel', up, { once: true });
       });
+
+      // kolečko: na posuvníku posouvá okno let, na ose vodorovně (Shift + kolečko nebo vodorovné kolečko / touchpad)
+      const wheel = (e: WheelEvent, onBar: boolean) => {
+        const d = (e.deltaX || (onBar || e.shiftKey ? e.deltaY : 0)) * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientWidth : 1);
+        if (!d || b - a >= to - from || (!onBar && !fits)) return;   // celá osa: vodorovně posune rámeček prohlížeč sám
+        e.preventDefault();
+        shift(a, b, d / px);
+        wrap.scrollLeft = 0;
+      };
+      wrap.addEventListener('wheel', (e) => wheel(e, false), { passive: false });
+      bar.addEventListener('wheel', (e) => wheel(e, true), { passive: false });
 
       bar.hidden = false;
       render();
