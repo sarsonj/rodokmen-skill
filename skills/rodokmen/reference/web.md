@@ -53,6 +53,7 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
     odkaz tam zůstane bez otisku, aby jeho číslo nedostal nikdo jiný. Klíč samotný
     nástroj nikam neukládá: kdo odkaz ztratí, dostane nový (`nova`). Každá změna platí až po `npm run nasadit`, potom
     zrušený odkaz přestane fungovat i v prohlížečích, kde už byl otevřený.
+    Když se zruší poslední odkaz a otázka není nastavená, web zůstane zamčený a nepustí nikoho (export upozorní).
     Přihlašovací stránka bez otázky jen vysvětlí, že se vstupuje odkazem, a podle `kontakt` poradí, jak získat nový.
     S otázkou ukáže formulář jako dřív a k němu větu, že osobní odkaz stačí otevřít.
   Bez otázky i bez odkazu nasazení (`npm run nasadit`, `deploy-caprover`) skončí chybou; otevřený web jen výslovně

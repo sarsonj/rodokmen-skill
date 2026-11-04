@@ -213,6 +213,25 @@ try:
     r, _ = login(CFG, [])
     ok("šablona nginx s jiným default: chyba místo otevřeného webu", str(r).startswith("EXIT CHYBA"), r)
 
+    jina_mapa = "map $http_x_admin $admin_ok {\n  default 0;\n  \"a\" 1;\n}\n"
+    w = web({"nginx.sablona.conf": jina_mapa + "map $cookie_rodokmen $rodokmen_ok {\n  default 0;\n{{ODPOVED}}\n}\n"})
+    login(dict(CFG, prihlaseni={"otevreny": True}), [])
+    ok("otevřený web nemění jiné mapy nginx", cti(w, "nginx.conf").startswith(jina_mapa) and mapa(w).strip() == "default 1;",
+       cti(w, "nginx.conf"))
+
+    # 9a. všechny odkazy zrušené: brána zůstane a nepustí nikoho (zrušení posledního odkazu jde nasadit)
+    w = web()
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        r = export_web.login_files(BEZ_OTAZKY, [], True)
+    ok("zrušené všechny odkazy: brána zapnutá a prázdná", r is True and "const HASH = '';" in brana(w)
+       and "new Set([])" in brana(w), r)
+    ok("zrušené všechny odkazy: stránka pro odkazy", "který posílá" in stranka(w) and "<form" not in stranka(w))
+    ok("zrušené všechny odkazy: varování, že se nedostane nikdo", "nikdo" in out.getvalue(), out.getvalue())
+    ok("zrušené všechny odkazy: nasazení projde", export_web.deploy_error(BEZ_OTAZKY, [], True) is None)
+    ok("zrušené všechny odkazy a otevreny: true: bez brány",
+       export_web.login_files(dict(BEZ_OTAZKY, prihlaseni={"otevreny": True}), [], True) is False and brana(w) is None)
+
     # 9b. prázdné (null) položky kontaktu export nezhodí
     for kontakt in ({"email": None}, {"jmeno": None, "kdo": None, "email": None}):
         for otisky in ([], [O1]):
@@ -233,6 +252,12 @@ try:
         json.dump([{"id": "p1", "jmeno": "A", "otisk": O1, "vytvoreno": "2026-11-04"},
                    {"id": "p2", "jmeno": "B", "vytvoreno": "2026-11-04", "zruseno": "2026-11-05"}], f)
     ok("zrušený odkaz (bez otisku) se přeskočí", export_web.load_otisky() == [O1], export_web.load_otisky())
+    ok("pozvanky.json se záznamy = odkazy zavedené", export_web.ma_pozvanky() is True)
+    with open(os.path.join(data, "pozvanky.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump([], f)
+    ok("prázdný pozvanky.json = bez odkazů", export_web.ma_pozvanky() is False)
+    os.remove(os.path.join(data, "pozvanky.json"))
+    ok("bez pozvanky.json = bez odkazů", export_web.ma_pozvanky() is False)
     for spatny in ("klic-v-cisté-podobě", O1.upper(), O1[:-1], "'];alert(1);//" + O1):
         with open(os.path.join(data, "pozvanky.json"), "w", encoding="utf-8", newline="\n") as f:
             json.dump([{"id": "p1", "jmeno": "A", "otisk": spatny, "vytvoreno": "2026-11-04"}], f)

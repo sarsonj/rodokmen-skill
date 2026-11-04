@@ -166,6 +166,11 @@ def load_otisky():
     return otisky
 
 
+def ma_pozvanky():
+    """Má projekt osobní odkazy zavedené (data/pozvanky.json s aspoň jedním záznamem, i když jsou všechny zrušené)?"""
+    return bool(jload("pozvanky.json", []))
+
+
 def section(tpl, name, keep):
     """Část šablony mezi <!--name--> a <!--/name-->: buď nechá (bez značek), nebo vyřízne."""
     pattern = rf"<!--{name}-->\n?(.*?)<!--/{name}-->\n?"
@@ -181,25 +186,27 @@ def link_hint(contact):
     return f"Řekněte si o nový {who}." if who else "Řekněte si o nový tomu, kdo vám o webu řekl."
 
 
-def login_files(cfg, otisky):
+def login_files(cfg, otisky, odkazy=None):
     """Přihlašovací brána: rodinná otázka, osobní odkazy (tools/pozvanky.py), nebo obojí. Na serveru je jen otisk
     odpovědi (SHA-256, stejný spočítá přihlašovací stránka a uloží do cookie) a otisky klíčů z odkazů – samotná
     odpověď ani klíče se nikam neukládají. nginx (Docker/CapRover) otisk klíče spočítat neumí, pustí jen otázku.
+    `odkazy` = projekt má osobní odkazy zavedené (i když jsou všechny zrušené: pak brána nepustí nikoho, ne každého).
     Vrací True, když je brána zapnutá."""
+    odkazy = bool(otisky) if odkazy is None else bool(odkazy or otisky)
     login = cfg.get("prihlaseni") or {}
     answer = norm_answer(login.get("odpoved", ""))
     tpl = open(os.path.join(WEB, "prihlaseni.sablona.html"), encoding="utf-8").read()
     if "rodokmen:" not in tpl:   # stará šablona (do 0.4.0) ukládá do cookie odpověď – s novou bránou by se nikdo nepřihlásil
         sys.exit("CHYBA: web/ má starou šablonu přihlášení. " + AKTUALIZUJTE)
     gate_tpl = open(os.path.join(WEB, "netlify", "brana.sablona.js"), encoding="utf-8").read()
-    if otisky and ("<!--odkazy-->" not in tpl or "{{OTISKY}}" not in gate_tpl):
+    if odkazy and ("<!--odkazy-->" not in tpl or "{{OTISKY}}" not in gate_tpl):
         sys.exit("CHYBA: šablona přihlášení ve web/ ještě neumí osobní odkazy (data/pozvanky.json). " + AKTUALIZUJTE)
     contact = cfg.get("kontakt") or {}
     hint = ""
     if contact.get("email"):
         hint = (f'Neznáte odpověď? Napište {html.escape(contact.get("jmeno") or "")} na '
                 f'<a href="mailto:{html.escape(contact["email"])}">{html.escape(contact["email"])}</a>.')
-    question = bool(answer) or not otisky   # bez otázky i odkazů (místní náhled) stránka jako dřív
+    question = bool(answer) or not odkazy   # bez otázky i odkazů (místní náhled) stránka jako dřív
     tpl = section(section(section(tpl, "odkaz", bool(otisky)), "otazka", question), "odkazy", not question)
     page = (tpl.replace("{{NAZEV}}", html.escape(cfg.get("nazev", "Rodokmen")))
                .replace("{{UVOD}}", html.escape(login.get("uvod", "Tenhle web je jen pro rodinu a příbuzné.")))
@@ -210,12 +217,14 @@ def login_files(cfg, otisky):
     write(os.path.join(WEB, "public", "prihlaseni.html"), page)
 
     edge = os.path.join(WEB, "netlify", "edge-functions", "brana.js")
-    gated = bool(answer or otisky) and login.get("otevreny") is not True   # jen JSON true otevře web, ne "true", 1 ani "ano"
+    gated = bool(answer or odkazy) and login.get("otevreny") is not True   # jen JSON true otevře web, ne "true", 1 ani "ano"
     digest = hashlib.sha256(("rodokmen:" + answer).encode()).hexdigest() if answer else ""
     if gated:
         write(edge, gate_tpl.replace("{{HASH}}", digest).replace("{{OTISKY}}", json.dumps(sorted(otisky))))
         nginx_map = f'  "{digest}" 1;' if digest else ""   # default 0 (nepustit) je v šabloně
-        if otisky:
+        if odkazy and not otisky and not digest:
+            print("POZOR: všechny osobní odkazy jsou zrušené a otázka není nastavená – na web se nedostane nikdo.")
+        if odkazy:
             print("POZOR: nginx.conf (Docker/CapRover) osobní odkazy neumí – "
                   + ("pustí jen přes rodinnou otázku." if digest else "nepustí nikoho.")
                   + " Osobní odkazy fungují na Netlify (npm run nasadit).")
@@ -224,21 +233,22 @@ def login_files(cfg, otisky):
         if os.path.exists(edge):
             os.remove(edge)
     nginx_tpl = open(os.path.join(WEB, "nginx.sablona.conf"), encoding="utf-8").read()
+    pred, _, za = nginx_tpl.replace("{{ODPOVED}}", nginx_map).partition("map $cookie_rodokmen")
+    mapa, _, zbytek = za.partition("}")   # jen mapa $cookie_rodokmen, jiné mapy v šabloně zůstanou, jak jsou
     if not gated:   # default 0 ze šablony nahradí default 1
-        nginx_tpl = re.sub(r"^[ \t]*default[ \t]+0;[ \t]*\n", "", nginx_tpl, flags=re.M)
-    nginx = nginx_tpl.replace("{{ODPOVED}}", nginx_map)
-    mapa = nginx.split("map $cookie_rodokmen", 1)[-1].split("}", 1)[0]
-    if re.findall(r"^[ \t]*default[ \t]+(\S+);", mapa, flags=re.M) != ["0" if gated else "1"]:
+        mapa = re.sub(r"^[ \t]*default[ \t]+0;[ \t]*\n", "", mapa, flags=re.M)
+    nginx = pred + "map $cookie_rodokmen" + mapa + "}" + zbytek
+    if not za or re.findall(r"^[ \t]*default[ \t]+(\S+);", mapa, flags=re.M) != ["0" if gated else "1"]:
         sys.exit("CHYBA: web/nginx.sablona.conf má v mapě $cookie_rodokmen jiný default než jediné „default 0;“. "
                  + AKTUALIZUJTE)
     write(os.path.join(WEB, "nginx.conf"), nginx)
     return gated
 
 
-def deploy_error(cfg, otisky):
+def deploy_error(cfg, otisky, odkazy=False):
     """Text chyby, když by nasazený web byl otevřený komukoli bez výslovného prihlaseni.otevreny: true; jinak None."""
     login = cfg.get("prihlaseni") or {}
-    if norm_answer(login.get("odpoved", "")) or otisky or login.get("otevreny") is True:
+    if norm_answer(login.get("odpoved", "")) or otisky or odkazy or login.get("otevreny") is True:
         return None
     return ("CHYBA: v data/web.json není odpověď na přihlašovací otázku a v data/pozvanky.json žádný osobní odkaz – "
             "web by byl otevřený komukoli.\n"
@@ -253,9 +263,9 @@ def main():
         sys.exit("V data/osoby.py chybí výchozí osoba (číslo 1).")
     SAME = ns["SAME"]                       # alias Kekulé → kanonické Kekulé (předek v rodokmenu vícekrát)
     cfg = jload("web.json", {})
-    otisky = load_otisky()
-    if "--nasazeni" in sys.argv and deploy_error(cfg, otisky):
-        sys.exit(deploy_error(cfg, otisky))
+    otisky, odkazy = load_otisky(), ma_pozvanky()
+    if "--nasazeni" in sys.argv and deploy_error(cfg, otisky, odkazy):
+        sys.exit(deploy_error(cfg, otisky, odkazy))
     docs_cfg = jload("dokumenty.json", [])
     recs = {r["key"]: r for r in record_rows()}
 
@@ -411,7 +421,7 @@ def main():
     subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(TOOLS, "fan_chart.py"),
                     os.path.join(gen_dir, "fan.svg"), "--web", hrefs], check=True, capture_output=True)
 
-    gated = login_files(cfg, otisky)
+    gated = login_files(cfg, otisky, odkazy)
     question = bool(norm_answer((cfg.get("prihlaseni") or {}).get("odpoved", "")))
     login_state = (f"zapnuté (otázka {'ano' if question else 'ne'}, osobních odkazů {len(otisky)})" if gated
                    else "VYPNUTÉ (web je otevřený)")
