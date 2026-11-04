@@ -53,6 +53,7 @@ main.wider { max-width: none; }   /* mapa: přes celou šířku okna (Česko a S
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
 .card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; }
 .card h3 { margin-top: 0; }
+.card:target { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); scroll-margin-top: 5rem; }
 .facts { margin: 0.3rem 0; padding-left: 1.2rem; }
 .facts li { margin: 0.2rem 0; }
 .note { background: #fff8ea; border-left: 3px solid #efb45f; padding: 0.6rem 0.9rem; border-radius: 4px; }

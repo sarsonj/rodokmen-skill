@@ -2,11 +2,14 @@
 import Base from '../../layouts/Base.astro';
 import PersonLink from '../../components/PersonLink.astro';
 import { records, recordList } from '../../lib/data.js';
+import domyData from '../../data/domy.json';
 
 export function getStaticPaths() {
   return recordList.map((r) => ({ params: { key: r.key } }));
 }
 const r = records[Astro.params.key];
+const domById = Object.fromEntries(domyData.domy.map((d) => [d.id, d]));
+const recDomy = (domyData.zapisy[r.key] || []).map((id) => domById[id]).filter(Boolean);
 ---
 <Base title={r.title} wide>
   <p class="crumbs"><a href="/zapisy/">Zápisy z matrik</a> · <span class="kind">{r.kindName}</span></p>
@@ -18,6 +21,7 @@ const r = records[Astro.params.key];
       <tr><th>Archiv</th><td>{r.archive}</td></tr>
       <tr><th>Svazek</th><td>{r.volume}</td></tr>
       <tr><th>Snímek</th><td>{r.scan}{r.url && <> – <a href={r.url} target="_blank" rel="noopener">otevřít na portálu {r.portal}</a></>}</td></tr>
+      {recDomy.length > 0 && <tr><th>Domy</th><td>{recDomy.map((d, i) => <>{i > 0 && ', '}<a href={`/domy/#${d.id}`}>{d.obec} čp. {d.cp}</a></>)}</td></tr>}
       {r.people.length > 0 && <tr><th>Týká se</th><td>{r.people.map((s, i) => <>{i > 0 && ', '}<PersonLink slug={s} /></>)}</td></tr>}
     </tbody>
   </table></div>

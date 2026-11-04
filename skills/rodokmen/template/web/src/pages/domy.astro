@@ -1,0 +1,232 @@
+---
+import Base from '../layouts/Base.astro';
+import 'leaflet/dist/leaflet.css';
+import data from '../data/domy.json';
+const domy = data.domy;
+// barvy rodů jako na stránce Rody a ve vějíři; domy bez rodu šedě
+const BEZ = { slug: '', name: 'ostatní', color: '#a39a8e' };
+const rody = [...data.rody, BEZ]
+  .map((r) => ({ ...r, n: domy.filter((d) => (d.rod || '') === r.slug).length }))
+  .filter((r) => r.n > 0);
+const barva = Object.fromEntries(rody.map((r) => [r.slug, r.color]));
+// míra jistoty polohy jednou krátkou větou
+const JIST = {
+  A: 'Poloha jistá – dům je na staré mapě i dnes pod stejným číslem.',
+  B: 'Poloha podle staré mapy, dnes je místo jinak.',
+  C: 'Poloha jen podle dnešního čísla popisného – starý dům mohl stát jinde.',
+  D: 'Známe jen obec, ne přesné místo.',
+};
+const obce = [...new Set(domy.map((d) => d.obec))];
+const payload = JSON.stringify({ domy, rody, jist: JIST });
+---
+<Base title="Domy předků" wide>
+  <h1>Domy, kde předci žili</h1>
+  {domy.length === 0 && <p class="lead">Zatím tu nejsou žádné domy.</p>}
+  {/* domy přidá výstup skillu stare-adresy (data/domy/domy.geojson); bez nich je stránka skrytá z menu */}
+  {domy.length > 0 && <>
+  <p class="lead">{domy.length} adres z matrik („obec, číslo popisné“) dohledaných na indikačních skicách stabilního katastru
+    (1824–1843) a porovnaných s dnešní mapou. Barva domu je barva rodu, jako ve vějíři. Při oddálení je u každé obce jedna
+    značka s počtem domů – kliknutím se na obec přiblížíte. Klikněte na dům – uvidíte, kdo v něm žil, a výřez staré skici.</p>
+
+  <div class="dmap" data-domy={payload}></div>
+  <div class="dlegend">
+    {rody.map((r) => (
+      <label><input type="checkbox" data-r={r.slug} checked /><span class="dot" style={`background:${r.color}`}></span>{r.name} <span class="muted">({r.n})</span></label>
+    ))}
+  </div>
+
+  <h2>Seznam domů</h2>
+  {obce.map((o) => (
+    <section class="obec">
+      <h3>{o}</h3>
+      <ul>
+        {domy.filter((d) => d.obec === o).map((d) => (
+          <li id={d.id}>
+            <span class="dot" style={`background:${barva[d.rod || '']}`}></span>
+            <a href="#" data-goto={d.id}><strong>čp. {d.cp}</strong></a>
+            {d.predci.length > 0 && <> – {d.predci.map((p, i) => <>{i > 0 && ', '}<a href={`/osoba/${p.slug}/${p.bocni ? '#' + p.bocni : ''}`}>{p.name}</a></>)}</>}
+            {d.predci.length === 0 && d.osoby && <span class="muted"> – {d.osoby}</span>}
+            {d.zapisy.length > 0 && <span class="small"> · zápisy: {d.zapisy.map((z, i) => <>{i > 0 && ', '}<a href={`/zdroj/${z.key}/`}>{z.date}</a></>)}</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+  <p class="muted small">Zdroje: indikační skici stabilního katastru (Národní archiv, Moravský zemský archiv, Zemský archiv v Opavě); ČÚZK – Archiv on-line; dnešní adresy RÚIAN (ČÚZK).
+    Podklad mapy © ČÚZK (ZTM, Ortofoto ČR), CC BY 4.0. Polohy dohledány nástrojem „stare-adresy“.</p>
+  </>}
+</Base>
+
+<script>
+  import L from 'leaflet';
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const mapEl = document.querySelector<HTMLElement>('.dmap');
+  if (mapEl) init(mapEl);   // bez domů se mapa nevykresluje
+
+  function init(el: HTMLElement) {
+  const { domy, rody, jist } = JSON.parse(el.dataset.domy!);
+  // skici Čech má Národní archiv, Moravy MZA, Slezska ZA Opava (podle začátku signatury)
+  const archiv = (sig: string) => (/^MOR/.test(sig) ? 'Moravský zemský archiv' : /^SLE/.test(sig) ? 'Zemský archiv v Opavě' : 'Národní archiv');
+  const rod = (slug: string | null) => rody.find((r: any) => r.slug === (slug || '')) || rody[rody.length - 1];
+  const DOMY_OD = 13; // od tohoto přiblížení jednotlivé domy, pod ním jedna značka na obec
+  const map = L.map(el, { scrollWheelZoom: false, zoomSnap: 0.5, maxZoom: 19 });
+  el.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      map.setZoomAround(map.mouseEventToContainerPoint(e as unknown as MouseEvent), map.getZoom() + (e.deltaY < 0 ? 1 : -1));
+    }
+  }, { passive: false });
+
+  // podklad ČÚZK (otevřená služba „ČÚZK – on-line“): základní topografická mapa nebo ortofoto
+  const TILE = (s: string) => `https://ags.cuzk.gov.cz/arcgis1/rest/services/${s === 'orto' ? 'ORTOFOTO_WM' : 'ZTM_WM'}/MapServer/tile/{z}/{y}/{x}`;
+  map.attributionControl.setPrefix(false);
+  const base = L.tileLayer(TILE('ztm'), {
+    maxZoom: 19, maxNativeZoom: 19,
+    attribution: 'Podklad: <a href="https://www.cuzk.cz" target="_blank">ČÚZK</a> – on-line (ZTM, Ortofoto ČR), CC BY 4.0 · výřezy skic: Národní archiv / MZA / ZA Opava, ČÚZK – Archiv',
+  }).addTo(map);
+  const sw = new L.Control({ position: 'topright' });
+  sw.onAdd = () => {
+    const d = L.DomUtil.create('div', 'dswitch');
+    d.innerHTML = '<button type="button" data-s="ztm" aria-pressed="true">Mapa</button><button type="button" data-s="orto" aria-pressed="false">Letecký snímek</button>';
+    L.DomEvent.disableClickPropagation(d);
+    d.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button');
+      if (!b) return;
+      base.setUrl(TILE(b.dataset.s!));
+      d.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    });
+    return d;
+  };
+  sw.addTo(map);
+
+  const on: Record<string, boolean> = Object.fromEntries(rody.map((r: any) => [r.slug, true]));
+  const vidim = (d: any) => on[d.rod || ''];
+  const markers: Record<string, L.Marker> = {};
+  const bounds: L.LatLngExpression[] = [];
+  for (const d of domy) {
+    const r = rod(d.rod);
+    const icon = L.divIcon({
+      className: '',
+      html: `<span class="dpin${d.jistota === 'D' ? ' dpin-d' : ''}" style="background:${r.color}">${esc(d.cp)}</span>`,
+      iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -12],
+    });
+    const m = L.marker([d.lat, d.lon], { icon, title: `${d.obec} čp. ${d.cp}`, keyboard: true });
+    const who = d.predci.length
+      ? '<ul class="dwho">' + d.predci.map((p: any) =>
+          `<li><span class="dot" style="background:${rod(p.rod).color}"></span><a href="/osoba/${esc(p.slug)}/${p.bocni ? '#' + esc(p.bocni) : ''}">${esc(p.name)}</a>` +
+          `${p.years ? ` <span class="y">${esc(p.years)}</span>` : ''}` +
+          // boční příbuzný nemá vlastní stránku: jméno vede na jeho kartičku, „viz …“ na předka
+          (p.bocni ? `<br><span class="y">z rodiny – viz <a href="/osoba/${esc(p.slug)}/">${esc(p.rel)}</a></span>`
+            : p.rel ? `<br><span class="y">${esc(p.rel)}</span>` : '') + '</li>').join('') + '</ul>'
+      : (d.osoby ? `<p class="y">${esc(d.osoby)}</p>` : '');
+    const zap = d.zapisy.length
+      ? '<p class="dzap"><span class="y">Zmínka v zápisech:</span> ' + d.zapisy.map((z: any) => `<a href="/zdroj/${esc(z.key)}/">${esc(z.title)}</a>`).join(', ') + '</p>' : '';
+    m.bindPopup(
+      `<strong class="dtit">${esc(d.obec)} čp. ${esc(d.cp)}</strong>` +
+      (d.rod ? `<span class="y"> · ${esc(r.name)}</span>` : '') + who + zap +
+      (d.vyrez ? `<a href="${esc(d.vyrez)}" target="_blank"><img src="${esc(d.vyrez)}" alt="výřez staré skici" class="dimg"></a>` : '') +
+      `<p class="y">${d.skica ? `${archiv(d.skica)}, indikační skica ${d.skica_url ? `<a href="${esc(d.skica_url)}" target="_blank" rel="noopener">${esc(d.skica)}</a>` : esc(d.skica)}${d.skica_rok ? ` (${esc(d.skica_rok)})` : ''}, ČÚZK – Archiv. ` : ''}${esc(jist[d.jistota] || '')}` +
+      `${d.dnes_na_miste?.length ? ` Dnes: ${esc(d.dnes_na_miste[0].split(',')[0])}.` : ''}</p>`,
+      { maxWidth: 280 });
+    markers[d.id] = m;
+    bounds.push([d.lat, d.lon]);
+  }
+
+  // značky obcí pro oddálený pohled; obce, jejichž štítky by se překrývaly, se sloučí do jednoho
+  // (klik = přiblížit na obec nebo skupinu obcí); rámeček má barvu nejčastějšího rodu
+  const obce = [...new Set(domy.map((d: any) => d.obec))] as string[];
+  const center = (o: string) => L.latLngBounds(domy.filter((d: any) => d.obec === o).map((d: any) => L.latLng(d.lat, d.lon))).getCenter();
+  const domu = (n: number) => (n === 1 ? '1 dům' : n < 5 ? `${n} domy` : `${n} domů`);
+  const short = (o: string) => o.split(' (')[0];
+  const clusters = L.layerGroup().addTo(map);
+  const drawClusters = () => {
+    clusters.clearLayers();
+    const z = map.getZoom();
+    const items = obce
+      .map((o) => ({ o, n: domy.filter((d: any) => d.obec === o && vidim(d)).length, p: map.project(center(o), z) }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n);
+    const groups: { p: L.Point; members: typeof items }[] = [];
+    for (const it of items) {
+      const g = groups.find((g) => Math.abs(g.p.x - it.p.x) < 150 && Math.abs(g.p.y - it.p.y) < 30);
+      if (g) g.members.push(it); else groups.push({ p: it.p, members: [it] });
+    }
+    for (const g of groups) {
+      const ds = domy.filter((d: any) => vidim(d) && g.members.some((x) => x.o === d.obec));
+      const cnt: Record<string, number> = {};
+      for (const d of ds) cnt[d.rod || ''] = (cnt[d.rod || ''] || 0) + 1;
+      const poradi = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+      const tecky = poradi.map((s) => `<span class="dot" style="background:${rod(s).color}"></span>`).join('');
+      const label = g.members.length === 1 ? short(g.members[0].o)
+        : `${short(g.members[0].o)} a ${g.members.length - 1} ${g.members.length - 1 < 5 ? 'další' : 'dalších'}`;
+      const m = L.marker(map.unproject(g.p, z), {
+        icon: L.divIcon({ className: '', html: `<span class="dobec" style="border-color:${rod(poradi[0]).color}"><b>${esc(label)}</b><i>${domu(ds.length)}</i>${tecky}</span>`, iconSize: null as any, iconAnchor: [0, 14] }),
+        keyboard: true, title: g.members.map((x) => x.o).join(', '),
+      });
+      m.on('click', () => map.fitBounds(L.latLngBounds(ds.map((d: any) => L.latLng(d.lat, d.lon))), { padding: [50, 50], maxZoom: 17 }));
+      clusters.addLayer(m);
+    }
+  };
+  const update = () => {
+    const showDomy = map.getZoom() >= DOMY_OD;
+    for (const d of domy) {
+      const m = markers[d.id], show = showDomy && vidim(d);
+      if (show && !map.hasLayer(m)) m.addTo(map);
+      if (!show && map.hasLayer(m)) m.remove();
+    }
+    if (showDomy) clusters.clearLayers(); else drawClusters();
+  };
+  map.on('zoomend', update);
+  const fit = () => { map.invalidateSize(); if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] }); update(); };
+  fit();
+  window.addEventListener('load', fit, { once: true });
+  for (const cb of document.querySelectorAll<HTMLInputElement>('.dlegend input')) {
+    cb.addEventListener('change', () => { on[cb.dataset.r!] = cb.checked; update(); });
+  }
+  const go = (id: string) => {
+    const m = markers[id];
+    if (!m) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    map.setView(m.getLatLng(), 17);
+    update();
+    m.openPopup();
+  };
+  if (location.hash) window.addEventListener('load', () => setTimeout(() => go(decodeURIComponent(location.hash.slice(1))), 300), { once: true });
+  window.addEventListener('hashchange', () => go(decodeURIComponent(location.hash.slice(1))));
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('[data-goto]')) {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      history.replaceState(null, '', '#' + a.dataset.goto);
+      go(a.dataset.goto!);
+    });
+  }
+  }
+</script>
+
+<style>
+  .dmap { height: 70vh; min-height: 420px; border: 1px solid var(--line); border-radius: var(--radius); margin: 1rem 0 0.5rem; }
+  .dlegend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.9rem; margin-bottom: 1rem; }
+  :global(.dmap .dot), .dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -1px; border: 1px solid #3b2e22; }
+  .obec ul { list-style: none; padding-left: 0; margin: 0.2rem 0 0.8rem; }
+  .obec li { margin: 0.2rem 0; }
+  .obec h3 { margin: 1rem 0 0.2rem; }
+  .small { font-size: 0.85rem; }
+  :global(.leaflet-popup-content .y) { color: #6e6153; font-size: 0.85em; }
+  :global(.leaflet-popup-content p) { margin: 0.4rem 0 0; }
+  :global(.dtit) { font: 700 1rem var(--serif); }
+  :global(.dwho) { list-style: none; padding: 0; margin: 0.4rem 0 0; }
+  :global(.dwho li) { margin: 0.25rem 0; line-height: 1.25; }
+  :global(.dimg) { display: block; max-width: 240px; margin-top: 6px; border: 1px solid #ccc; }
+  :global(.dpin) { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff;
+    color: #2b2118; font: 700 0.7rem/1 var(--sans); box-shadow: 0 1px 3px #0007; font-variant-numeric: tabular-nums; }
+  :global(.dpin-d) { opacity: 0.6; border-style: dashed; }
+  :global(.dobec) { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transform: translate(-50%, 0);
+    background: var(--paper); color: var(--ink); border: 3px solid var(--accent); border-radius: 999px; padding: 3px 10px;
+    font: 0.8rem/1.2 var(--sans); box-shadow: 0 1px 4px #0005; cursor: pointer; }
+  :global(.dobec b) { font: 700 0.85rem var(--serif); }
+  :global(.dobec i) { font-style: normal; color: var(--muted); font-size: 0.75rem; }
+  :global(.dobec .dot) { width: 0.6rem; height: 0.6rem; margin: 0 -3px 0 0; }
+  :global(.dswitch) { display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px #0002; }
+  :global(.dswitch button) { font: 600 0.8rem var(--sans); border: 0; background: transparent; color: var(--ink); padding: 6px 11px; cursor: pointer; }
+  :global(.dswitch button[aria-pressed="true"]) { background: var(--accent); color: #fff; }
+</style>

@@ -5,6 +5,7 @@ import Record from '../../components/Record.astro';
 import Pedigree from '../../components/Pedigree.astro';
 import MobileTree from '../../components/MobileTree.astro';
 import { people, families, lineByK, records, dateKey, href, statusClass } from '../../lib/data.js';
+import domyData from '../../data/domy.json';
 
 export function getStaticPaths() {
   return Object.keys(people).map((slug) => ({ params: { slug } }));
@@ -13,12 +14,15 @@ const p = people[Astro.params.slug];
 const line = p.line ? lineByK[p.line] : null;
 const recs = [...new Set(p.records)].filter((r) => records[r]).sort((a, b) => dateKey(records[a].date) - dateKey(records[b].date));
 const path = [...p.path].reverse().filter(Boolean);
+const domById = Object.fromEntries(domyData.domy.map((d) => [d.id, d]));
+const myDomy = (domyData.osoby[p.slug] || []).map((id) => domById[id]).filter(Boolean);
 ---
 <Base title={p.name} description={`${p.name} ${p.years} – ${p.rel}`}>
   <div class="crumbs">
     {path.map((s, i) => <>{i > 0 && <span>→</span>}{s === p.slug ? <span>{people[s].name}</span> : <a href={href.person(s)}>{people[s].name.split(' ')[0]} {people[s].years}</a>}</>)}
   </div>
   <h1>{p.name}</h1>
+  {p.zap?.length > 0 && p.zap.join(' / ') !== p.modern && <p class="small muted">{p.sex === 'F' ? 'V zápisech zapsána jako' : 'V zápisech zapsán jako'} {p.zap.map((z) => `„${z}“`).join(', ')}{p.name !== p.modern ? ` · dnešní podoba: ${p.modern}` : ''}</p>}
   <div class="chips">
     {p.years && <span class="chip">{p.years}</span>}
     <span class="chip">{p.rel}</span>
@@ -32,6 +36,9 @@ const path = [...p.path].reverse().filter(Boolean);
   )}
   {p.facts.length > 0 && <ul class="facts">{p.facts.map((f) => <li>{f}</li>)}</ul>}
   {p.note && <p class="note">{p.note}</p>}
+  {myDomy.length > 0 && (
+    <p>{p.sex === 'F' ? 'Žila' : 'Žil'} v domě: {myDomy.map((d, i) => <>{i > 0 && ', '}<a href={`/domy/#${d.id}`}>{d.obec} čp. {d.cp}</a></>)} <span class="muted small">(na mapě domů)</span></p>
+  )}
 
   <h2>Rodina</h2>
   <div class="grid2">
@@ -55,8 +62,8 @@ const path = [...p.path].reverse().filter(Boolean);
     <>
       <h2>Příbuzní mimo přímou linii</h2>
       <div class="grid2">
-        {p.side.map((s) => (
-          <div class="card"><h3>{s.name}</h3><p class="small">{s.text}</p>
+        {p.side.map((s, i) => (
+          <div class="card" id={`pribuzny-${i}`}><h3>{s.name}</h3><p class="small">{s.text}</p>
             {s.records.length > 0 && <p class="small">Zápisy: {s.records.filter((r) => records[r]).map((r, i) => <>{i > 0 && ' · '}<a href={href.record(r)}>{records[r].date}</a></>)}</p>}
           </div>
         ))}

@@ -76,6 +76,11 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 - Kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na čtvrtiny (sloupec jmen + data),
   `magick f.jpg -crop 1250x1650+X+Y +repage ctvrt.jpg`. **Dopisované řádky** se snadno přečtou špatně (Franziska × Heinrich,
   strana 131 × 151) – údaj z rejstříku vždy ověř v matrice.
+- **Kniha bez rejstříku** (hledáš rodiče podle příjmení): stáhni jen sloupec otce (nebo matky) z mnoha snímků
+  v nízkém rozlišení (`aron_img.py <apu> <n> 2 pracovni/x/o<n>.jpg x0,y0,x1,y1` – výřez nastav podle sloupce na jednom snímku, víc
+  najednou přes `xargs -P 4`) a slož je po osmi vedle sebe (`magick montage o1.jpg … o8.jpg -tile 8x1 -geometry +4+0 m.jpg`).
+  Úroveň 2 na čtení příjmení stačí, menší ne. Nalezený zápis pak stáhni celý v úrovni 1 nebo 0 (0 = plné rozlišení).
+  Nezapomeň na nemanželské děti – otec je prázdný a příjmení je ve sloupci matky.
 - Do ~1780 latina nebo čeština, pak hodně němčina (kurent), od ~1860 často čeština, ve 20. století čeština.
 - Česká jména v němčině/latině: Johann/Joannes = Jan, Wenzel/Wenceslaus = Václav, Joseph = Josef, Franz/Franciscus = František,
   Maria = Marie, Anna, Katharina = Kateřina, Barbara = Barbora, Magdalena = Majdalena/Magdaléna, Theresia = Terezie,

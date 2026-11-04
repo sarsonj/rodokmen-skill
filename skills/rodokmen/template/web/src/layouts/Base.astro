@@ -1,12 +1,13 @@
 ---
 import '../styles/global.css';
 import { config } from '../lib/data.js';
+import domyData from '../data/domy.json';
 const siteName = config.nazev || 'Rodokmen';
 const { title, description = config.popis || siteName, wide = false, wider = false, full = false } = Astro.props;
 const path = Astro.url.pathname;
 const groups = [
-  [['/', 'Úvod'], ...(config.maPribeh ? [['/pribehy/', config.pribeh?.menu || 'Příběh rodu']] : []), ['/zajimavosti/', 'Zajímavosti']],
-  [['/rody/', 'Rody'], ['/mapa/', 'Mapa'], ['/vejir/', 'Vějíř'], ['/predci/', 'Předci'], ['/zapisy/', 'Zápisy'], ['/hledame/', 'Co hledáme']],
+  [['/', 'Úvod'], ...(config.maPribeh ? [['/pribehy/', config.pribeh?.menu || 'Příběh rodu']] : []), ['/zajimavosti/', 'Zajímavosti'], ['/statistiky/', 'Statistiky']],
+  [['/rody/', 'Rody'], ['/mapa/', 'Mapa'], ...(domyData.domy.length ? [['/domy/', 'Domy']] : []), ['/vejir/', 'Vějíř'], ['/predci/', 'Předci'], ['/zapisy/', 'Zápisy'], ['/hledame/', 'Co hledáme']],
   [['/hledat/', 'Hledat']],
 ];
 const current = (url) => ((url === '/' ? path === '/' : path.startsWith(url)) ? 'page' : undefined);

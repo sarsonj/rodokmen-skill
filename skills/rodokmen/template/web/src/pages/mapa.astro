@@ -1,10 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
 import FamilyMap from '../components/FamilyMap.astro';
+import domyData from '../data/domy.json';
 ---
 <Base title="Mapa rodu" wider>
   <h1>Kde žili naši předci</h1>
-  <p class="lead">Každá kulička je jedna obec a jeden rod – barva podle rodu, velikost podle počtu předků. Klikněte na kuličku pro jména; rody jde v legendě vypínat.</p>
+  <p class="lead">Každá kulička je jedna obec a jeden rod – barva podle rodu, velikost podle počtu předků. Klikněte na kuličku pro jména; rody jde v legendě vypínat.{domyData.domy.length > 0 && <> Konkrétní domy (čísla popisná) najdete na <a href="/domy/">mapě domů předků</a>.</>}</p>
   <FamilyMap height="calc(100vh - 230px)" />
   <p class="small muted">Polohy obcí z OpenStreetMap (střed dnešní obce). Průhledná kulička s čárkovaným okrajem je jen hypotéza.</p>
 </Base>

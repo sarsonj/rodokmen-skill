@@ -229,6 +229,8 @@ Podrobně `reference/web.md`. Ve zkratce:
 1. `cd web && npm install` (jednou), pak `npm run nahled` → http://localhost:4321 – ukaž uživateli. V cloudovém prostředí
    (claude.ai) localhost neuvidí – pošli mu snímky stránek (headless prohlížeč) nebo nasaď náhled.
 2. Nastav `data/web.json`: název, úvod, kontakt a **přihlašovací otázku a odpověď** (web je jen pro rodinu).
+   Web má i stránky **Statistiky** a **Domy** (mapa domů předků – polohy „obec čp.“ z matrik dohledá skill
+   **stare-adresy**, jeho `domy.geojson` patří do `data/domy/`; viz `reference/web.md`).
 3. Po každé změně dat: `npm run data && npm run build` (nebo znovu `npm run nahled`). Hlášky `POZOR: nefunkční odkaz`
    oprav hned (adresa osoby se mění, když se jí doplní rok narození).
    Po každém větším kole hledání zkontroluj i texty úvodu ve `web.json` (`uvod`, `zajimavosti_na_uvodu`) –

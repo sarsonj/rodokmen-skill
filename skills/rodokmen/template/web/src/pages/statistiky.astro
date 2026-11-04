@@ -1,0 +1,190 @@
+---
+import Base from '../layouts/Base.astro';
+import st from '../data/statistiky.json';
+import { root, href } from '../lib/data.js';
+
+const p = st.prehled;
+const cz = (n) => (n == null ? '–' : String(n).replace('.', ','));
+const MS = ['led','úno','bře','dub','kvě','čvn','čvc','srp','zář','říj','lis','pro'];
+const pct = (v, max) => (max ? Math.max(2, Math.round((v / max) * 100)) : 0);
+const maxOf = (arr) => Math.max(1, ...arr.map((x) => x.count));
+const groupColor = { 'zemědělství': '#7a9a4a', 'řemeslo': '#8a5a2b', 'doprava': '#3f6d8a', 'dělník': '#6e6153', 'úřad a služby': '#6a4f8a', 'obchod': '#a07a2a', 'les': '#3f7a5a' };
+// jména mohou pocházet z importu GEDCOM – do HTML jen escapovaná
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const person = (r) => `<a href="${href.person(r.slug)}">${esc(r.name)}</a>`;
+const wedM = st.snatek_vek.M, wedF = st.snatek_vek.F;
+const allWed = [...wedM.list, ...wedF.list];
+const youngestBride = wedF.list[0], oldestGroom = wedM.list[wedM.list.length - 1];
+---
+<Base title="Statistiky">
+  <h1>Rodokmen v číslech</h1>
+  <p class="lead">Co prozrazují matriky o celé rodině najednou – řemesla, místa, věk při svatbě, délka života i víra.
+    Počítá se jen z údajů, které o předcích opravdu máme, takže čísla jsou orientační.</p>
+
+  <div class="stat-tiles">
+    {[[p.predku, 'předků v rodokmenu'], [p.dolozeno, 'doloženo z matrik'], [p.predku ? p.generaci + 1 : 0, 'generací'],
+      [p.nejstarsi_narozeni, 'nejstarší narození'], [p.zapisu, 'přečtených zápisů'], [p.prijmeni, 'rodových příjmení']]
+      .filter(([v]) => v).map(([v, t]) => <div class="tile"><b>{v}</b><span>{t}</span></div>)}
+  </div>
+
+  <h2>Kolik předků známe v každé generaci</h2>
+  <p class="muted">Každá generace má dvakrát víc předků než ta předchozí. Šedá část ukazuje, kolik jich ještě chybí.</p>
+  <div class="bars">
+    {st.generace.map((g) => (
+      <div class="bar-row">
+        <span class="lbl">{g.gen === 0 ? (root.modern || root.name).split(' ')[0] : g.gen === 1 ? 'rodiče' : g.gen === 2 ? 'prarodiče' : `${g.gen}. generace`}</span>
+        <span class="bar"><span class="fill" style={`width:${pct(g.pocet, g.max)}%`}></span></span>
+        <span class="val">{g.pocet} z {g.max}</span>
+      </div>
+    ))}
+  </div>
+
+  <h2>Čím se živili</h2>
+  <p class="muted">Povolání předků tak, jak je zapsal farář (u každého počítáno jednou, u žen jen tam, kde je povolání uvedeno).</p>
+  <div class="stack">
+    {st.povolani_skupiny.map((g) => (
+      <span class="seg" style={`flex:${g.count};background:${groupColor[g.name] || '#999'}`} title={`${g.name}: ${g.count}`}>{g.name} {g.count}</span>
+    ))}
+  </div>
+  <div class="occ">
+    {st.povolani.map((o) => (
+      <details class="card">
+        <summary><span class="dot" style={`background:${groupColor[o.group] || '#999'}`}></span><strong>{o.name}</strong> <span class="muted">{o.people.length}×</span></summary>
+        <p set:html={o.people.map(person).join(', ')} />
+      </details>
+    ))}
+  </div>
+
+  <h2>Kde se narodili</h2>
+  <div class="bars">
+    {st.mista.map((m) => (
+      <div class="bar-row">
+        <span class="lbl">{m.name}</span>
+        <span class="bar"><span class="fill" style={`width:${pct(m.count, maxOf(st.mista))}%`}></span></span>
+        <span class="val">{m.count}</span>
+      </div>
+    ))}
+  </div>
+
+  <h2>Svatby</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Věk při sňatku</h3>
+      <p>Ženichové v průměru <b>{cz(wedM.prumer)} let</b>, nevěsty <b>{cz(wedF.prumer)} let</b>
+        <span class="muted">({allWed.length} sňatků se známým věkem).</span></p>
+      {youngestBride && <p>Nejmladší nevěsta: <Fragment set:html={person(youngestBride)} /> – {youngestBride.val} let.</p>}
+      {oldestGroom && <p>Nejstarší ženich: <Fragment set:html={person(oldestGroom)} /> – {oldestGroom.val} let.</p>}
+      <details><summary>Všichni ženichové a nevěsty</summary>
+        <p><strong>Ženichové:</strong> <Fragment set:html={wedM.list.map((r) => `${person(r)} (${r.val})`).join(', ')} /></p>
+        <p><strong>Nevěsty:</strong> <Fragment set:html={wedF.list.map((r) => `${person(r)} (${r.val})`).join(', ')} /></p>
+      </details>
+    </div>
+    <div class="card">
+      <h3>V kterém měsíci se brali</h3>
+      <div class="months">
+        {st.snatek_mesice.map((m) => (
+          <div class="mcol" title={`${m.name}: ${m.count}`}>
+            <span class="mbar" style={`height:${pct(m.count, maxOf(st.snatek_mesice))}%`}></span>
+            <span class="mlbl">{MS[st.snatek_mesice.indexOf(m)]}</span>
+          </div>
+        ))}
+      </div>
+      <p class="muted small">V katolických venkovských farnostech se svatby obvykle konaly po sklizni (říjen, listopad)
+        a v masopustu (leden, únor); v adventu a v postě se zpravidla neoddávalo a v létě byla práce na poli.</p>
+    </div>
+  </div>
+
+  <h2>Rodiče a děti</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Věk rodičů při narození dítěte z rodokmenu</h3>
+      <p>Otcové v průměru <b>{cz(st.rodice_vek.M.prumer)} let</b>, matky <b>{cz(st.rodice_vek.F.prumer)} let</b>.
+        {st.rodice_vek.M.prumer && st.rodice_vek.F.prumer && <>Jedna generace tak u nás trvá zhruba {Math.round((st.rodice_vek.M.prumer + st.rodice_vek.F.prumer) / 2)} let.</>}</p>
+      {st.rodice_vek.F.nejstarsi && <p>Nejstarší matka: <Fragment set:html={person(st.rodice_vek.F.nejstarsi.parent)} /> – {st.rodice_vek.F.nejstarsi.val} let
+        (dcera <Fragment set:html={person(st.rodice_vek.F.nejstarsi.child)} />).</p>}
+      {st.rodice_vek.F.nejmladsi && <p>Nejmladší matka: <Fragment set:html={person(st.rodice_vek.F.nejmladsi.parent)} /> – {st.rodice_vek.F.nejmladsi.val} let.</p>}
+    </div>
+    {(st.nemanzelske.length > 0 || st.legitimace.length > 0) && <div class="card">
+      <h3>Děti „před svatbou“</h3>
+      <p><b>{st.nemanzelske.length}</b> předků se narodilo jako nemanželské dítě nebo mělo nemanželské dítě
+        a <b>{st.legitimace.length}</b> dětí bylo „legitimováno“ – uznáno za manželské pozdější svatbou rodičů.
+        V 19. století to na vesnici nebylo nic výjimečného: ke sňatku bylo potřeba svolení vrchnosti i peníze na usedlost.</p>
+    </div>}
+  </div>
+
+  <h2>Jak dlouho žili</h2>
+  {st.doziti.list.length ? (
+    <>
+      <p>U {st.doziti.list.length} předků známe přesné datum narození i úmrtí; dožili se v průměru <b>{cz(st.doziti.prumer)} let</b>.
+        {st.doziti.list.length > 15 && <span class="muted">Nejdéle žijících patnáct:</span>}</p>
+      <div class="bars">
+        {st.doziti.list.slice(0, 15).map((r) => (
+          <div class="bar-row">
+            <span class="lbl" set:html={person(r)} />
+            <span class="bar"><span class="fill" style={`width:${pct(r.val, 100)}%`}></span></span>
+            <span class="val">{r.val} let</span>
+          </div>
+        ))}
+      </div>
+    </>
+  ) : <p class="muted">Zatím nemáme dost údajů.</p>}
+
+  <h2>Nejčastější jména</h2>
+  <div class="grid2">
+    <div class="card"><h3>Muži</h3><p>{st.jmena.M.map((n) => `${n.name} (${n.count}×)`).join(', ')}</p></div>
+    <div class="card"><h3>Ženy</h3><p>{st.jmena.F.map((n) => `${n.name} (${n.count}×)`).join(', ')}</p></div>
+  </div>
+
+  {st.vira.length > 0 && <>
+  <h2>Víra</h2>
+  <p>Zmínky o vyznání a jeho změnách u předků (přestup, vystoupení z církve, evangelíci):</p>
+  <ul>
+    {st.vira.map((r) => <li><Fragment set:html={person(r)} /> – {r.val}</li>)}
+  </ul>
+  </>}
+
+  <h2>Odkud to víme</h2>
+  <div class="grid2">
+    <div class="card"><h3>Druhy zápisů</h3>
+      <p>{st.zapisy_druh.map((d) => `${d.name}: ${d.count}`).join(' · ')}</p>
+      <p>{st.zapisy_portal.map((d) => `${d.name}: ${d.count}`).join(' · ')}</p>
+    </div>
+    <div class="card"><h3>Z jakého období</h3>
+      <div class="bars">
+        {st.zapisy_obdobi.map((d) => (
+          <div class="bar-row">
+            <span class="lbl">{d.name}</span>
+            <span class="bar"><span class="fill" style={`width:${pct(d.count, maxOf(st.zapisy_obdobi))}%`}></span></span>
+            <span class="val">{d.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.7rem; margin: 1.2rem 0; }
+  .tile { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.8rem; text-align: center; }
+  .tile b { display: block; font-family: var(--serif); font-size: 1.8rem; color: var(--accent); }
+  .tile span { font-size: 0.85rem; color: var(--muted); }
+  .bars { display: grid; gap: 0.35rem; max-width: 46rem; }
+  .bar-row { display: grid; grid-template-columns: minmax(7rem, 12rem) 1fr auto; gap: 0.6rem; align-items: center; font-size: 0.92rem; }
+  .bar { background: var(--line); border-radius: 4px; height: 0.9rem; overflow: hidden; }
+  .fill { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .val { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+  .stack { display: flex; border-radius: 6px; overflow: hidden; margin: 0.6rem 0 1rem; font-size: 0.8rem; color: #fff; }
+  .seg { padding: 0.35rem 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .occ { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.5rem; }
+  .occ .card { padding: 0.6rem 0.8rem; }
+  .occ summary { cursor: pointer; }
+  .occ p { font-size: 0.88rem; margin: 0.5rem 0 0; }
+  .dot { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; margin-right: 0.4rem; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.8rem; }
+  .months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; height: 120px; align-items: end; }
+  .mcol { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+  .mbar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .mlbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+  .small { font-size: 0.85rem; }
+  @media (max-width: 560px) { .bar-row { grid-template-columns: 6.5rem 1fr auto; } }
+</style>

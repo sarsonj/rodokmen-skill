@@ -41,8 +41,20 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 - `pribeh`: `menu` a `tlacitko` pojmenuj podle hlavního rodu („Příběh Novákových“), `rod` = číslo rodu (8–15).
   Bez vyplněného `uvod` ukáže úvodní stránka aspoň název a `lead` příběhu. Viz `pribehy.md`.
 - Šablona `web.json` je prázdná – název nastav hned, jak znáš příjmení výchozí osoby (`kontrola.py` hlásí zbytky ukázky).
+- `puvodni_jmena`: `true` = jména osob na webu a ve vějíři v původních tvarech ze zápisů (pole `zap` v `osoby.py`,
+  „Catharina Nowakin / Kateřina Nováková“). Výchozí je dnešní spisovná podoba; původní tvar je pak jen řádkem na stránce osoby.
 - `citlive_schvaleno`: seznam úryvků textu, které uživatel na webu schválil (např. `["oběsil se ve stodole"]`) –
   `kontrola.py` je pak nehlásí jako `CITLIVÉ`. Úryvek musí obsahovat hlášené slovo; když se text změní, hlásí se znovu.
+
+## Stránky Statistiky a Domy
+- **Statistiky** (`/statistiky/`, `tools/statistiky.py`): povolání, věk dožití a při sňatku, měsíce svateb, generační
+  odstup, místa narození, křestní jména, víra, zápisy podle druhu a archivu. Počítá se jen z faktů přímých předků –
+  čím jednotnější zápis faktů (`* 12. 3. 1873 Obec čp. 5`, `× …`, `† …`, řemeslo samostatně), tím lepší čísla.
+- **Domy** (`/domy/`, `tools/domy_export.py`): mapa domů předků z výstupu skillu stare-adresy (viz `data.md` → `domy/`).
+  Podklad ČÚZK (mapa / letecký snímek), domy shluknuté podle obcí, barva podle rodu, v okénku lidé, kteří v domě
+  žili (přímí předci první, boční příbuzní s odkazem na kartičku u předka), výřez skici a jedna věta o jistotě polohy.
+  Na stránkách osob a zápisů jsou odkazy na domy. Výřezy skic na veřejném webu jen s citací archivu (podmínky
+  v návodu stare-adresy).
 
 ## Zveřejnění na Netlify (výchozí, zdarma)
 1. Uživatel si založí účet na netlify.com (stačí přihlášení přes Google/GitHub) – udělá sám.
@@ -61,7 +73,8 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
    Uživatel ji vypne v administraci webu: Project configuration → Access & security → Visitor access. Web pak chrání
    rodinná otázka – proto znovu ověř v anonymním okně, že se ukáže.
    Přihlášení zajišťuje Netlify Edge Function `web/netlify/edge-functions/brana.js` (generuje ji export).
-Další aktualizace = jen `npm run nasadit`. Vlastní doménu lze nastavit v administraci Netlify.
+Další aktualizace = jen `npm run nasadit`. Tarif zdarma má měsíční kredity a každé nasazení je spotřebovává –
+nenasazuj po každé drobné změně, ale až na požádání uživatele (třeba po skončení kola hledání). Vlastní doménu lze nastavit v administraci Netlify.
 
 **Pozor:** „Netlify Drop“ (přetažení složky v prohlížeči) neumí Edge Functions → web by byl bez přihlášení. Nepoužívat.
 
