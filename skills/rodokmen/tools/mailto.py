@@ -8,11 +8,13 @@ Použití: python3 -I tools/mailto.py pracovni/zadosti/<koncept>.md [--gmail] [-
   --seznam    navíc odkaz do Seznam Emailu (email.seznam.cz); v Seznamu buďte předem přihlášeni,
               přihlašovací stránka rozepsaný e-mail zahodí
 
-Formát konceptu: bloky oddělené řádkem ---, v bloku nadpis „## …“, řádky **Komu:** (víc adres odděl čárkou),
-volitelně **Kopie:**, a **Předmět:**, pod nimi text e-mailu. Bloky bez Komu a Předmětu se přeskočí.
+Formát konceptu: bloky oddělené řádkem ---, v bloku nadpis „## …“, hned pod ním řádky **Komu:** (víc adres odděl
+čárkou), volitelně **Kopie:**, a **Předmět:**, pod nimi text e-mailu. Od prvního řádku, který není pole, je všechno
+text e-mailu. Bloky bez Komu a Předmětu se přeskočí.
 Odstavec piš na jeden řádek (zalomení se v e-mailu zachová); pokračovací řádek odrážky odsazený dvěma mezerami
-se připojí k odrážce.
-Na konec konceptu zapíše (při dalším spuštění nahradí) oddíl „## Odkazy k odeslání“ a odkazy vypíše i s délkou.
+se připojí k odrážce, jiné odsazené řádky zůstanou samostatně.
+Na konec konceptu zapíše oddíl „## Odkazy k odeslání“ mezi značky <!-- odkazy:zacatek --> a <!-- odkazy:konec -->
+a odkazy vypíše i s délkou. Při dalším spuštění nahradí jen tento oddíl; žádosti připsané za něj taky dostanou odkaz.
 Odkaz mailto: delší než 1800 znaků některé programy uříznou – nástroj na to upozorní. Nic neodesílá.
 """
 import re, sys, urllib.parse
@@ -31,9 +33,37 @@ WEB = {"--gmail": ("Gmail", "https://mail.google.com/mail/?", {"view": "cm", "fs
        "--seznam": ("Seznam Email", "https://email.seznam.cz/newMessageScreen?", None, "mailto")}
 
 
-def adresy(blok, pole):
-    m = re.search(r"^\*\*%s:\*\*[ \t]*(.*)$" % pole, blok, re.M)
-    return (",".join(a.strip() for a in re.split(r"[,;]", m.group(1)) if a.strip()), m) if m else ("", None)
+ZACATEK, KONEC = "<!-- odkazy:zacatek -->", "<!-- odkazy:konec -->"   # vygenerovaný oddíl; mimo něj se nic nemaže
+POLE = re.compile(r"\*\*(Komu|Kopie|Předmět):\*\*[ \t]*(.*)$")
+ODRAZKA = re.compile(r"\s*(?:[-*+]|\d+[.)])\s")
+
+
+def adresy(hodnota):
+    return ",".join(a.strip() for a in re.split(r"[,;]", hodnota) if a.strip())
+
+
+def rozeber(blok):
+    """Nadpis, pole hlavičky a text e-mailu. Hlavička jsou jen řádky **Komu:** / **Kopie:** / **Předmět:** hned pod
+    nadpisem (prázdné řádky mezi nimi nevadí); od prvního jiného řádku je všechno text, i řádky, které vypadají jako pole."""
+    radky = blok.strip("\n").split("\n")
+    i = next((n + 1 for n, r in enumerate(radky) if r.startswith("## ")), 0)
+    nadpis = radky[i - 1][3:].strip() if i else ""
+    pole = {}
+    while i < len(radky):
+        m = POLE.match(radky[i])
+        if not (m or not radky[i].strip()):
+            break
+        if m:
+            pole[m.group(1)] = m.group(2).strip()
+        i += 1
+    telo, v_odrazce = [], False
+    for r in radky[i:]:
+        if v_odrazce and re.match(r"  \S", r):   # pokračování odrážky
+            telo[-1] += " " + r.strip()
+            continue
+        v_odrazce = bool(ODRAZKA.match(r))
+        telo.append(r)
+    return nadpis, pole, "\n".join(telo).strip()
 
 
 def main():
@@ -43,20 +73,19 @@ def main():
         sys.exit(__doc__)
     src = Path(soubory[0])
     text = src.read_text(encoding="utf-8").replace("\r\n", "\n")
-    # starý oddíl s odkazy (i s čárou --- nad ním) zahodit
-    text = re.split(r"(?:\n---[ \t]*\n\s*)?^" + re.escape(NADPIS), text, maxsplit=1, flags=re.M)[0].rstrip() + "\n"
+    oddil = re.search(r"\n*" + re.escape(ZACATEK) + r".*?" + re.escape(KONEC) + r"[ \t]*\n?", text, re.S)
+    if oddil:
+        pred, po = text[:oddil.start()], text[oddil.end():]
+    else:   # starší tvar bez značek: oddíl s odkazy (i s čárou --- nad ním) až do konce souboru
+        pred = re.split(r"(?:\n---[ \t]*\n\s*)?^" + re.escape(NADPIS), text, maxsplit=1, flags=re.M)[0]
+        po = ""
     radky, varovani = [], []
-    for blok in re.split(r"^---[ \t]*$", text, flags=re.M):
-        komu, m_komu = adresy(blok, "Komu")
-        kopie, m_kopie = adresy(blok, "Kopie")
-        predmet = re.search(r"^\*\*Předmět:\*\*[ \t]*(.+)$", blok, re.M)
+    for blok in re.split(r"^---[ \t]*$", pred + "\n" + po, flags=re.M):
+        nadpis, pole, telo = rozeber(blok)
+        komu, kopie, predmet = adresy(pole.get("Komu", "")), adresy(pole.get("Kopie", "")), pole.get("Předmět")
         if not (komu and predmet):
             continue
-        nadpis = re.search(r"^## (.+)$", blok, re.M)
-        nadpis = nadpis.group(1).strip() if nadpis else predmet.group(1).strip()
-        konec = max(m.end() for m in (m_komu, m_kopie, predmet) if m)
-        telo = re.sub(r"\n  (?=\S)", " ", blok[konec:].strip())
-        predmet = predmet.group(1).strip()
+        nadpis = nadpis or predmet
         dotaz = {"subject": predmet, "body": telo.replace("\n", "\r\n")}
         if kopie:
             dotaz = {"cc": kopie, **dotaz}
@@ -65,7 +94,7 @@ def main():
         radky.append("- **%s** (%s): [otevřít e-mail](%s) (%d znaků)" % (nadpis, komu, odkaz, len(odkaz)))
         if len(odkaz) > LIMIT:
             varovani.append("POZOR: %s: odkaz mailto: má %d znaků, některé programy text uříznou. Použijte "
-                            "--gmail nebo --outlook, nebo text zkopírujte z konceptu." % (nadpis, len(odkaz)))
+                            "--gmail, --outlook nebo --seznam, nebo text zkopírujte z konceptu." % (nadpis, len(odkaz)))
         for v in WEB:
             if v in volby:
                 jmeno, zaklad, pevne, pole = WEB[v]
@@ -77,9 +106,10 @@ def main():
                 radky.append("  [%s](%s) (%d znaků)" % (jmeno, url, len(url)))
     if not radky:
         sys.exit("V konceptu není žádný blok s řádky **Komu:** a **Předmět:**.")
+    novy = (ZACATEK + "\n---\n\n" + NADPIS + " (klikněte, otevře se e-mail s vyplněným textem)\n\n"
+            + "\n".join(radky) + "\n" + KONEC + "\n")
     with open(src, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text + "\n---\n\n" + NADPIS + " (klikněte, otevře se e-mail s vyplněným textem)\n\n"
-                + "\n".join(radky) + "\n")
+        f.write(pred.rstrip() + "\n\n" + novy + ("\n" + po.lstrip("\n") if po.strip() else ""))
     print("\n".join(radky + varovani))
 
 

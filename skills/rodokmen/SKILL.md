@@ -220,7 +220,9 @@ Co jde jen přes úřad nebo badatelnu (mladší zápisy, pozemkové knihy, evid
    a text ke kontrole. Adresu a kontakty uživatele piš jen do konceptu, nikdy do `data/`.
 3. **Nic sám neposílej.** Do `data/zadosti.md` přidej řádek se stavem „koncept“. Až uživatel řekne, že poslal,
    doplň datum a „odesláno“.
-4. Když přijde odpověď: shrň ji, výsledek zapiš do dat a do `research_log.md`, řádek přesuň do Uzavřených.
+4. Když přijde odpověď, shrň ji. Je-li ještě co udělat (úhrada, doklady, doplnění), žádost zůstává otevřená a do
+   Stavu přijde další krok. Vyřízenou, zamítnutou nebo opuštěnou zapiš do dat a do `research_log.md` a řádek přesuň
+   do Uzavřených.
 
 ### Kdy přestat
 Linie končí, když matriky mlčí (nemanželské dítě bez otce, shořelé knihy, chybějící svazky) nebo když jsi

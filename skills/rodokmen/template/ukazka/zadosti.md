@@ -4,17 +4,19 @@ Přehled žádostí, které jsme poslali nebo chystáme, a co na ně přišlo. N
 Co by šlo zjistit, ale zatím o to nežádáme, patří do `archivni_dotazy.md`.
 (Ukázka: řádky níže jsou vymyšlené, adresy a úřady neověřené.)
 
-Stav: koncept → odesláno → odpověď → vyřízeno / zamítnuto / bez odpovědi.
+Stav: koncept → odesláno → odpověď s dalším krokem (čeká na úhradu, doplnit doklady, odpověď – zpracovat)
+→ vyřízeno / zamítnuto / opuštěno. Otevřená zůstává, dokud je co udělat.
 - Koncept je v `pracovni/zadosti/`, odkaz k odeslání z něj udělá `python3 -I tools/mailto.py <koncept.md>`.
 - Odesláno: datum, kdy uživatel žádost poslal. Bez odpovědi déle než 30 dní → připomenout.
-- Po odpovědi: výsledek do dat a do `research_log.md`, do Stavu krátce co přišlo, řádek přesunout do Uzavřených.
+- Odpověď, po které je ještě co udělat, zůstává v Otevřených a do Stavu přijde další krok. Vyřízeno, zamítnuto
+  nebo opuštěno: výsledek do dat a do `research_log.md`, řádek přesunout do Uzavřených.
 - Na jeden archiv nanejvýš jedna otevřená žádost.
 - Vaše adresa, telefon a e-mail sem nepatří, jen do konceptů v `pracovni/` (nejdou do gitu ani na web).
 
 ## Otevřené
 | # | Komu | Co | Pro koho | Odesláno | Stav | Koncept / podklady |
 |---|---|---|---|---|---|---|
-| 2 | Matriční úřad Pardubice | kopie zápisu o úmrtí Františka Nováka († 1990), doložení: rodné listy 1 a 2 | 4 | | koncept | `pracovni/zadosti/pardubice_umrti_1990.md` |
+| 2 | Matriční úřad Pardubice | kopie zápisu o úmrtí Františka Nováka († 1990); po 30 letech bez doložení příbuzenství, kniha je ještě na úřadě | 4 | | koncept | `pracovni/zadosti/pardubice_umrti_1990.md` |
 
 ## Odloženo
 | # | Komu | Co | Pro koho | Odesláno | Stav | Koncept / podklady |

@@ -140,5 +140,45 @@ kod, out, err = spust(cesta)
 text = open(cesta, encoding="utf-8", newline="").read()
 ok("třetí spuštění bez voleb: Gmail zmizel", kod == 0 and text.count(NADPIS) == 1 and "mail.google.com" not in text)
 
+# Žádost a poznámka připsané až za oddíl s odkazy: další spuštění je nesmí smazat a nová žádost dostane odkaz.
+NOVA = ("\n---\n\n## Obec Horní Lhota – hroby\n\n**Komu:** obec@hornilhota.cz\n**Předmět:** Evidence hrobů\n\n"
+        "Dobrý den, prosím o údaje z evidence hrobů.\n\nPoznámka pod čarou: poslat až po odpovědi matriky.\n")
+with open(cesta, "a", encoding="utf-8", newline="\n") as f:
+    f.write(NOVA)
+kod, out, err = spust(cesta)
+text = open(cesta, encoding="utf-8", newline="").read()
+ok("žádost za oddílem s odkazy zůstala", kod == 0 and NOVA.strip() in text, (err, text[-400:]))
+ok("oddíl s odkazy pořád jednou", text.count(NADPIS) == 1, text.count(NADPIS))
+m = odkazy(text, "mailto:")
+ok("žádost za oddílem dostala odkaz", len(m) == 3 and mailto(m[2])[0] == "obec@hornilhota.cz", m[2:])
+kod, out, err = spust(cesta)
+ok("další spuštění soubor nemění", open(cesta, encoding="utf-8", newline="").read() == text)
+
+# Řádky s **Komu:**, **Kopie:** a **Předmět:** v textu e-mailu jsou text, ne hlavička; odsazený řádek mimo odrážku
+# se nepřipojí k předchozímu.
+TELO3 = ("Dobrý den,\n\nprosím o vyhledání zápisu o sňatku.\n\n**Kopie:** rodný list otce\n**Komu:** matrice na vědomí\n"
+         "**Předmět:** sňatek 1948\nPřílohu přikládám.\n\nS pozdravem\nJan Novák\n  Horní Lhota 5")
+cesta3 = os.path.join(slozka, "hlavicka.md")
+with open(cesta3, "w", encoding="utf-8", newline="\n") as f:
+    f.write("## Matrika – sňatek\n\n**Komu:** matrika@example.cz\n\n**Předmět:** Sňatek 1948\n\n" + TELO3 + "\n")
+kod, out, err = spust(cesta3)
+m = odkazy(open(cesta3, encoding="utf-8").read(), "mailto:")
+komu, q = mailto(m[0]) if m else ("", {})
+ok("hlavička: prázdný řádek mezi poli nevadí", komu == "matrika@example.cz" and q.get("subject") == ["Sňatek 1948"],
+   (err, komu, q.get("subject")))
+ok("pole v textu e-mailu nejsou kopie", "cc" not in q, q.get("cc"))
+ok("text e-mailu celý, odsazený podpis na vlastním řádku", q.get("body") == [TELO3.replace("\n", "\r\n")],
+   q.get("body"))
+
+# Koncept s oddílem ve starém tvaru (bez značek, verze z projektu): oddíl se nahradí, nezdvojí.
+cesta4 = os.path.join(slozka, "stary.md")
+with open(cesta4, "w", encoding="utf-8", newline="\n") as f:
+    f.write("## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText\n\n---\n\n" + NADPIS
+            + " (klikněte)\n\n- [A – otevřít v Gmailu](https://mail.google.com/x)\n")
+kod, out, err = spust(cesta4)
+text = open(cesta4, encoding="utf-8").read()
+ok("starý tvar oddílu nahrazen", kod == 0 and text.count(NADPIS) == 1 and "mail.google.com/x" not in text
+   and len(odkazy(text, "mailto:")) == 1, text)
+
 print(f"== mailto.py: {sum(vysledky)} z {len(vysledky)} správně")
 sys.exit(0 if all(vysledky) else 1)
