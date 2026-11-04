@@ -19,6 +19,16 @@ def jload(name, default):
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else default
 
 
+_SLOVO = "[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽÄÖÜ][a-záčďéěíňóřšťúůýžäöüß]+"
+OBEC_RE = re.compile(rf"(?:\b(?i:v|ve|z|ze|na|u)\s+|[*†×]\s*[\d.\s]*\d\s+)"
+                     rf"((?:{_SLOVO[:-1]}*(?:[áéíý]|[éíý]m|[ýí]ch|ého|ou)\s+)?{_SLOVO})")   # „Nové Vsi“, „Vysokém Mýtě“
+
+
+def slova_obce(fakty):
+    """Slova z faktů, která vypadají jako obec (po „v/z/na/u“ nebo po datu u */†/×): ukáže, jestli chybí obec, nebo tvar."""
+    return list(dict.fromkeys(OBEC_RE.findall(" ".join(fakty))))[:4]
+
+
 def main():
     err, warn = [], []
     ns = {}
@@ -102,7 +112,8 @@ def main():
     bez_mista = [k for k, p in sorted(P.items()) if isinstance(k, int) and p.get("st") == "doc" and p.get("f")
                  and not any(rx.search(" ".join(p["f"])) for rx in vzory)]
     if bez_mista:   # mapa na webu ukáže jen obce z data/mista.json
-        ukazka = ", ".join(f"{k} {P[k].get('n', '?')}" for k in bez_mista[:3])
+        ukazka = ", ".join(f"{k} {P[k].get('n', '?')}" + (f" [{', '.join(s)}]" if (s := slova_obce(P[k]["f"])) else "")
+                           for k in bez_mista[:3])
         warn.append(f"mapa: {len(bez_mista)} doložených předků nemá v údajích žádnou obec z data/mista.json (např. {ukazka})"
                     " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py")
 
