@@ -21,7 +21,7 @@ def jload(name, default):
 
 _SLOVO = "[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽÄÖÜ][a-záčďéěíňóřšťúůýžäöüß]+"
 OBEC_RE = re.compile(rf"(?:\b(?i:v|ve|z|ze|na|u)\s+|[*†×]\s*[\d.\s]*\d\s+)"
-                     rf"((?:{_SLOVO[:-1]}*(?:[áéíý]|[éíý]m|ých|ého|ou)\s+)?{_SLOVO})")   # „Nové Vsi“, „Vysokém Mýtě“
+                     rf"((?:{_SLOVO[:-1]}*(?:[áéíý]|[éíý]m|[ýí]ch|ého|ou)\s+)?{_SLOVO})")   # „Nové Vsi“, „Vysokém Mýtě“
 
 
 def slova_obce(fakty):

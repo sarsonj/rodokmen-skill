@@ -18,7 +18,8 @@ BAR = {"class": "amenity", "type": "bar", "lat": "50.7741", "lon": "15.0632",
        "display_name": "Andelka;Herna Bar, Letná, Liberec III-Jeřáb, Liberec, okres Liberec, Liberecký kraj, Česko"}
 VES = {"class": "place", "type": "village", "lat": "50.9890", "lon": "15.1076",
        "display_name": "Andělka, Višňová, okres Liberec, Liberecký kraj, Česko"}
-OBEC = {"class": "boundary", "type": "administrative", "lat": "49.9606", "lon": "13.9622",
+OBEC = {"class": "boundary", "type": "administrative", "addresstype": "municipality", "place_rank": 14,
+        "lat": "49.9606", "lon": "13.9622",
         "display_name": "Korycany, okres Beroun, Středočeský kraj, Česko"}
 
 vysledky = []
@@ -83,7 +84,8 @@ ok("main: bez sídla druhý dotaz bez featuretype", len(dotazy) == 2 and "featur
 ok("main: bar uložen, ale hlášen jako ne-obec", "lat" in cache["Andělka"] and "není obec" in vystup, vystup)
 
 # main(): bod daleko od ostatních → varování se vzdáleností a adresou z OSM
-KORYCANY_KM = {"class": "boundary", "type": "administrative", "lat": "49.1063", "lon": "17.1645",
+KORYCANY_KM = {"class": "boundary", "type": "administrative", "addresstype": "town", "place_rank": 16,
+               "lat": "49.1063", "lon": "17.1645",
                "display_name": "Koryčany, okres Kroměříž, Zlínský kraj, Česko"}
 vystup, cache, _ = spust_mista({"Beroun": {"re": "Beroun", "lat": 49.9638, "lon": 14.0720}},
                                ["pridej", "Korycany"], {"Korycany, Česko": [KORYCANY_KM]})
@@ -123,6 +125,35 @@ for poradi in (("A", "B"), ("B", "A")):
     cache0 = {"C": {"re": "C", "lat": 49.0, "lon": 15.0}, **{x: {"re": x} for x in poradi}}
     vystup, _, _ = spust_mista(cache0, [], {"A, Česko": A, "B, Česko": B})
     ok(f"main: pořadí {'+'.join(poradi)} – A ani B nejsou daleko (mají sebe)", "POZOR" not in vystup, vystup)
+
+# vyber(): kraj nebo okres (boundary/administrative nad úrovní obce) není sídlo
+KRAJ = {"class": "boundary", "type": "administrative", "addresstype": "state", "place_rank": 8,
+        "lat": "50.6", "lon": "15.0", "display_name": "Liberecký kraj, Česko"}
+OKRES = dict(KRAJ, addresstype="county", place_rank=12, display_name="okres Liberec, Liberecký kraj, Česko")
+ok("vyber: kraj před vsí – vezme ves", mista.vyber([KRAJ, VES]) == (VES, True), mista.vyber([KRAJ, VES]))
+ok("vyber: jen kraj = s příznakem", mista.vyber([KRAJ]) == (KRAJ, False), mista.vyber([KRAJ]))
+ok("vyber: jen okres = s příznakem", mista.vyber([OKRES]) == (OKRES, False), mista.vyber([OKRES]))
+ok("vyber: obecní hranice bez addresstype, place_rank 16 je obec",
+   mista.vyber([{"class": "boundary", "type": "administrative", "place_rank": 16}])[1] is True)
+
+# bod(): nekonečno, NaN a souřadnice mimo rozsah jsou nepoužitelné; dávka se uloží
+for spatne in ({"lat": "Infinity", "lon": "15"}, {"lat": "NaN", "lon": "15"}, {"lat": 50, "lon": "-inf"},
+               {"lat": 91, "lon": 15}, {"lat": 50, "lon": 181}):
+    ok(f"bod: {spatne} = None", mista.bod(spatne) is None, mista.bod(spatne))
+try:
+    vystup, cache, _ = spust_mista({"Beroun": {"lat": 49.9638, "lon": 14.0720}, "Inf": {"lat": "Infinity", "lon": "15"},
+                                    "Nan": {"lat": "NaN", "lon": "15"}}, ["pridej", "Korycany"], {"Korycany, Česko": [OBEC]})
+    ok("main: s Infinity/NaN u jiných míst uloží nové místo bez varování",
+       cache["Korycany"].get("lat") == 49.9606 and "POZOR" not in vystup, vystup)
+except Exception as e:  # noqa: BLE001
+    ok("main: s Infinity/NaN u jiných míst uloží nové místo bez varování", False, repr(e))
+
+# kontrola.slova_obce(): víceslovné názvy s přídavným jménem na -ích
+spec = importlib.util.spec_from_file_location("kontrola", os.path.join(TOOLS, "kontrola.py"))
+kontrola = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(kontrola)
+for fakt, cekam in (("v Horních Počernicích", "Horních Počernicích"), ("z Dolních Břežan", "Dolních Břežan")):
+    ok(f"slova_obce: {fakt}", kontrola.slova_obce([fakt]) == [cekam], kontrola.slova_obce([fakt]))
 
 # kontrola.py: u osoby bez obce ukáže slova z faktů, která vypadají jako obec
 d = tempfile.mkdtemp(prefix="kontrola_")

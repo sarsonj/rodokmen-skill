@@ -44,7 +44,13 @@ SIDLA = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhoo
 
 
 def je_sidlo(r):
-    return r.get("type") in SIDLA if r.get("class") == "place" else (r.get("class"), r.get("type")) == ("boundary", "administrative")
+    if r.get("class") == "place":
+        return r.get("type") in SIDLA
+    if (r.get("class"), r.get("type")) != ("boundary", "administrative"):
+        return False
+    if r.get("addresstype"):   # obec má „municipality“, „village“…; kraj „state“, okres „county“
+        return r["addresstype"] in SIDLA | {"city_district"}
+    return int(r.get("place_rank") or 0) >= 16
 
 
 def vyber(res):
@@ -74,11 +80,12 @@ def vzdalenost_km(a, b):
 
 
 def bod(e):
-    """(lat, lon) jako čísla, nebo None, když souřadnice chybí nebo nejdou přečíst ("50.1" projde)."""
+    """(lat, lon) jako čísla, nebo None, když souřadnice chybí, nejdou přečíst nebo jsou mimo rozsah ("50.1" projde)."""
     try:
-        return float(e["lat"]), float(e["lon"])
+        lat, lon = float(e["lat"]), float(e["lon"])
     except (KeyError, TypeError, ValueError):
         return None
+    return (lat, lon) if -90 <= lat <= 90 and -180 <= lon <= 180 else None   # NaN i nekonečno rozsahem neprojdou
 
 
 def nejblizsi(name, cache):
