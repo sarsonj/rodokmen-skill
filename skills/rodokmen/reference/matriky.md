@@ -22,6 +22,11 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    Hledej obec v popisu svazku (`aron_search.py "Obec"`), ne jen v názvu – a hledej i podle obce, ne jen podle fary
    z pozdějšího zápisu: obec mohla mít vlastní matriku (filiální kostel, lokálie), i když list vydala mateřská fara.
    Obec rozdělená mezi dvě fary má dvě řady knih, každou jen pro „svá“ čísla domů.
+   Pozor i na opak: **kniha (hlavně zemřelých) mateřské fary nemusí zapisovat filiální vsi**, které měly vlastní
+   hřbitov nebo vlastní knihu (příklad: fara Bělá pod Bezdězem, Z 1666–1728 – vsi jen 1666–67, dál jen město
+   a předměstí). **Než knihu zemřelých procházíš celou, ověř na 3–4 vzorcích z různých desetiletí, jestli v ní
+   hledaná ves vůbec je** – ušetří to desítky snímků. Když není, zjisti z popisu svazků, jestli má ves vlastní řadu
+   knih, a zapiš do deníku, které vsi kniha pokrývá.
 2. **Svazek podle roku a druhu.** Pozor na překryvy: jedna kniha pro více obcí, zvláštní knihy pro jednotlivé obce.
    **Druhopisy** (duplikáty pro děkanát nebo úřad, např. „T“ svazky v ZA Opava) mívají N, O a Z jednoho roku u sebe –
    hodí se, když originál chybí, je nečitelný nebo velký.
@@ -146,7 +151,7 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 - ImageMagick: seznam souborů předávej jako jednotlivé argumenty, ne jednou proměnnou s mezerami.
   `-annotate` potřebuje písmo: `-font /System/Library/Fonts/Supplemental/Arial.ttf` (bez něj spadne na „unable to read
   font“; totéž `montage` s popisky) – pořadí výřezů raději vypiš zvlášť.
-- Ověření čtení: `python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over [v]` (zlomky 0–1, ne pixely) – zápis rozdělený na dvě poloviny
+- Ověření čtení: `python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over [v] [--vylepsit]` (zlomky 0–1, ne pixely; `--vylepsit` = šedá, kontrast a doostření pro vybledlé snímky) – zápis rozdělený na dvě poloviny
   zmenšené na 1900 px (dvoustrana je jinak nečitelná).
 - Výřez pro web (`vyrez.py`) dělej jen na **čtený zápis** (případně s hlavičkou sloupců), ne na celou dvoustranu –
   na webu by byl nečitelně malý. Celá stránka je v `zdroje/` a na portálu přes odkaz.

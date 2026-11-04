@@ -298,6 +298,9 @@ def odkaz(druh, xid, n):
 def snimek(druh, xid, n, out, volby):
     if not str(n).isdigit() or int(n) < 1:
         raise Chyba(f"číslo snímku musí být celé číslo od 1 (zadáno „{n}“).")
+    if os.path.splitext(out)[1].lower() not in (".jpg", ".jpeg", ".png"):   # „snimek 123 5 nahled“ bez výstupu
+        raise Chyba(f"výstup „{out}“ má být obrázek s příponou .jpg nebo .png, např. "
+                    f"pracovni/ebad_{xid}_{n}.jpg – volby nahled a x0,y0,x1,y1 patří až za něj.")
     nahled = "nahled" in volby
     vyrez = next((v for v in volby if v != "nahled"), None)
     if vyrez:

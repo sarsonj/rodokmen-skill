@@ -13,6 +13,9 @@ const p = people[Astro.params.slug];
 const line = p.line ? lineByK[p.line] : null;
 const recs = [...new Set(p.records)].filter((r) => records[r]).sort((a, b) => dateKey(records[a].date) - dateKey(records[b].date));
 const path = [...p.path].reverse().filter(Boolean);
+// další děti = sourozenci dítěte v linii (SIDE u dítěte, text začíná „Bratr“/„Sestra“); nevlastní sourozence
+// nebereme – nevíme, po kterém z rodičů jsou (#69)
+const otherKids = [...new Set(p.children)].flatMap((c) => (people[c]?.side ?? []).filter((s) => /^\s*(bratr|sestra)\b/i.test(s.text)));
 ---
 <Base title={p.name} description={`${p.name} ${p.years} – ${p.rel}`}>
   <div class="crumbs">
@@ -46,6 +49,7 @@ const path = [...p.path].reverse().filter(Boolean);
         <h3>{p.sex === 'M' ? 'Manželka' : 'Manžel'} a dítě v linii</h3>
         <p>{p.spouse ? <PersonLink slug={p.spouse} /> : <span class="muted">{p.sex === 'F' && people[p.child]?.fatherUnknown ? 'otec dítěte neuveden' : 'neznámý partner'}</span>}<br />
           {p.children.length > 1 ? 'Děti' : 'Dítě'}: {p.children.map((c, i) => <>{i > 0 && ', '}<PersonLink slug={c} /></>)}</p>
+        {otherKids.length > 0 && <p class="small">Další děti: {otherKids.map((s, i) => <>{i > 0 && ', '}{s.name}</>)}</p>}
         {p.ownFamily && <p class="small"><a href={href.family(p.ownFamily)}>Jejich rodina →</a></p>}
       </div>
     )}
@@ -53,7 +57,7 @@ const path = [...p.path].reverse().filter(Boolean);
 
   {p.side.length > 0 && (
     <>
-      <h2>Příbuzní mimo přímou linii</h2>
+      <h2>Sourozenci a další příbuzní</h2>
       <div class="grid2">
         {p.side.map((s) => (
           <div class="card"><h3>{s.name}</h3><p class="small">{s.text}</p>

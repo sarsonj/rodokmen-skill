@@ -25,7 +25,9 @@ P = {
 LINES = {
 }
 
-# Příbuzní mimo přímou linii (sourozenci, strýcové…): k = číslo předka, ke kterému patří.
+# Příbuzní mimo přímou linii: k = číslo předka, jehož je SOUROZENCEM (web ho ukáže jako jeho bratra/sestru).
+# Dítě předka 16, které není v linii, je sourozenec předka 8 → k=8. Strýc výchozí osoby (bratr otce 2) → k=2.
+# t začni vztahem k předkovi k („Bratr Jana.“, „Sestra Marie.“) – web podle toho pozná sourozence.
 # dict(k=16, n="Josef Novák (1865–1920)", t="Bratr Jana. Kovář v …", r=["klic_zapisu"])
 SIDE = [
 ]
