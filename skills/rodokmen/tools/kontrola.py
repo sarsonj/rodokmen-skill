@@ -3,12 +3,15 @@
 
 Použití: kontrola.py
 Vypíše CHYBY (rozbijí web nebo jsou věcně špatně) a UPOZORNĚNÍ (něco chybí, doplnit).
+Hlídá i časovou návaznost narození, sňatků a úmrtí (pravidla v tools/chronologie.py, stejná jako na webu).
 Návratový kód 1, pokud jsou chyby.
 """
 import datetime, json, os, re, sys
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I nepřidává složku skriptu do cesty
+import chronologie  # noqa: E402 – pravidla časové návaznosti (tools/chronologie.py)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
@@ -91,6 +94,21 @@ def main():
     if chybi:   # bez LINES web neukáže rody ani barvy ve vějíři
         warn.append(f"LINES: chybí rod pro {', '.join(chybi)}"
                     " – jakmile znáš pradědečky a prababičky (8–15), vyplň v data/osoby.py LINES (reference/data.md)")
+
+    # Časová návaznost: stejná pravidla ukazuje web na stránce Časová osa; ověřený údaj se odškrtne polem overeno.
+    for k in sorted(k for k in P if isinstance(k, int)):
+        o = P[k].get("overeno")
+        if o is None:
+            continue
+        if not isinstance(o, dict):
+            warn.append(f"osoba {k}: overeno má být slovník {{\"pravidlo\": \"proč údaj platí\"}}")
+            continue
+        for x in o:
+            if x not in chronologie.PRAVIDLA:
+                warn.append(f"osoba {k}: overeno – neznámé pravidlo '{x}' (platná: {', '.join(chronologie.PRAVIDLA)})")
+    for v in chronologie.kontrola(P, SAME):
+        warn.append(f"časová návaznost u osoby {v.k}: {v.text} Pokud údaj platí, přidej k osobě {v.k} "
+                    f"do overeno: \"{v.pravidlo}\": \"proč údaj platí\"")
 
     mista = jload("mista.json", {})
     vzory = []
