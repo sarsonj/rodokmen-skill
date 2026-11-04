@@ -5,6 +5,9 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [
   --ukazka        nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
   --hlidac        zapne hlídač sítě (hook v .claude/settings.json, tools/hlidac_site.py): zamítne příkazy,
                   které jdou na web archivu mimo brzdu tools/slusne.py; --bez-hlidace ho vypne
+       python3 <skill>/tools/novy_projekt.py <složka projektu> --vyreseno <soubor> [--vyreseno <soubor> …]
+  --vyreseno      po ručním převzetí změn šablony (soubor „ke kontrole“, např. web/src/pages/index.astro) uloží
+                  novou verzi šablony jako základ; soubor v projektu nezmění a další aktualizace ho už nehlásí
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
 vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
@@ -16,8 +19,9 @@ Aktualizace staršího projektu (znovu spustit na stejnou složku) rozhodne o ka
 tří verzí (uložená šablona, projekt, nová šablona): neupravený soubor přepíše, vlastní úpravu nechá, když se šablona
 nezměnila, a jinak sloučí po řádcích (git merge-file). Při konfliktu, bez gitu, u souboru přidaného projektem
 i šablonou a u souboru smazaného v projektu, který šablona změnila, soubor nechá a novou verzi uloží do
-pracovni/zaloha_<datum>/nova_sablona/ (s gitem i návrh se značkami konfliktů); hlásí ho, dokud změnu nepřevezmete.
-Soubor, který šablona už nemá, přesune do pracovni/zaloha_<datum>/odstraneno/ (upravený nechá).
+pracovni/zaloha_<datum>/nova_sablona/ (u konfliktu sloučení s gitem i návrh se značkami); hlásí ho, dokud ho
+nevyřešíte (--vyreseno). Soubor, který šablona už nemá, přesune do pracovni/zaloha_<datum>/odstraneno/; upravený
+nechá a hlásí ho, dokud ho --vyreseno nepřevezme jako vlastní. Odkazy (symlink, junction) mimo projekt odmítne.
 Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze změněných souborů uloží do
 pracovni/zaloha_<datum>/puvodni/.
 """
@@ -98,28 +102,48 @@ def sloucit(nase, zaklad, nova):
     return r.stdout, r.returncode == 0
 
 
+def mimo(dst, *cesty):
+    """Vede některá cesta přes odkaz (symlink, junction) mimo projekt? Poslední článek se nepočítá – symlink na místě
+    souboru zapis() jen nahradí. Takovou cestu ohlásí a volající ji přeskočí."""
+    koren = os.path.normcase(os.path.realpath(dst)) + os.sep
+    for p in cesty:
+        real = os.path.join(os.path.realpath(os.path.dirname(p)), os.path.basename(p))
+        if not os.path.normcase(real).startswith(koren):
+            print(f"POZOR: {p} vede mimo projekt (odkaz) – přeskakuji.")
+            return True
+    return False
+
+
+def nova_verze(new):
+    data = cti(new)
+    return data.replace(b"\r\n", b"\n") if new.endswith(".sh") else data   # skill z Windows (core.autocrlf) má CRLF
+
+
 def aktualizuj(src, dst, cast, jmena, zaloha, vysl, stary):
     """Aktualizuje dst/cast podle tří verzí: původní šablona (dst/.skill_sablona/cast), projekt a nová šablona
     (soubory `jmena` ze src). Projde i soubory, které nová šablona už nemá. Uloženou šablonu posune jen tam, kde se
     nová verze do projektu dostala. stary=True: projekt bez .skill_sablona/. Výsledek přidá do vysl[kategorie]."""
     puvodni = os.path.join(dst, SABLONA, cast)
+    if mimo(dst, os.path.join(puvodni, "x"), os.path.join(dst, cast, "x")):   # celá složka je odkaz ven
+        return
     for rel in sorted(set(jmena) | set(soubory(puvodni) if os.path.isdir(puvodni) else ())):
         new, out, puv = os.path.join(src, rel), os.path.join(dst, cast, rel), os.path.join(puvodni, rel)
-        nova = cti(new) if rel in jmena else None
-        if nova is not None and rel.endswith(".sh"):   # skill naklonovaný na Windows (core.autocrlf) má CRLF
-            nova = nova.replace(b"\r\n", b"\n")
+        nova_zal = os.path.join(zaloha, "nova_sablona", cast, rel)   # při konfliktu sem nová verze, projekt zůstane
+        odstr, puvz = os.path.join(zaloha, "odstraneno", cast, rel), os.path.join(zaloha, "puvodni", cast, rel)
+        if mimo(dst, out, puv, nova_zal, odstr, puvz):
+            continue
+        nova = nova_verze(new) if rel in jmena else None
         nase = lf(cti(out)) if os.path.isfile(out) and not os.path.islink(out) else None
         zaklad = lf(cti(puv)) if os.path.isfile(puv) else None
         jmeno = cast + "/" + rel.replace(os.sep, "/")
-        nova_zal = os.path.join(zaloha, "nova_sablona", cast, rel)   # při konfliktu sem nová verze, projekt zůstane
         if nova is None:   # šablona soubor odstranila
             if nase is not None and nase == zaklad:
-                keep = os.path.join(zaloha, "odstraneno", cast, rel)
-                os.makedirs(os.path.dirname(keep), exist_ok=True)
-                shutil.move(out, keep)
+                os.makedirs(os.path.dirname(odstr), exist_ok=True)
+                shutil.move(out, odstr)
                 vysl["odstraneno"].append(jmeno)
-            elif nase is not None:
+            elif nase is not None:   # upravený: nechat i základ, hlásit, dokud ho --vyreseno nepřevezme
                 vysl["odstraneno_upraveno"].append(jmeno)
+                continue
             os.remove(puv)
             continue
         if os.path.islink(out) or (nase is None and zaklad is None):   # symlink jen přepsat; nový soubor doplnit
@@ -142,9 +166,8 @@ def aktualizuj(src, dst, cast, jmena, zaloha, vysl, stary):
             vysl["ponechano"].append(jmeno)
             continue
         elif zaklad is None and stary:   # projekt ze starší verze bez uložené šablony: přepsat, starou verzi zazálohovat
-            keep = os.path.join(zaloha, "puvodni", cast, rel)
-            os.makedirs(os.path.dirname(keep), exist_ok=True)
-            shutil.copy2(out, keep)
+            os.makedirs(os.path.dirname(puvz), exist_ok=True)
+            shutil.copy2(out, puvz)
             zapis(out, nova, new)
             vysl["zalohovano"].append(jmeno)
         elif zaklad is None:   # soubor přidal projekt i nová šablona
@@ -163,6 +186,37 @@ def aktualizuj(src, dst, cast, jmena, zaloha, vysl, stary):
             vysl["slouceno"].append(jmeno)
         if zaklad != lf(nova) or not os.path.isfile(puv):   # nová verze je v projektu: posunout uloženou šablonu
             zapis(puv, nova, new)
+
+
+def vyresit(dst, cesta):
+    """--vyreseno: uloží novou verzi šablony souboru jako základ (soubor v projektu nechá); nemá-li ho šablona,
+    základ smaže a soubor patří jen projektu. Vrátí False, když není co vyřešit."""
+    if not os.path.isdir(os.path.join(dst, SABLONA)):
+        print(f"POZOR: projekt nemá {SABLONA}/ – nejdřív ho aktualizujte (spusťte skript bez --vyreseno).")
+        return False
+    rel = os.path.normpath(os.path.relpath(cesta, dst) if os.path.isabs(cesta) else cesta).replace(os.sep, "/")
+    cast, _, zbytek = rel.partition("/")
+    src = {"web": os.path.join(SKILL, "template", "web"), "tools": os.path.join(SKILL, "tools")}.get(cast)
+    if not src or not zbytek:
+        print(f"POZOR: {cesta} – zadejte cestu ve web/ nebo tools/ projektu (např. web/src/pages/index.astro).")
+        return False
+    new, puv = os.path.join(src, zbytek), os.path.join(dst, SABLONA, cast, zbytek)
+    if mimo(dst, puv):
+        return False
+    if cast == "web":
+        v_sablone = os.path.isfile(new) and not set(zbytek.split("/")) & set(SKIP)
+    else:
+        v_sablone = os.path.isfile(new) and "/" not in zbytek and zbytek.endswith((".py", ".sh")) and zbytek != "novy_projekt.py"
+    if v_sablone:
+        zapis(puv, nova_verze(new), new)
+        print(f"Vyřešeno: {rel} – nová verze šablony je uložená jako základ, soubor v projektu zůstal beze změny.")
+    elif os.path.isfile(puv):
+        os.remove(puv)
+        print(f"Vyřešeno: {rel} – šablona ho už nemá, soubor v projektu zůstal a patří jen projektu.")
+    else:
+        print(f"POZOR: {rel} není v šabloně ani v {SABLONA}/ – není co vyřešit.")
+        return False
+    return True
 
 
 SIT_ZAKAZ = ["Bash(curl:*)", "Bash(wget:*)"]   # stahování z archivů jen přes tools/slusne.py (curl přes něj jde)
@@ -228,6 +282,11 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1].startswith("-"):
         sys.exit(__doc__)
     dst = os.path.abspath(os.path.expanduser(sys.argv[1]))
+    if "--vyreseno" in sys.argv:   # jen označit ručně vyřešené soubory, nic dalšího
+        cesty = [sys.argv[i + 1] for i, a in enumerate(sys.argv[:-1]) if a == "--vyreseno"]
+        if not cesty:
+            sys.exit(__doc__)
+        sys.exit(0 if all([vyresit(dst, c) for c in cesty]) else 1)
     demo = "--ukazka" in sys.argv
     os.makedirs(dst, exist_ok=True)
     copy_tree(os.path.join(SKILL, "template", "ukazka" if demo else "data"), os.path.join(dst, "data"))
@@ -249,7 +308,7 @@ def main():
     aktualizuj(os.path.join(SKILL, "tools"), dst, "tools", nastroje, zaloha, vysl, stary)
     for f in nastroje:   # i ponechaný vlastní .sh s CRLF: Git Bash by skript nespustil
         p = os.path.join(tools, f)
-        if f.endswith(".sh") and os.path.isfile(p) and not os.path.islink(p):
+        if f.endswith(".sh") and os.path.isfile(p) and not os.path.islink(p) and not mimo(dst, p):
             data = cti(p)
             if b"\r\n" in data:
                 zapis(p, data.replace(b"\r\n", b"\n"))
@@ -271,14 +330,18 @@ def main():
                      ("ponechano", "Ponecháno (vlastní úpravy, šablona beze změny)"),
                      ("smazano", "Smazáno v projektu, ponecháno smazané (šablona beze změny)"),
                      ("odstraneno", "Odstraněno (šablona ho už nemá), přesunuto do " + os.path.join(zaloha, "odstraneno")),
-                     ("odstraneno_upraveno", "Šablona už nemá, ale v projektu je upravený – ponechán"),
+                     ("odstraneno_upraveno", "Šablona už nemá, ale v projektu je upravený – ponechán (smažte ho,"
+                      " nebo ho --vyreseno převezměte jako vlastní)"),
                      ("konflikt", "Ke kontrole (soubor zůstal beze změny, nová verze je v "
-                      + os.path.join(zaloha, "nova_sablona") + ", s gitem i návrh sloučení se značkami jako .konflikt;"
-                      " hlásí se znovu, dokud změny šablony nepřevezmete)")):
+                      + os.path.join(zaloha, "nova_sablona") + "; u konfliktu sloučení s gitem vedle i návrh se"
+                      " značkami jako .konflikt)")):
         if vysl[k]:
             print(f"{popis}, {len(vysl[k])}:")
             for f in vysl[k]:
                 print("  " + f)
+    if vysl["konflikt"] or vysl["odstraneno_upraveno"]:
+        print("Hlásí se při každé aktualizaci, dokud je nevyřešíte. Po ručním převzetí změn spusťte:\n"
+              f"  python3 -I {os.path.abspath(__file__)} {dst} --vyreseno <soubor> [--vyreseno <soubor> …]")
     if any(f.startswith("web/") for k in ("prepsano", "zalohovano", "slouceno", "odstraneno") for f in vysl[k]):
         print("Ve web/ pak `npm install` a `npm run data`.")
 

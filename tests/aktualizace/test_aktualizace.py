@@ -10,7 +10,7 @@ import glob, os, shutil, subprocess, sys, tempfile, traceback
 
 SKILL = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "skills/rodokmen")
 RADKY = [f"radek {i}" for i in range(1, 21)]
-POCET = 12   # počet případů v pripady()
+POCET = 16   # počet případů v pripady()
 
 
 def zapis(p, text, nl="\n"):
@@ -52,9 +52,9 @@ def falesny_skill(koren):
     return s
 
 
-def spust(skill, projekt, env=None):
-    r = subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(skill, "tools", "novy_projekt.py"), projekt],
-                       capture_output=True, encoding="utf-8", env=env)
+def spust(skill, projekt, *volby, env=None):
+    r = subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(skill, "tools", "novy_projekt.py"), projekt,
+                        *volby], capture_output=True, encoding="utf-8", env=env)
     assert r.returncode == 0, r.stdout + r.stderr
     return r.stdout
 
@@ -136,6 +136,15 @@ def pripady(koren):
     assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(nove2), out
     yield "nevyřešený konflikt se hlásí znovu"
 
+    # 6b. --vyreseno po ručním sloučení: uloží novou šablonu jako základ, projekt nechá; konflikt se už nehlásí
+    out = spust(s, p, "--vyreseno", "web/src/styl.css")
+    assert cti(proj("web", "src", "styl.css")) == pred, out
+    assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(zmen(nove2, 10, "radek 11 jinak v sablone"))
+    out = spust(s, p)
+    assert "web/src/styl.css" not in sekce(out, "Ke kontrole"), out
+    assert cti(proj("web", "src", "styl.css")) == pred, out
+    yield "--vyreseno ukončí hlášení konfliktu"
+
     # 7. bez gitu v PATH se nesloučí ani nepřekrývající se změny; s gitem se sloučí při dalším spuštění
     vlastni_uvod = zmen(RADKY, 2, "radek 3 vlastni")
     zapis(proj("web", "src", "uvod.astro"), text(vlastni_uvod))
@@ -158,6 +167,13 @@ def pripady(koren):
     nova = zalohy(p, "nova_sablona", "web", "src", "fotky.astro")
     assert nova and cti(nova[-1]) == "fotky ze sablony\n", out
     yield "nový soubor v šabloně i v projektu: zůstane uživatelův"
+
+    # 8b. --vyreseno u souboru přidaného projektem i šablonou
+    spust(s, p, "--vyreseno", "web/src/fotky.astro")
+    out = spust(s, p)
+    assert not any(f.startswith("web/src/fotky.astro") for f in sekce(out, "Ke kontrole")), out
+    assert cti(proj("web", "src", "fotky.astro")) == "moje fotky\n", out
+    yield "--vyreseno u souboru přidaného projektem i šablonou"
 
     # 9. soubor smazaný v projektu: nevrátit; změní-li se šablona, novou verzi jen do zálohy a hlásit
     os.remove(proj("web", "src", "uvod.astro"))
@@ -186,6 +202,16 @@ def pripady(koren):
     assert "web/src/zrus.astro" in sekce(out, "Šablona už nemá"), out
     yield "soubor odstraněný ze šablony: neupravený do zálohy, upravený zůstane"
 
+    # 10b. upravený soubor, který šablona už nemá, se hlásí dál, dokud ho --vyreseno nepřevezme jako vlastní
+    out = spust(s, p)
+    assert "web/src/zrus.astro" in sekce(out, "Šablona už nemá"), out
+    spust(s, p, "--vyreseno", "web/src/zrus.astro")
+    assert not os.path.exists(proj(".skill_sablona", "web", "src", "zrus.astro"))
+    out = spust(s, p)
+    assert "web/src/zrus.astro" not in sekce(out, "Šablona už nemá"), out
+    assert cti(proj("web", "src", "zrus.astro")) == text(zmen(RADKY, 4, "radek 5 vlastni")), out
+    yield "odstranění ze šablony se hlásí, dokud není vyřešené"
+
     # 11. projekt s CRLF (git na Windows), obsahem stejný jako šablona → bere se jako neupravený
     zapis(proj("web", "src", "index.astro"), text(RADKY), nl="\r\n")
     zapis(sab("src", "index.astro"), text(zmen(RADKY, 5, "radek 6 novy")))
@@ -205,6 +231,30 @@ def pripady(koren):
     assert "tools/nastroj.py" in sekce(out, "Přepsáno, původní verze"), out
     assert os.path.isfile(proj(".skill_sablona", "tools", "nastroj.py"))
     yield "starý projekt bez uložené šablony: tools/ se zálohují"
+
+    # 13. .skill_sablona/tools jako odkaz (symlink, na Windows junction) mimo projekt: nic venku nesmazat ani nezapsat
+    venku = os.path.join(koren, "venku")
+    zapis(os.path.join(venku, "poznamky.txt"), "cizi\n")
+    shutil.rmtree(proj(".skill_sablona", "tools"))
+    odkaz = proj(".skill_sablona", "tools")
+    try:
+        os.symlink(venku, odkaz, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        try:
+            import _winapi
+            _winapi.CreateJunction(venku, odkaz)
+        except (ImportError, OSError):
+            print("  [PŘESKOČENO] odkaz na složku nejde vytvořit (chybí oprávnění)")
+            yield "odkaz mimo projekt (přeskočeno)"
+            return
+    try:
+        out = spust(s, p)
+        assert cti(os.path.join(venku, "poznamky.txt")) == "cizi\n", out
+        assert sorted(os.listdir(venku)) == ["poznamky.txt"], out
+        assert "POZOR" in out, out
+    finally:
+        os.unlink(odkaz) if os.path.islink(odkaz) else os.rmdir(odkaz)
+    yield "odkaz z .skill_sablona/ mimo projekt se odmítne"
 
 
 def main():

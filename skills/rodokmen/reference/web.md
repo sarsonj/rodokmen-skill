@@ -92,11 +92,16 @@ o každém souboru a vypíše seznam:
 - **Sloučeno**: změnila se úprava i šablona, každá jinde; `git merge-file` je spojil. Ověř, že soubor dává smysl.
 - **Ke kontrole**: úprava i šablona změnily stejná místa, chybí `git`, soubor přidal projekt i nová šablona, nebo ho
   projekt smazal a šablona změnila. Soubor zůstal, jak byl; nová verze je v `pracovni/zaloha_<datum>/nova_sablona/`
-  (je-li `git`, vedle i návrh sloučení se značkami `<<<<<<<` jako `.konflikt`). Převezmi změny šablony ručně; dokud se
-  do souboru nedostanou, hlásí se při každé aktualizaci znovu.
+  (u konfliktu sloučení, kdy je `git`, vedle i návrh se značkami `<<<<<<<` jako `.konflikt`). Převezmi změny šablony
+  ručně a pak spusť `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu> --vyreseno web/src/…` (volbu lze
+  opakovat): uloží novou šablonu jako základ a soubor v projektu nezmění. Do té doby se soubor hlásí při každé aktualizaci.
 - **Smazáno v projektu**: soubor projekt smazal a šablona ho nezměnila, zůstane smazaný.
 - **Odstraněno**: nová šablona soubor už nemá a projekt ho neupravoval; přesune se do `pracovni/zaloha_<datum>/odstraneno/`.
-  Upravený soubor, který šablona už nemá, zůstane a vypíše se.
+- **Šablona už nemá, ale v projektu je upravený**: soubor zůstal a hlásí se dál. Buď ho smaž, nebo ho jako vlastní
+  převezmi přes `--vyreseno`.
+
+Odkaz (symlink, junction) ve `web/`, `tools/`, `.skill_sablona/` nebo `pracovni/`, který vede mimo projekt, skript
+odmítne s hláškou POZOR a soubory za ním přeskočí.
 - **Přepsáno, původní verze v záloze**: projekt ze starší verze bez `.skill_sablona/`. Upravené soubory nahradila nová
   verze a původní jsou v `pracovni/zaloha_<datum>/puvodni/`; vlastní úpravy z nich převezmi (porovnej soubory).
 
