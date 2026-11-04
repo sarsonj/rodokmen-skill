@@ -18,7 +18,7 @@ a odkazy vypíše i s délkou. Při dalším spuštění nahradí jen tento odd�
 Chybí-li jedna ze značek, nástroj koncept nezmění a skončí chybou.
 Odkaz mailto: delší než 1800 znaků některé programy uříznou – nástroj na to upozorní. Nic neodesílá.
 """
-import os, re, sys, urllib.parse
+import os, re, shutil, sys, tempfile, urllib.parse
 from pathlib import Path
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8
     if hasattr(_s, "reconfigure"):
@@ -37,6 +37,12 @@ WEB = {"--gmail": ("Gmail", "https://mail.google.com/mail/?", {"view": "cm", "fs
 ZACATEK, KONEC = "<!-- odkazy:zacatek -->", "<!-- odkazy:konec -->"   # vygenerovaný oddíl; mimo něj se nic nemaže
 POLE = re.compile(r"\*\*(Komu|Kopie|Předmět):\*\*[ \t]*(.*)$")
 ODRAZKA = re.compile(r"\s*(?:[-*+]|\d+[.)])\s")
+# Řádky, které generovaly starší verze (bez značek): projektová verze (Gmail + mailto) a první verze v tomto skillu.
+STARE_ODKAZY = re.compile(
+    r"- \[.+ – otevřít v Gmailu\]\(https://mail\.google\.com/[^)\s]*\)\s*$"
+    r"|  \(\[mailto\]\(mailto:[^)\s]*\)\)\s*$"
+    r"|- \*\*.+\*\* \(.*\): \[otevřít e-mail\]\(mailto:[^)\s]*\) \(\d+ znaků\)\s*$"
+    r"|  \[(?:Gmail|Outlook|Seznam Email)\]\(https://[^)\s]*\) \(\d+ znaků\)\s*$")
 
 
 def adresy(hodnota):
@@ -74,18 +80,26 @@ def stary_oddil(text):
     if not m:
         return text, ""
     radky = text[m.end():].split("\n")
-    n = 0
-    while n < len(radky) and (not radky[n].strip() or (re.match(r"(- |  )", radky[n])
-                                                        and re.search(r"\]\((?:mailto:|https://)", radky[n]))):
+    n = konec = 0
+    while n < len(radky) and (not radky[n].strip() or STARE_ODKAZY.match(radky[n])):
         n += 1
-    return text[:m.start()], "\n".join(radky[n:])
+        if radky[n - 1].strip():
+            konec = n   # za posledním vygenerovaným řádkem; prázdné řádky před cizím textem nech
+    return text[:m.start()], "\n".join(radky[konec:])
 
 
 def zapis(src, obsah):
-    tmp = str(src) + ".tmp"
-    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write(obsah)
-    os.replace(tmp, src)   # celý soubor naráz – při chybě zápisu zůstane původní koncept
+    """Do jedinečného dočasného souboru vedle konceptu, s právy původního souboru, pak naráz nahradit."""
+    fd, tmp = tempfile.mkstemp(dir=str(src.parent), prefix=src.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(obsah)
+        shutil.copymode(str(src), tmp)
+        os.replace(tmp, str(src))   # při chybě zůstane původní koncept
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
 
 
 def main():
@@ -95,8 +109,10 @@ def main():
         sys.exit(__doc__)
     src = Path(soubory[0])
     text = src.read_text(encoding="utf-8-sig").replace("\r\n", "\n")   # -sig: BOM z Poznámkového bloku
-    if text.count(ZACATEK) != text.count(KONEC) or text.count(ZACATEK) > 1:
-        sys.exit("Značky %s a %s v konceptu nejsou v páru (jedna chybí nebo jsou dvakrát). Oprav je, nebo smaž celý "
+    if (text.count(ZACATEK) != text.count(KONEC) or text.count(ZACATEK) > 1
+            or text.find(KONEC) < text.find(ZACATEK)):
+        sys.exit("Značky %s a %s v konceptu nejsou v páru (jedna chybí, jsou dvakrát nebo v obráceném pořadí). "
+                 "Oprav je, nebo smaž celý "
                  "oddíl s odkazy i se značkami, a spusť znovu. Koncept jsem nezměnil." % (ZACATEK, KONEC))
     oddil = re.search(r"\n*" + re.escape(ZACATEK) + r".*?" + re.escape(KONEC) + r"[ \t]*\n?", text, re.S)
     if oddil:

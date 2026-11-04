@@ -204,16 +204,53 @@ for znacka in ("<!-- odkazy:zacatek -->", "<!-- odkazy:konec -->"):
     ok(f"poškozená značka {znacka}: chyba a soubor beze změny",
        kod != 0 and open(cesta6, encoding="utf-8", newline="").read() == obsah, (kod, out, err))
 
-# Zápis přes dočasný soubor: když zápis selže (místo dočasného souboru je složka), původní koncept zůstane.
-cesta7 = os.path.join(slozka, "zapis.md")
+# Zápis přes dočasný soubor: když nahrazení selže (os.replace vyhodí chybu), původní koncept zůstane
+# a dočasný soubor se smaže. Nástroj se spustí v podprocesu jako modul s podvrženým os.replace.
+slozka7 = tempfile.mkdtemp(prefix="test_mailto_zapis_")
+cesta7 = os.path.join(slozka7, "zapis.md")
 obsah = "## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n"
 with open(cesta7, "w", encoding="utf-8", newline="\n") as f:
     f.write(obsah)
-os.mkdir(cesta7 + ".tmp")
-kod, out, err = spust(cesta7)
-ok("selhaný zápis: chyba a koncept beze změny", kod != 0 and open(cesta7, encoding="utf-8", newline="").read() == obsah,
-   (kod, err[-300:]))
-os.rmdir(cesta7 + ".tmp")
+KOD7 = ("import sys; sys.path.insert(0, sys.argv[1]); import mailto\n"
+        "def chyba(*a): raise OSError('simulovaná chyba zápisu')\n"
+        "mailto.os.replace = chyba; sys.argv = ['mailto.py', sys.argv[2]]; mailto.main()\n")
+r = subprocess.run([sys.executable, "-I", "-c", KOD7, os.path.dirname(NASTROJ), cesta7], capture_output=True)
+ok("selhaný zápis: chyba, koncept beze změny, dočasný soubor smazaný",
+   r.returncode != 0 and open(cesta7, encoding="utf-8", newline="").read() == obsah
+   and os.listdir(slozka7) == ["zapis.md"], (r.returncode, os.listdir(slozka7), r.stderr[-300:]))
+
+# Práva konceptu (jen POSIX): koncept s právy 0600 je má i po zápisu.
+preskoceno = []
+if os.name == "posix":
+    os.chmod(cesta7, 0o600)
+    kod, out, err = spust(cesta7)
+    ok("práva 0600 zůstala", kod == 0 and (os.stat(cesta7).st_mode & 0o777) == 0o600, oct(os.stat(cesta7).st_mode))
+else:
+    preskoceno.append("práva 0600 zůstala (jen POSIX)")
+
+# Starý oddíl: za odkazy poznámka s odkazem (ne vygenerovaná) – musí zůstat.
+cesta10 = os.path.join(slozka, "stary_priloha.md")
+PRILOHA = "- Příloha: [rodný list](https://example.cz/list)"
+with open(cesta10, "w", encoding="utf-8", newline="\n") as f:
+    f.write("## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n\n---\n\n" + NADPIS + " (klikněte)\n\n"
+            "- [A – otevřít v Gmailu](https://mail.google.com/x)  \n  ([mailto](mailto:a@example.cz?subject=A))\n\n"
+            "- **A** (a@example.cz): [otevřít e-mail](mailto:a@example.cz?subject=A) (30 znaků)\n"
+            "  [Gmail](https://mail.google.com/y) (30 znaků)\n\n" + PRILOHA + "\n")
+kod, out, err = spust(cesta10)
+text = open(cesta10, encoding="utf-8").read()
+ok("starý oddíl: poznámka s odkazem zůstala, staré odkazy pryč", kod == 0 and PRILOHA in text
+   and "mail.google.com/x" not in text and "mail.google.com/y" not in text and len(odkazy(text, "mailto:")) == 1,
+   (err, text))
+
+# Značky v obráceném pořadí: chyba a soubor beze změny.
+cesta11 = os.path.join(slozka, "obracene.md")
+obsah = ("## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n\n<!-- odkazy:konec -->\n\nText\n\n"
+         "<!-- odkazy:zacatek -->\n")
+with open(cesta11, "w", encoding="utf-8", newline="\n") as f:
+    f.write(obsah)
+kod, out, err = spust(cesta11)
+ok("značky v obráceném pořadí: chyba a soubor beze změny",
+   kod != 0 and open(cesta11, encoding="utf-8", newline="").read() == obsah, (kod, out))
 
 # UTF-8 s BOM (Poznámkový blok): první blok se nesmí ztratit.
 for n in (1, 2):
@@ -237,5 +274,7 @@ ocek = "Údaje:\n- Rodiče:\n  - otec Josef\n  - matka Marie\n- bydliště čp. 
 telo = mailto(m[0])[1].get("body", [""])[0].replace("\r\n", "\n") if m else ""
 ok("vnořené odrážky zůstanou na svých řádcích", telo == ocek, repr(telo))
 
-print(f"== mailto.py: {sum(vysledky)} z {len(vysledky)} správně")
+for p in preskoceno:
+    print("SKIP  " + p)
+print(f"== mailto.py: {sum(vysledky)} z {len(vysledky)} správně, přeskočeno {len(preskoceno)}")
 sys.exit(0 if all(vysledky) else 1)
