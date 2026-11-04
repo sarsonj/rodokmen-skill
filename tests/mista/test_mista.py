@@ -94,6 +94,36 @@ ok("main: blízké místo bez varování", "POZOR" not in vystup, vystup)
 vystup, cache, _ = spust_mista({}, ["pridej", "Korycany"], {"Korycany, Česko": [KORYCANY_KM]})
 ok("main: první místo projektu bez varování", "POZOR" not in vystup, vystup)
 
+# vyber(): ostrov ani chráněné území nejsou sídlo, obecní hranice ano
+OSTROV = {"class": "place", "type": "island", "lat": "50.0", "lon": "15.0", "display_name": "Ostrov, Česko"}
+CHKO = {"class": "boundary", "type": "protected_area", "lat": "50.0", "lon": "15.0", "display_name": "CHKO, Česko"}
+ok("vyber: ostrov před vsí – vezme ves", mista.vyber([OSTROV, VES]) == (VES, True), mista.vyber([OSTROV, VES]))
+ok("vyber: chráněné území = s příznakem", mista.vyber([CHKO]) == (CHKO, False), mista.vyber([CHKO]))
+ok("vyber: osada (hamlet) je obec", mista.vyber([dict(VES, type="hamlet")])[1] is True)
+
+# nejblizsi(): souřadnice jako text, chybějící lon, None, nesmysl – nespadne, nepoužitelná místa přeskočí
+c = {"A": {"lat": 50.0, "lon": 15.0}, "B": {"lat": "50.1", "lon": "15.0"}, "C": {"lat": 49.0},
+     "D": {"lat": None, "lon": None}, "E": {"lat": "?", "lon": 15.0}}
+try:
+    n = mista.nejblizsi("A", c)
+except Exception as e:  # noqa: BLE001
+    n = e
+ok("nejblizsi: text, chybějící lon, None", isinstance(n, tuple) and n[1] == "B" and 10 < n[0] < 12, n)
+try:
+    vystup, cache, _ = spust_mista({"Beroun": {"lat": "49.9638", "lon": "14.0720"}, "Zlom": {"lat": 50.0, "lon": None}},
+                                   ["pridej", "Korycany"], {"Korycany, Česko": [OBEC]})
+    ok("main: s rozbitými souřadnicemi jiných míst uloží nové místo", cache["Korycany"].get("lat") == 49.9606, cache)
+except Exception as e:  # noqa: BLE001
+    ok("main: s rozbitými souřadnicemi jiných míst uloží nové místo", False, repr(e))
+
+# main(): vzdálenost se počítá až po celé dávce, nezávisle na pořadí
+A = [{"class": "place", "type": "village", "lat": "50.0", "lon": "15.0", "display_name": "A, Česko"}]
+B = [{"class": "place", "type": "village", "lat": "50.009", "lon": "15.0", "display_name": "B, Česko"}]
+for poradi in (("A", "B"), ("B", "A")):
+    cache0 = {"C": {"re": "C", "lat": 49.0, "lon": 15.0}, **{x: {"re": x} for x in poradi}}
+    vystup, _, _ = spust_mista(cache0, [], {"A, Česko": A, "B, Česko": B})
+    ok(f"main: pořadí {'+'.join(poradi)} – A ani B nejsou daleko (mají sebe)", "POZOR" not in vystup, vystup)
+
 # kontrola.py: u osoby bez obce ukáže slova z faktů, která vypadají jako obec
 d = tempfile.mkdtemp(prefix="kontrola_")
 os.makedirs(os.path.join(d, "tools"))

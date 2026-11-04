@@ -12,7 +12,7 @@ Použití:
       a vypíše seznam. Když bod nesedí, opravte lat/lon v data/mista.json ručně.
 
 Hledá jen sídla (featuretype=settlement); když žádné nenajde, vezme cokoli a pod seznamem napíše „POZOR: není obec“
-(bar, ulice). Pod seznamem varuje i u nového bodu dál než VZDALENE_KM od všech ostatních míst – nejspíš jiná obec
+(bar, ulice, ostrov, chráněné území). Pod seznamem varuje i u nového bodu dál než VZDALENE_KM od všech ostatních míst – nejspíš jiná obec
 stejného jména. Vystěhovalci (Chicago, Vídeň) varování dostanou taky, jen jednou při přidání; stačí ověřit adresu.
 
 Položka může mít "hypoteza": true a "rod": <Kekulé 8–15> – pak se na mapě ukáže jako hypotéza bez osob.
@@ -39,9 +39,17 @@ def nominatim(par):
     return res
 
 
+SIDLA = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "isolated_dwelling", "farm",
+         "locality", "municipality", "borough", "cadastral_community"}   # typy ve třídě place; z boundary jen administrative (obce, katastry)
+
+
+def je_sidlo(r):
+    return r.get("type") in SIDLA if r.get("class") == "place" else (r.get("class"), r.get("type")) == ("boundary", "administrative")
+
+
 def vyber(res):
-    """První sídlo (class place nebo boundary) jako (výsledek, True); bez sídla první výsledek (bar, ulice…) s False."""
-    obce = [r for r in res if r.get("class") in ("place", "boundary")]
+    """První sídlo jako (výsledek, True); bez sídla první výsledek (bar, ostrov, chráněné území…) s False."""
+    obce = [r for r in res if je_sidlo(r)]
     return (obce[0], True) if obce else (res[0], False) if res else None
 
 
@@ -65,10 +73,18 @@ def vzdalenost_km(a, b):
     return 2 * 6371 * math.asin(math.sqrt(h))
 
 
+def bod(e):
+    """(lat, lon) jako čísla, nebo None, když souřadnice chybí nebo nejdou přečíst ("50.1" projde)."""
+    try:
+        return float(e["lat"]), float(e["lon"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def nejblizsi(name, cache):
-    """(km, název) nejbližšího jiného místa se souřadnicemi, nebo None."""
-    e = cache[name]
-    d = [(vzdalenost_km((e["lat"], e["lon"]), (o["lat"], o["lon"])), n) for n, o in cache.items() if n != name and "lat" in o]
+    """(km, název) nejbližšího jiného místa s použitelnými souřadnicemi, nebo None."""
+    a = bod(cache[name])
+    d = [(vzdalenost_km(a, b), n) for n, o in cache.items() if n != name and (b := bod(o))] if a else []
     return min(d) if d else None
 
 
@@ -79,7 +95,7 @@ def main():
         stem = re.escape(name.split()[0][:5]) if len(name.split()) == 1 else re.escape(name)
         cache[name] = dict(cache.get(name, {}), re=sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] else stem,
                            dotaz=sys.argv[4] if len(sys.argv) > 4 else f"{name}, Česko")
-    pozor = []   # vypíše se až pod seznamem, aby se v něm neztratilo
+    pozor, nove = [], []   # varování se vypíšou až pod seznamem, aby se v něm neztratila
     for name, e in cache.items():
         if "lat" not in e:
             g = geocode(e.get("dotaz") or f"{name}, Česko")
@@ -91,14 +107,16 @@ def main():
                 e["lat"], e["lon"], e["osm"] = g[:3]
                 if not g[3]:
                     pozor.append(f"POZOR: není obec – zkontrolujte: {name} → {g[2][:80]}")
-                n = nejblizsi(name, cache)
-                if n and n[0] > VZDALENE_KM:
-                    pozor.append(f"POZOR: {name} je {n[0]:.0f} km od nejbližšího místa ({n[1]}) – je to ono? {g[2][:80]}")
+                nove.append(name)
             else:
                 pozor.append(f"NENALEZENO: {name} – upravte 'dotaz' nebo doplňte lat/lon ručně")
+    for name in nove:   # až po celé dávce, ať nezáleží na pořadí míst
+        n = nejblizsi(name, cache)
+        if n and n[0] > VZDALENE_KM:
+            pozor.append(f"POZOR: {name} je {n[0]:.0f} km od nejbližšího místa ({n[1]}) – je to ono? {cache[name]['osm'][:80]}")
     json.dump(cache, open(OUT, "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
     for n, e in cache.items():
-        print(f"{n:28} {e.get('lat', '?'):>8} {e.get('lon', '?'):>8}  hledá „{e.get('re')}“  {e.get('osm', '')[:60]}")
+        print(f"{n:28} {str(e.get('lat', '?')):>8} {str(e.get('lon', '?')):>8}  hledá „{e.get('re')}“  {e.get('osm', '')[:60]}")
     for p in pozor:
         print(p)
 
