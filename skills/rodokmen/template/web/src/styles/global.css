@@ -206,3 +206,20 @@ main.full { max-width: none; padding: 0; }
 .card-link::after { content: '→'; position: absolute; top: 0.7rem; right: 0.9rem; font-size: 1.15rem; color: var(--accent); opacity: 0.55; transition: opacity 0.15s, transform 0.15s; }
 .card-link:hover::after { opacity: 1; transform: translateX(3px); }
 .card-link h3 { padding-right: 1.4rem; }
+
+/* časová osa (pages/osa.astro) */
+.osa-wrap { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; max-height: 85vh; }
+.osa-wrap svg { display: block; }
+.osa-axis { position: sticky; top: 0; z-index: 1; background: var(--paper); border-bottom: 1px solid var(--line); }
+.osa-axis line { stroke: var(--muted); stroke-width: 1; }
+.osa-wrap text { font: 10px var(--sans); fill: var(--ink); }
+.osa-axis text { fill: var(--muted); }
+.osa-grid { stroke: var(--line); stroke-width: 0.6; }
+.osa-birth { stroke: var(--ink); stroke-opacity: 0.35; stroke-width: 1; }
+.osa-wed { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
+.osa-name { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; stroke-linejoin: round; }
+.osa a:hover rect { stroke: var(--accent); stroke-width: 1.5; }
+.osa a:hover .osa-name { fill: var(--accent); }
+.osa-warn { fill: var(--prob); font-weight: 700; font-size: 12px; }
+.osa-warnings li { margin: 0.3rem 0; }
+.osa-warnings li.maybe { color: var(--muted); }

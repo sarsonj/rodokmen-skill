@@ -2,8 +2,9 @@
 
 Web je statický (Astro + vyhledávání Pagefind), data bere z `data/` přes `tools/export_web.py`.
 Stránky: úvod (lákadlo, statistiky, zajímavosti, mapa, rody, vějíř), příběh, zajímavosti, rody, stránka rodu,
-mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, zápisy (s výřezem, rámečkem, přepisem
-a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
+mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, časová osa (pruhy životů předků a pod nimi, co spolu
+časově nesedí – stejná pravidla jako `kontrola.py`, ověřený údaj skryje `overeno`), seznam předků, zápisy (s výřezem,
+rámečkem, přepisem a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
 
 ## Příkazy (ve složce `web/`)
 | příkaz | co dělá |

@@ -1,0 +1,127 @@
+---
+// Časová osa předků: pruh života každého předka na společné ose let a pod ní, co spolu časově nesedí.
+// Data i pravidla připravuje tools/export_web.py (tools/chronologie.py), tady se jen kreslí statické SVG.
+import Base from '../layouts/Base.astro';
+import { timeline, people, lineByK, href } from '../lib/data.js';
+
+const T = timeline ?? { from: 1900, to: new Date().getFullYear(), rows: [], warnings: [] };
+const PX = 4, RH = 18, PAD = 24;                        // px na rok, výška řádku, okraj vlevo (⚠)
+const x = (y) => PAD + (y - T.from) * PX;
+const W = Math.round(x(T.to) + 16);
+const H = T.rows.length * RH + 8;
+const cy = (i) => 4 + i * RH + RH / 2;
+const idx = Object.fromEntries(T.rows.map((r, i) => [r.k, i]));
+const hi = (e) => e.to ?? e.from;
+const wide = (e) => e.from == null || e.to == null || e.to - e.from > 1.01;   // „asi“, „před“, „po“ (rok ještě ne)
+const color = (r) => lineByK[r.line]?.color ?? 'var(--unk)';
+const let_ = (n) => (n === 1 ? 'rok' : n >= 2 && n <= 4 ? 'roky' : 'let');
+
+/** Pruh od s do e; s → s1 náběh a e0 → e doběh do průhlednosti (nejisté nebo neznámé datum). */
+function geo(r) {
+  const b = r.birth, d = r.death;
+  const kid = r.k > 1 && idx[r.k >> 1] != null ? T.rows[idx[r.k >> 1]] : null;
+  let s, s1, e, e0;
+  if (d) {
+    if (d.to == null) [e0, e] = [d.from, d.from + 5];          // „† po 1921“
+    else if (d.from == null) [e0, e] = [d.to - 5, d.to];       // „† před 1740“
+    else [e0, e] = [wide(d) ? d.from : d.to, d.to];
+  } else if (r.living) {
+    [e0, e] = [T.to, T.to];
+  } else {                                                      // úmrtí neznámé: k poslední známé události a vybledne
+    const last = Math.max(...[b, r.marriage, kid?.birth].filter(Boolean).map(hi));
+    if (!Number.isFinite(last)) return null;
+    [e0, e] = [last, last + 5];
+  }
+  if (b) {
+    if (b.from == null) [s, s1] = [b.to - 5, b.to];            // „* před 1720“
+    else if (b.to == null) [s, s1] = [b.from, b.from + 5];     // „* po 1700“
+    else [s, s1] = [b.from, wide(b) ? b.to : b.from];
+  } else if (d) {
+    [s, s1] = [e0 - 10, e0];                                    // známe jen úmrtí: krátký pruh s vybledlým začátkem
+  } else return null;
+  e = Math.max(e, s + 1);
+  s1 = Math.min(s1, e);
+  e0 = Math.min(Math.max(e0, s1), e);
+  return { s, s1, e0, e };
+}
+
+function vek(e, b) {
+  if (!b || !e || [b.from, b.to, e.from, e.to].includes(null)) return '';
+  const lo = Math.max(0, Math.floor(e.from - b.to)), hiAge = Math.floor(e.to - b.from);
+  return lo === hiAge ? ` (${lo} ${let_(lo)})` : ` (${lo}–${hiAge} ${let_(hiAge)})`;
+}
+
+const geos = T.rows.map(geo);
+const rows = T.rows.map((r, i) => {
+  const g = geos[i];
+  const kid = r.k > 1 ? geos[idx[r.k >> 1]] : null;
+  const lx = g ? x(g.s) + 3 : kid ? x(kid.s) + 3 : PAD;   // osoba bez dat: jméno u narození dítěte
+  const tip = [`${r.name}${r.years ? ` (${r.years})` : ''}`, r.birth && `* ${r.birth.text}`,
+    r.marriage && `× ${r.marriage.text}${vek(r.marriage, r.birth)}`, r.death && `† ${r.death.text}${vek(r.death, r.birth)}`,
+    r.living && 'žije'].filter(Boolean).join('\n');
+  const parents = [idx[2 * r.k], idx[2 * r.k + 1]];
+  return { r, i, g, lx, tip, y: cy(i), c: color(r), op: r.uncertain ? 0.3 : 0.55, parents };
+});
+const decades = [];
+for (let y = Math.ceil(T.from / 10) * 10; y <= T.to; y += 10) decades.push(y);
+---
+<Base title="Časová osa" wide>
+  <h1>Časová osa</h1>
+  <p class="lead">Každý řádek je jeden předek: otec je nad dítětem, matka pod ním. Pruh vede od narození do úmrtí,
+    kroužek značí sňatek a svislá čára narození dítěte – spojuje oba rodiče s pruhem dítěte. Vybledlý konec znamená,
+    že datum neznáme přesně, čárkovaný pruh žijícího. Klepnutím na pruh otevřete stránku osoby.</p>
+  {T.rows.length ? (
+    <div class="osa-wrap" data-pagefind-ignore>
+      <svg class="osa-axis" width={W} height="22" viewBox={`0 0 ${W} 22`} aria-hidden="true">
+        {decades.map((y) => <line x1={x(y)} x2={x(y)} y1={y % 50 ? 16 : 12} y2="22" />)}
+        {decades.filter((y) => y % 20 === 0).map((y) => <text x={x(y)} y="11" text-anchor="middle">{y}</text>)}
+      </svg>
+      <svg class="osa" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Časová osa předků">
+        <defs>
+          {rows.filter((o) => o.g).map(({ i, g, c, op }) => (
+            <linearGradient id={`og${i}`} gradientUnits="userSpaceOnUse" x1={x(g.s)} x2={x(g.e)} y1="0" y2="0">
+              <stop offset="0" style={`stop-color:${c};stop-opacity:${g.s1 > g.s ? 0 : op}`} />
+              <stop offset={(g.s1 - g.s) / (g.e - g.s)} style={`stop-color:${c};stop-opacity:${op}`} />
+              <stop offset={(g.e0 - g.s) / (g.e - g.s)} style={`stop-color:${c};stop-opacity:${op}`} />
+              <stop offset="1" style={`stop-color:${c};stop-opacity:${g.e > g.e0 ? 0 : op}`} />
+            </linearGradient>
+          ))}
+        </defs>
+        {decades.map((y) => <line class="osa-grid" x1={x(y)} x2={x(y)} y1="0" y2={H} />)}
+        {rows.filter((o) => o.g && o.parents.some((p) => p != null)).map(({ i, g, parents }) => (
+          <line class="osa-birth" x1={x(g.s)} x2={x(g.s)} y1={cy(parents[0] ?? i)} y2={cy(parents[1] ?? i)} />
+        ))}
+        {rows.map(({ r, i, g, lx, tip, y, c }) => (
+          <a href={href.person(r.slug)}>
+            <title>{tip}</title>
+            {g && <rect x={x(g.s)} y={y - 6} width={(g.e - g.s) * PX} height="12" rx="3" fill={`url(#og${i})`}
+              stroke={r.living ? c : 'none'} stroke-dasharray={r.living ? '4 3' : undefined} />}
+            {g && r.marriage && <circle class="osa-wed" cx={x(r.marriage.from != null && r.marriage.to != null
+              ? (r.marriage.from + r.marriage.to) / 2 : (r.marriage.from ?? r.marriage.to))} cy={y} r="3" />}
+            <text class="osa-name" x={lx} y={y + 3.5}>{r.name}{r.years ? ` ${r.years}` : ''}{g ? '' : ' – bez dat'}</text>
+            {r.warn && g && <text class="osa-warn" x={x(g.s) - 4} y={y + 4} text-anchor="end">⚠</text>}
+          </a>
+        ))}
+      </svg>
+    </div>
+  ) : (
+    <p class="muted">Zatím tu nikdo není – osa se ukáže, až budou v rodokmenu předci s daty.</p>
+  )}
+
+  <h2>Co časově nesedí</h2>
+  {T.warnings.length ? (
+    <>
+      <p class="small muted">Údaje, které spolu časově nesedí. Jeden z nich je možná špatně přečtený, nebo patří jinému
+        člověku. Víte, jak to bylo? Dejte nám vědět.</p>
+      <ul class="osa-warnings">
+        {T.warnings.map((w) => (
+          <li class={w.maybe ? 'maybe' : ''}>⚠ {w.text}{' '}
+            <span class="small">({w.people.map((s, j) => <>{j ? ', ' : ''}<a href={href.person(s)}>{people[s]?.name ?? s}</a></>)})</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  ) : (
+    <p class="muted">Kontrola nenašla nic, co by časově nesedělo.</p>
+  )}
+</Base>
