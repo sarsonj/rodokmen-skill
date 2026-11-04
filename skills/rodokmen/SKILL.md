@@ -34,6 +34,7 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    Aktualizace z verze starší než 0.6.0 přidá brzdu proti zablokování archivem: zeptej se i na hlídač sítě (viz Fáze 0,
    krok 2). Po aktualizaci řekni uživateli, ať pro jistotu restartuje Claude Code – změny v `.claude/settings.json`
    (zákaz `curl`, hlídač) se jinak nemusí projevit hned.
+   **Žádosti:** v `data/zadosti.md` najdi odeslané žádosti bez odpovědi déle než 30 dní a připomeň je.
 2. Projekt ještě není → **Fáze 0**.
 
 ## Fáze 0 – Příprava (jednou)
@@ -123,7 +124,7 @@ Základní smyčka pro každou osobu:
    online je: křty sourozenců, sňatek rodičů, rejstříky – a chybějící zápis dej do `archivni_dotazy.md`.
 2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku
    (narození 100 let, sňatky 75, úmrtí 30). Mladší údaje jsou na matričním úřadě (žádost s doložením příbuzenství) –
-   zapiš do `data/archivni_dotazy.md` a jdi dál.
+   zapiš do `data/archivni_dotazy.md` a jdi dál. Chce-li uživatel žádost poslat, viz „Žádosti“ níže.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `tools/portafontium.py`, Praha: `tools/ahmp_search.sh`;
    SOA Praha (střední Čechy), MZA Brno a SOA Třeboň jen v prohlížeči, ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív
@@ -209,6 +210,18 @@ a pravidla brzdy výše (síť jen přes `tools/slusne.py`, při hlášce „zas
 sn. 20–40“ – pomocník jinak přehlédne, že se mu část snímků nenačetla. Na špatně čitelné knihy (kurent 1. poloviny
 19. století, vybledlé snímky) pomocníky nepouštěj, nebo jim dej přesný snímek; ARON a Porta fontium zvládají dobře.
 
+### Žádosti archivům, matričním úřadům a obcím
+Co jde jen přes úřad nebo badatelnu (mladší zápisy, pozemkové knihy, evidence hrobů), vyřeš žádostí. Vzory a kanály
+(i datová schránka): `reference/zadosti.md`.
+1. Nejdřív se podívej do `data/zadosti.md`, jestli už na totéž nečekáte. Na jeden archiv nanejvýš jedna otevřená
+   žádost (odpoví na všechno najednou, druhá žádost zdržuje první); další dotaz připiš k ní, nebo ho odlož.
+2. Adresu instituce ověř na jejím oficiálním webu. Koncept napiš do `pracovni/zadosti/<instituce>_<co>.md`
+   (formát v `reference/zadosti.md`), spusť `python3 -I tools/mailto.py <koncept.md>` a dej uživateli odkaz
+   a text ke kontrole. Adresu a kontakty uživatele piš jen do konceptu, nikdy do `data/`.
+3. **Nic sám neposílej.** Do `data/zadosti.md` přidej řádek se stavem „koncept“. Až uživatel řekne, že poslal,
+   doplň datum a „odesláno“.
+4. Když přijde odpověď: shrň ji, výsledek zapiš do dat a do `research_log.md`, řádek přesuň do Uzavřených.
+
 ### Kdy přestat
 Linie končí, když matriky mlčí (nemanželské dítě bez otce, shořelé knihy, chybějící svazky) nebo když jsi
 v 17. století. Zapiš to do `ISSUES`/`archivni_dotazy.md` a jdi na jinou větev. Průběžně aktualizuj `data/STAV.md`
@@ -277,6 +290,7 @@ Nedělej to pořád. Postup:
 | `data/prepisy.json`, `data/zvyrazneni.json` | přepisy s překlady, rámečky čteného místa |
 | `data/research_log.md` | deník všech hledání |
 | `data/udaje_od_rodiny.md`, `data/archivni_dotazy.md` | co víme od rodiny; co jen v archivu |
+| `data/zadosti.md` | poslané žádosti archivům a úřadům a jejich stav (nejde na web) |
 | `data/zajimavosti.md`, `data/pribeh.md`, `data/web.json`, `data/dokumenty.json`, `data/mista.json` | texty a nastavení webu, rodinné fotky, místa na mapě |
 | `vyrezy/`, `zdroje/` | výřezy zápisů a dokumentů (web / plné rozlišení), název = klíč + `.jpg` |
 | `dokumenty/`, `pracovni/` | originály od rodiny; pracovní soubory (nejdou na web) |
@@ -308,6 +322,7 @@ Nedělej to pořád. Postup:
 | `mista.py pridej "Obec"` / `mista.py` | místa pro mapu (souřadnice z OpenStreetMap) |
 | `zapis.py <soubor> <klíč> <vstup.json> [--sloucit]` | přidá / změní položku v `zaznamy`, `svazky`, `prepisy`… beze změny formátu |
 | `slusne.py <skript.py> / curl … / bash x.sh / stav` | brzda proti zablokování archivem – vlastní skripty a curl spouštěj přes ni |
+| `mailto.py <koncept.md> [--gmail] [--outlook] [--seznam]` | koncept žádosti → odkaz, který otevře hotový e-mail (nic neodesílá) |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
 | `export_web.py` | data → web (volá ho `npm run data`) |
 | `fan_chart.py vystupy/` | vějíř předků jako plakát k tisku |
