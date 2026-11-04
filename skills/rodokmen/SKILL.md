@@ -116,15 +116,18 @@ Podrobný postup čtení: `reference/matriky.md`. Portály archivů: `reference/
 
 Základní smyčka pro každou osobu:
 1. **Vyber cíl a začni od nejmladšího zápisu.** Vezmi nejmladšího předka bez dokladu a hledej jeho **nejmladší
-   známou událost**: úmrtí (online po 30 letech; ve 20. století uvádí datum a místo narození i rodiče), pak sňatek
+   známou událost**: úmrtí (ve 20. století uvádí datum a místo narození i rodiče), pak sňatek
    (uvádí rodiče a bydliště obou snoubenců, otevírá další generaci), a teprve z nich křest. **Nikdy nehledej křest
    naslepo** po stovkách snímků bez rejstříku, když je známé úmrtí nebo sňatek. (Skutečná chyba: křest ve velkoměstě
    hledaný naslepo, přitom datum a místo úmrtí byly známé.)
    Není-li nejmladší událost online (na venkově bývají svazky po ~1905 nenaskenované), začni nejmladším svazkem, který
    online je: křty sourozenců, sňatek rodičů, rejstříky – a chybějící zápis dej do `archivni_dotazy.md`.
-2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku
-   (narození 100 let, sňatky 75, úmrtí 30). Mladší údaje jsou na matričním úřadě (žádost s doložením příbuzenství) –
-   zapiš do `data/archivni_dotazy.md` a jdi dál. Chce-li uživatel žádost poslat, viz „Žádosti“ níže.
+2. **Ověř přístupnost**: matriční úřad předá svazek archivu až po uplynutí lhůty od *posledního* zápisu ve svazku
+   (narození 100 let, sňatky i úmrtí 75; zákon o matrikách, § 23). Jednotlivý zápis dostane kdokoli po 100 letech
+   (narození), 75 (sňatek) a 30 (úmrtí) od tohoto zápisu, i když je svazek ještě na úřadě (§ 25b); mladší jen ten,
+   koho se týká, a člen rodiny podle § 8a odst. 6 s doložením příbuzenství (§ 25). Přístupný neznamená online.
+   Podrobnosti v `reference/zadosti.md`. Co jde jen přes úřad, zapiš do `data/archivni_dotazy.md` a jdi dál.
+   Chce-li uživatel žádost poslat, viz „Žádosti“ níže.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `tools/portafontium.py`, Praha: `tools/ahmp_search.sh`;
    SOA Praha (střední Čechy), MZA Brno a SOA Třeboň jen v prohlížeči, ostatní a Rakousko viz `reference/portaly.md`. Sňatek hledej nejdřív

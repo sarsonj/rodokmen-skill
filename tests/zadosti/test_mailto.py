@@ -180,5 +180,62 @@ text = open(cesta4, encoding="utf-8").read()
 ok("starý tvar oddílu nahrazen", kod == 0 and text.count(NADPIS) == 1 and "mail.google.com/x" not in text
    and len(odkazy(text, "mailto:")) == 1, text)
 
+# Starý oddíl bez značek, za ním další žádost a poznámka: smaže se jen nadpis a odkazy, zbytek zůstane.
+cesta5 = os.path.join(slozka, "stary_pokracovani.md")
+DALSI = "## B\n\n**Komu:** b@example.cz\n**Předmět:** B\n\nText B\n\nPoznámka na konec.\n"
+with open(cesta5, "w", encoding="utf-8", newline="\n") as f:
+    f.write("## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n\n---\n\n" + NADPIS + " (klikněte)\n\n"
+            "- [A – otevřít v Gmailu](https://mail.google.com/x)  \n  ([mailto](mailto:a@example.cz?subject=A))\n\n"
+            "---\n\n" + DALSI)
+kod, out, err = spust(cesta5)
+text = open(cesta5, encoding="utf-8").read()
+m = odkazy(text, "mailto:")
+ok("starý oddíl: žádost a poznámka za ním zůstaly", kod == 0 and DALSI.strip() in text and "Text A" in text, (err, text))
+ok("starý oddíl: staré odkazy pryč, nový oddíl jednou", "mail.google.com/x" not in text and text.count(NADPIS) == 1)
+ok("starý oddíl: žádost za ním dostala odkaz", len(m) == 2 and mailto(m[1])[0] == "b@example.cz", m)
+
+# Poškozené značky (jen jedna z dvojice): nástroj soubor nezmění a skončí chybou.
+for znacka in ("<!-- odkazy:zacatek -->", "<!-- odkazy:konec -->"):
+    cesta6 = os.path.join(slozka, "poskozeny.md")
+    obsah = "## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n\n" + znacka + "\n---\n\n" + NADPIS + "\n\n- x\n"
+    with open(cesta6, "w", encoding="utf-8", newline="\n") as f:
+        f.write(obsah)
+    kod, out, err = spust(cesta6)
+    ok(f"poškozená značka {znacka}: chyba a soubor beze změny",
+       kod != 0 and open(cesta6, encoding="utf-8", newline="").read() == obsah, (kod, out, err))
+
+# Zápis přes dočasný soubor: když zápis selže (místo dočasného souboru je složka), původní koncept zůstane.
+cesta7 = os.path.join(slozka, "zapis.md")
+obsah = "## A\n\n**Komu:** a@example.cz\n**Předmět:** A\n\nText A\n"
+with open(cesta7, "w", encoding="utf-8", newline="\n") as f:
+    f.write(obsah)
+os.mkdir(cesta7 + ".tmp")
+kod, out, err = spust(cesta7)
+ok("selhaný zápis: chyba a koncept beze změny", kod != 0 and open(cesta7, encoding="utf-8", newline="").read() == obsah,
+   (kod, err[-300:]))
+os.rmdir(cesta7 + ".tmp")
+
+# UTF-8 s BOM (Poznámkový blok): první blok se nesmí ztratit.
+for n in (1, 2):
+    cesta8 = os.path.join(slozka, f"bom{n}.md")
+    with open(cesta8, "w", encoding="utf-8-sig", newline="\n") as f:
+        f.write("\n---\n\n".join("## %s\n\n**Komu:** %s@example.cz\n**Předmět:** %s\n\nText\n" % (x, x, x)
+                                 for x in "ab"[:n]))
+    kod, out, err = spust(cesta8)
+    m = odkazy(open(cesta8, encoding="utf-8-sig").read(), "mailto:")
+    ok(f"BOM, {n} blok(y): odkaz u každého", kod == 0 and len(m) == n and mailto(m[0])[0] == "a@example.cz",
+       (err, m))
+
+# Vnořená odrážka není pokračování; pokračovací řádek se připojí i po vnořené odrážce.
+cesta9 = os.path.join(slozka, "vnorene.md")
+TELO9 = "Údaje:\n- Rodiče:\n  - otec Josef\n  - matka Marie\n- bydliště čp. 5,\n  Horní Lhota\n\nDěkuji"
+with open(cesta9, "w", encoding="utf-8", newline="\n") as f:
+    f.write("## V\n\n**Komu:** v@example.cz\n**Předmět:** V\n\n" + TELO9 + "\n")
+kod, out, err = spust(cesta9)
+m = odkazy(open(cesta9, encoding="utf-8").read(), "mailto:")
+ocek = "Údaje:\n- Rodiče:\n  - otec Josef\n  - matka Marie\n- bydliště čp. 5, Horní Lhota\n\nDěkuji"
+telo = mailto(m[0])[1].get("body", [""])[0].replace("\r\n", "\n") if m else ""
+ok("vnořené odrážky zůstanou na svých řádcích", telo == ocek, repr(telo))
+
 print(f"== mailto.py: {sum(vysledky)} z {len(vysledky)} správně")
 sys.exit(0 if all(vysledky) else 1)

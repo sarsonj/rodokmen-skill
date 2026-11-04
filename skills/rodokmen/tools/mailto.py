@@ -12,12 +12,13 @@ Formát konceptu: bloky oddělené řádkem ---, v bloku nadpis „## …“, hn
 čárkou), volitelně **Kopie:**, a **Předmět:**, pod nimi text e-mailu. Od prvního řádku, který není pole, je všechno
 text e-mailu. Bloky bez Komu a Předmětu se přeskočí.
 Odstavec piš na jeden řádek (zalomení se v e-mailu zachová); pokračovací řádek odrážky odsazený dvěma mezerami
-se připojí k odrážce, jiné odsazené řádky zůstanou samostatně.
+se připojí k odrážce, jiné odsazené řádky a vnořené odrážky zůstanou samostatně.
 Na konec konceptu zapíše oddíl „## Odkazy k odeslání“ mezi značky <!-- odkazy:zacatek --> a <!-- odkazy:konec -->
 a odkazy vypíše i s délkou. Při dalším spuštění nahradí jen tento oddíl; žádosti připsané za něj taky dostanou odkaz.
+Chybí-li jedna ze značek, nástroj koncept nezmění a skončí chybou.
 Odkaz mailto: delší než 1800 znaků některé programy uříznou – nástroj na to upozorní. Nic neodesílá.
 """
-import re, sys, urllib.parse
+import os, re, sys, urllib.parse
 from pathlib import Path
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8
     if hasattr(_s, "reconfigure"):
@@ -58,12 +59,33 @@ def rozeber(blok):
         i += 1
     telo, v_odrazce = [], False
     for r in radky[i:]:
-        if v_odrazce and re.match(r"  \S", r):   # pokračování odrážky
+        if v_odrazce and re.match(r"  \S", r) and not ODRAZKA.match(r):   # pokračování odrážky (ne vnořená odrážka)
             telo[-1] += " " + r.strip()
             continue
         v_odrazce = bool(ODRAZKA.match(r))
         telo.append(r)
     return nadpis, pole, "\n".join(telo).strip()
+
+
+def stary_oddil(text):
+    """Oddíl ve starším tvaru bez značek: vyřízne jen nadpis (i s čárou --- nad ním) a vygenerované řádky s odkazy
+    hned pod ním; co následuje (další žádost, poznámka), zůstane. Bez oddílu vrátí (text, "")."""
+    m = re.search(r"(?:^---[ \t]*\n\s*)?^" + re.escape(NADPIS) + r".*\n?", text, re.M)
+    if not m:
+        return text, ""
+    radky = text[m.end():].split("\n")
+    n = 0
+    while n < len(radky) and (not radky[n].strip() or (re.match(r"(- |  )", radky[n])
+                                                        and re.search(r"\]\((?:mailto:|https://)", radky[n]))):
+        n += 1
+    return text[:m.start()], "\n".join(radky[n:])
+
+
+def zapis(src, obsah):
+    tmp = str(src) + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(obsah)
+    os.replace(tmp, src)   # celý soubor naráz – při chybě zápisu zůstane původní koncept
 
 
 def main():
@@ -72,13 +94,15 @@ def main():
     if len(soubory) != 1 or any(v not in WEB for v in volby):
         sys.exit(__doc__)
     src = Path(soubory[0])
-    text = src.read_text(encoding="utf-8").replace("\r\n", "\n")
+    text = src.read_text(encoding="utf-8-sig").replace("\r\n", "\n")   # -sig: BOM z Poznámkového bloku
+    if text.count(ZACATEK) != text.count(KONEC) or text.count(ZACATEK) > 1:
+        sys.exit("Značky %s a %s v konceptu nejsou v páru (jedna chybí nebo jsou dvakrát). Oprav je, nebo smaž celý "
+                 "oddíl s odkazy i se značkami, a spusť znovu. Koncept jsem nezměnil." % (ZACATEK, KONEC))
     oddil = re.search(r"\n*" + re.escape(ZACATEK) + r".*?" + re.escape(KONEC) + r"[ \t]*\n?", text, re.S)
     if oddil:
         pred, po = text[:oddil.start()], text[oddil.end():]
-    else:   # starší tvar bez značek: oddíl s odkazy (i s čárou --- nad ním) až do konce souboru
-        pred = re.split(r"(?:\n---[ \t]*\n\s*)?^" + re.escape(NADPIS), text, maxsplit=1, flags=re.M)[0]
-        po = ""
+    else:
+        pred, po = stary_oddil(text)
     radky, varovani = [], []
     for blok in re.split(r"^---[ \t]*$", pred + "\n" + po, flags=re.M):
         nadpis, pole, telo = rozeber(blok)
@@ -108,8 +132,7 @@ def main():
         sys.exit("V konceptu není žádný blok s řádky **Komu:** a **Předmět:**.")
     novy = (ZACATEK + "\n---\n\n" + NADPIS + " (klikněte, otevře se e-mail s vyplněným textem)\n\n"
             + "\n".join(radky) + "\n" + KONEC + "\n")
-    with open(src, "w", encoding="utf-8", newline="\n") as f:
-        f.write(pred.rstrip() + "\n\n" + novy + ("\n" + po.lstrip("\n") if po.strip() else ""))
+    zapis(src, pred.rstrip() + "\n\n" + novy + ("\n" + po.lstrip("\n") if po.strip() else ""))
     print("\n".join(radky + varovani))
 
 
