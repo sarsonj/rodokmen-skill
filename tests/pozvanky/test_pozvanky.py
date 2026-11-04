@@ -97,13 +97,19 @@ try:
 
     # zrus
     code, out = run(d, "zrus", "p2")
-    ok("zrus odebere odkaz", code == 0 and [x["id"] for x in ulozene(d)] == ["p1", "p3"], ulozene(d))
+    p2 = next(x for x in ulozene(d) if x["id"] == "p2")
+    ok("zrus smaže otisk a zapíše datum zrušení", code == 0 and "otisk" not in p2 and p2.get("zruseno") == DNES, p2)
+    ok("seznam zrušený odkaz neukáže", "p2" not in run(d, "seznam")[1])
     run(d, "pridej", "Babička")
-    ok("id se po zrušení neopakuje", [x["id"] for x in ulozene(d)] == ["p1", "p3", "p4"], ulozene(d))
+    ok("id se po zrušení neopakuje", [x["id"] for x in ulozene(d)] == ["p1", "p2", "p3", "p4"], ulozene(d))
+    run(d, "zrus", "p4")
+    run(d, "pridej", "Děda")
+    ok("id se neopakuje ani po zrušení posledního", ulozene(d)[-1]["id"] == "p5", ulozene(d))
 
-    # neznámé id a špatné argumenty soubor nezmění
+    # neznámé nebo zrušené id a špatné argumenty soubor nezmění
     pred = surove(d)
-    for argv in (["zrus", "p9"], ["nova", "p9"], ["prejmenuj", "p9", "X"], ["pridej", ""], ["pridej"], ["xyz"], []):
+    for argv in (["zrus", "p9"], ["nova", "p9"], ["prejmenuj", "p9", "X"], ["zrus", "p2"], ["nova", "p2"],
+                 ["prejmenuj", "p2", "X"], ["pridej", ""], ["pridej"], ["xyz"], []):
         code, out = run(d, *argv)
         ok(f"{' '.join(argv) or '(nic)'} skončí 1 a soubor nezmění", code == 1 and surove(d) == pred, out)
 

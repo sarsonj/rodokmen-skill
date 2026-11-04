@@ -5,7 +5,7 @@
   python3 -I tools/pozvanky.py seznam                    kdo má odkaz
   python3 -I tools/pozvanky.py prejmenuj p1 "Jana Nováková"
   python3 -I tools/pozvanky.py nova p1                   náhrada ztraceného odkazu, starý přestane platit
-  python3 -I tools/pozvanky.py zrus p1                   zrušení odkazu
+  python3 -I tools/pozvanky.py zrus p1                   zrušení odkazu (záznam zůstane bez otisku, id se znovu nepoužije)
   (Windows: python -I -X utf8 …)
 
 V data/pozvanky.json je u každého odkazu jen otisk klíče (SHA-256), klíč sám se nikam neukládá.
@@ -69,7 +69,7 @@ def vypis_odkaz(data_dir, jmeno, klic):
 def main(argv, data_dir, today):
     cmd, args = (argv[0], argv[1:]) if argv else ("", [])
     if cmd == "seznam" and not args:
-        odkazy = load(data_dir)
+        odkazy = [z for z in load(data_dir) if "zruseno" not in z]
         if not odkazy:
             print("Žádné odkazy. Nový: pozvanky.py pridej \"Jméno\"")
         for z in odkazy:
@@ -87,9 +87,9 @@ def main(argv, data_dir, today):
         return 0
     if cmd in ("prejmenuj", "nova", "zrus") and len(args) == (2 if cmd == "prejmenuj" else 1):
         odkazy = load(data_dir)
-        z = next((z for z in odkazy if z["id"] == args[0]), None)
+        z = next((z for z in odkazy if z["id"] == args[0] and "zruseno" not in z), None)
         if z is None:
-            print(f"CHYBA: odkaz {args[0]} neexistuje (seznam: pozvanky.py seznam)", file=sys.stderr)
+            print(f"CHYBA: odkaz {args[0]} neexistuje nebo je zrušený (seznam: pozvanky.py seznam)", file=sys.stderr)
             return 1
         if cmd == "prejmenuj":
             if not args[1].strip():
@@ -105,7 +105,8 @@ def main(argv, data_dir, today):
             vypis_odkaz(data_dir, z["jmeno"], klic)
             print("Starý odkaz přestane platit.")
         else:
-            odkazy.remove(z)
+            del z["otisk"]   # záznam zůstane, aby se id nedostalo jinému člověku
+            z["zruseno"] = today
             save(data_dir, odkazy)
             print(f"Odkaz {z['id']} ({z['jmeno']}) zrušen.")
         print(NASADIT)
