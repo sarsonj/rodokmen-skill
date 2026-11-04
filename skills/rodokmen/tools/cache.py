@@ -5,7 +5,9 @@ Ukládá ji brzda tools/slusne.py: každý obrázek stažený přes brzdu (nást
 podle adresy a příště se vezme z disku bez dotazu na archiv. Z adresy se před uložením odstraní jen části, které
 obsah nemění (;jsessionid=, PHPSESSID, pojistky proti mezipaměti typu _=1793… nebo &1793…, utm_…); neznámé
 parametry zůstávají – raději stáhnout znovu, než vrátit cizí snímek. Ukládá se jen úspěšná odpověď, která je
-opravdu obrázek. Porta fontium a eBadatelna dělají výřez a náhled z uloženého celého snímku bez sítě.
+opravdu celý obrázek: sedí délka ze serveru a soubor má značku konce (přerušené stažení se neuloží, zkrácený
+uložený snímek se smaže a stáhne znovu). Porta fontium a eBadatelna dělají výřez a náhled z uloženého celého
+snímku bez sítě.
 
 Mezipaměť je společná pro všechny projekty na počítači: ~/.cache/rodokmen_snimky/ (Windows
 %LOCALAPPDATA%\\rodokmen_snimky), jinou složku nastaví proměnná RODOKMEN_SNIMKY. Nejvýš 5 GB (RODOKMEN_SNIMKY_GB),
@@ -46,6 +48,39 @@ def pripona(data):
     return next((p for z, p in PRIPONY if data.startswith(z)), None)
 
 
+def _cely(hlava, konec, velikost):
+    """Má obrázek konec? Přerušené stažení má hlavičku taky, jen mu chybí spodek snímku."""
+    p = pripona(hlava)
+    if p in (".jpg", ".jp2", ".j2k"):   # značka konce FF D9 (za ní bývá výplň); uvnitř dat se objevit nemůže
+        return b"\xff\xd9" in konec
+    if p == ".png":
+        return b"IEND" in konec[-64:]
+    if p == ".gif":
+        return konec.rstrip(b"\x00")[-1:] == b";"
+    if p == ".webp":
+        return int.from_bytes(hlava[4:8], "little") + 8 <= velikost
+    return p is not None   # TIFF konec nemá – ohlídá ho jen délka ze serveru
+
+
+def cely(data, delka=None):
+    """Úplný obrázek: sedí délka ze serveru (Content-Length), je-li, a má značku konce."""
+    if delka is not None and len(data) != delka:
+        return False
+    return _cely(data[:16], data[-1024:], len(data))
+
+
+def cely_soubor(path):
+    """Totéž pro uložený soubor (čte jen začátek a konec)."""
+    try:
+        n = os.path.getsize(path)
+        with open(path, "rb") as f:
+            hlava = f.read(16)
+            f.seek(max(0, n - 1024))
+            return _cely(hlava, f.read(), n)
+    except OSError:
+        return False
+
+
 # --- obrázky podle adresy (ukládá brzda slusne.py) ----------------------------------------------------------------
 def klic_url(url):
     """Klíč podle adresy bez částí, které obsah nemění. Neznámé parametry zůstávají."""
@@ -71,6 +106,12 @@ def najdi_url(url):
     k = cesta(klic_url(url))
     for _, p in PRIPONY + ((None, ".webp"),):
         if os.path.exists(k + p):
+            if not cely_soubor(k + p):   # zkrácený (uložený starší verzí) – smazat a stáhnout znovu
+                try:
+                    os.remove(k + p)
+                except OSError:
+                    pass
+                return None
             _pouzito(k + p)
             return k + p
     return None
@@ -79,10 +120,10 @@ def najdi_url(url):
 _ulozeno = [0]
 
 
-def uloz_url(url, data):
-    """Uloží obrázek stažený z adresy (jen opravdový obrázek). Vrací cestu nebo None."""
+def uloz_url(url, data, delka=None):
+    """Uloží obrázek stažený z adresy (jen opravdový a úplný obrázek). Vrací cestu nebo None."""
     p = pripona(data)
-    return uloz(klic_url(url) + p, data) if p else None
+    return uloz(klic_url(url) + p, data) if p and cely(data, delka) else None
 
 
 # --- společné ---------------------------------------------------------------------------------------------------
@@ -247,6 +288,8 @@ def main(a):
         klic = klic_ebadatelna(*m.groups())
         znovu = os.path.exists(cesta(klic))   # snímek už byl uložený – prohlížeč ho načetl z archivu zbytečně
         data = base64.b64decode(d["data"].split(",", 1)[1])
+        if not cely(data):
+            sys.exit("snímek z prohlížeče není celý (chybí konec obrázku) – počkej na načtení a ulož ho znovu")
         p = uloz(klic, data)
         _zapocti(EBAD_WEB, len(data), z_disku=False)
         if not p:
@@ -264,6 +307,9 @@ def main(a):
         m = EBAD.search(a[1])
         p = cesta(klic_ebadatelna(*m.groups())) if m else None
         if not p or not os.path.exists(p):
+            sys.exit(1)
+        if not cely_soubor(p):   # zkrácený – smazat, snímek se uloží znovu z prohlížeče
+            os.remove(p)
             sys.exit(1)
         _pouzito(p)
         _zapocti(EBAD_WEB, os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči

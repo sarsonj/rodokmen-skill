@@ -412,9 +412,11 @@ def _zapni():
         kontroluj_odpoved(host, r.status, obr, telo)
         plna = getattr(self, "_slusne_ulozit", None)
         if plna and r.status == 200 and not r.getheader("Content-Encoding"):
+            delka = r.getheader("Content-Length")
             data = r.read()             # obrázek uložit a vrátit volajícímu celý
             r.fp, r.length, r.chunked, r.will_close = io.BytesIO(data), len(data), False, True
-            if _mezipamet.uloz_url(plna, data):   # jen opravdový obrázek (podle prvních bajtů)
+            delka = int(delka) if delka and delka.strip().isdigit() else None
+            if _mezipamet.uloz_url(plna, data, delka):   # jen úplný obrázek (délka, značka konce)
                 zapocti(host, len(data), z_disku=False)
         return r
 

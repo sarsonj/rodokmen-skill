@@ -8,6 +8,7 @@ Z kořene repozitáře, přes obal (testy samy obsahují příkazy s curl):
 
     python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_brzda.py skills/rodokmen/tools/slusne.py
     python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_hlidac.py skills/rodokmen
+    python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_mezipamet.py skills/rodokmen/tools   # mezipaměť: jen celé obrázky
 
 Na Windows `python -I -X utf8` a obojí pustit z Git Bashe i z PowerShellu. `ROZSIRENI=0` spustí u brzdy jen základní testy
 (bez heredocu, prodlužování stopky, podprocesů a opakovaného souběhu vláken).
