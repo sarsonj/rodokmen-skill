@@ -219,6 +219,11 @@ try:
     ok("otevřený web nemění jiné mapy nginx", cti(w, "nginx.conf").startswith(jina_mapa) and mapa(w).strip() == "default 1;",
        cti(w, "nginx.conf"))
 
+    w = web({"nginx.sablona.conf": "map $cookie_rodokmen $rodokmen_ok {\n  default 0;  # nepustit\n{{ODPOVED}}\n}\n"})
+    r, _ = login(dict(CFG, prihlaseni={"otevreny": True}), [])
+    ok("default 0 s komentářem a otevřený web: jediný default 1", r is False and mapa(w).count("default") == 1
+       and "default 1;" in mapa(w), (r, cti(w, "nginx.conf")))
+
     # 9a. všechny odkazy zrušené: brána zůstane a nepustí nikoho (zrušení posledního odkazu jde nasadit)
     w = web()
     out = io.StringIO()

@@ -24,6 +24,7 @@ async function platnaCookie(cookie) {
 function bezKlice(url) {
   const cil = new URL(url);
   cil.searchParams.delete('k');
+  if (cil.pathname === '/prihlaseni.html') return '/';   // přihlášený člověk patří na úvod, ne na přihlašovací stránku
   // úvodní lomítka sloučit: z adresy „https://web//cizi.web/?k=…“ by jinak „//cizi.web/“ přesměrovalo na cizí web
   return cil.pathname.replace(/^[\/\\]+/, '/') + cil.search;
 }
@@ -32,11 +33,6 @@ export default async (request, context) => {
   const url = new URL(request.url);
   const cookie = context.cookies.get('rodokmen');
   const cookieOk = await platnaCookie(cookie);
-  if (url.pathname === '/prihlaseni.html') {
-    const res = await context.next();
-    if (cookie && !cookieOk) res.headers.append('set-cookie', SMAZAT);
-    return res;
-  }
 
   if (url.searchParams.has('k')) {
     const klic = url.searchParams.get('k');
@@ -49,6 +45,12 @@ export default async (request, context) => {
   } else if (cookieOk) {
     const res = await context.next();
     res.headers.set('X-Robots-Tag', ROBOTS);
+    return res;
+  }
+
+  if (url.pathname === '/prihlaseni.html') {   // přihlašovací stránka je dostupná vždy
+    const res = await context.next();
+    if (cookie) res.headers.append('set-cookie', SMAZAT);
     return res;
   }
 

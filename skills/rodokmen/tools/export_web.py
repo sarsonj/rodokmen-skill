@@ -236,7 +236,7 @@ def login_files(cfg, otisky, odkazy=None):
     pred, _, za = nginx_tpl.replace("{{ODPOVED}}", nginx_map).partition("map $cookie_rodokmen")
     mapa, _, zbytek = za.partition("}")   # jen mapa $cookie_rodokmen, jiné mapy v šabloně zůstanou, jak jsou
     if not gated:   # default 0 ze šablony nahradí default 1
-        mapa = re.sub(r"^[ \t]*default[ \t]+0;[ \t]*\n", "", mapa, flags=re.M)
+        mapa = re.sub(r"^[ \t]*default[ \t]+0;[ \t]*(#.*)?\n", "", mapa, flags=re.M)
     nginx = pred + "map $cookie_rodokmen" + mapa + "}" + zbytek
     if not za or re.findall(r"^[ \t]*default[ \t]+(\S+);", mapa, flags=re.M) != ["0" if gated else "1"]:
         sys.exit("CHYBA: web/nginx.sablona.conf má v mapě $cookie_rodokmen jiný default než jediné „default 0;“. "

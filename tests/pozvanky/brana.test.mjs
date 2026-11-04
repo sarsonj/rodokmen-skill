@@ -1,5 +1,5 @@
 // Test přihlašovací brány pro Netlify (Edge Function) ze šablony skills/rodokmen/template/web/netlify/brana.sablona.js.
-// Z kořene repozitáře: node --test tests/pozvanky/brana.test.mjs   (Node 18+, nic nestahuje)
+// Z kořene repozitáře: node --test tests/pozvanky/brana.test.mjs   (Node 20+ kvůli globálnímu crypto, nic nestahuje)
 // Šablonu vyplní stejně jako tools/export_web.py (otisk odpovědi, otisky klíčů) a pošle do ní vymyšlené požadavky
 // s napodobeným kontextem Netlify (context.cookies.get, context.next).
 import { test } from "node:test";
@@ -154,4 +154,12 @@ test("přihlašovací stránka smaže neplatnou cookie, platnou nechá", async (
     r = await pozadavek(OBOJI, "/prihlaseni.html", cookie);
     assert.equal(r.res.headers.get("set-cookie"), null);
   }
+});
+
+test("platný klíč i na adrese přihlašovací stránky: cookie a přesměrování na úvod", async () => {
+  const { res, dal } = await pozadavek(JEN_ODKAZY, "/prihlaseni.html?k=abc");
+  assert.equal(res.status, 302);
+  assert.equal(dal, false);
+  assert.equal(res.headers.get("location"), "/");
+  assert.match(res.headers.get("set-cookie"), /^rodokmen=abc;/);
 });
