@@ -157,6 +157,48 @@ skills/rodokmen/
   aby se to dalo zkontrolovat, a nejistá místa označuje otazníkem.
 - Placené služby (MyHeritage, Ancestry) Claude hromadně neprochází – vede to k zablokování účtu.
 
+## Nastavení
+Nic nastavovat nemusíte, výchozí hodnoty stačí. Pokud ale chcete něco změnit, tady je přehled všeho, co jde.
+Nejjednodušší je říct to Claudovi („nastav mezipaměť snímků na 10 GB“, „změň název webu“), ruční úprava funguje taky.
+
+### Pro celý počítač (všechny projekty)
+Mezipaměť snímků a brzda jsou společné všem projektům na počítači. Proto se nastavují v uživatelském nastavení
+Claude Code `~/.claude/settings.json` (na Windows `C:\Users\<jméno>\.claude\settings.json`) v sekci `"env"`,
+ne v projektu.
+
+| Proměnná | Co mění | Výchozí hodnota |
+|---|---|---|
+| `RODOKMEN_SNIMKY_GB` | největší velikost mezipaměti stažených snímků v GB (smí být i desetinná, např. `"2.5"`); nad limitem se mažou nejdéle nepoužité snímky | `5` |
+| `RODOKMEN_SNIMKY` | složka mezipaměti snímků, třeba na jiném disku | `~/.cache/rodokmen_snimky` (Windows `%LOCALAPPDATA%\rodokmen_snimky`) |
+| `SLUSNE_STAV` | složka se stavem brzdy (kdy se naposledy ptala kterého archivu, pauzy po zablokování) | `~/.cache/rodokmen_slusne` (Windows `%LOCALAPPDATA%\rodokmen_slusne`) |
+| `SLUSNE_CURL` | cesta k programu `curl`, když ho brzda nenajde nebo najde nefunkční | `curl` z PATH, na Windows záložně `C:\Windows\System32\curl.exe` |
+
+Příklad (pokud soubor už obsahuje jiná nastavení, přidejte `"env"` vedle nich):
+```json
+{
+  "env": {
+    "RODOKMEN_SNIMKY_GB": "10",
+    "RODOKMEN_SNIMKY": "D:\\rodokmen_snimky"
+  }
+}
+```
+Změna platí po restartu Claude Code. Velikost mezipaměti ověříte příkazem `python3 -I tools/cache.py stav`
+ve složce projektu, vypíše např. „… MB z 10 GB“. Po přesunu `RODOKMEN_SNIMKY` začíná mezipaměť nanovo (starou
+složku můžete smazat nebo přesunout ručně). Po přesunu `SLUSNE_STAV` brzda zapomene probíhající pauzy, proto ho
+neměňte hned po zablokování archivem.
+
+### Pro jeden projekt
+- **Web** – název, popis, patička, kontakt, rodinná otázka a odpověď pro přihlášení, úvodní text s fotkou a příběh
+  rodu jsou v `data/web.json` v projektu. Popis všech položek je v `skills/rodokmen/reference/web.md`.
+- **Hlídač sítě** – zapnete ho příkazem `novy_projekt.py <projekt> --hlidac` a vypnete příkazem
+  `novy_projekt.py <projekt> --bez-hlidace` (viz [Bezpečnost](#bezpečnost)).
+- **`.claude/settings.json` projektu** obsahuje zákaz přímého `curl`/`wget` a případně hlídač sítě. Spravuje ho
+  skill a při aktualizaci projektu ho doplní. Vlastní položky v tomto souboru zůstanou zachované.
+
+### Co nastavit nejde
+Rozestupy mezi dotazy na archivy a pauzy po zablokování jsou v kódu pevně dané. Chrání archivy před přetížením
+a vás před zablokováním IP adresy.
+
 ## Soukromí
 Projekt obsahuje osobní údaje vaší rodiny. Zůstává na vašem počítači. Web je chráněný rodinnou otázkou
 a není indexovaný vyhledávači; bez nastavené otázky ho nástroj nenasadí. Je to lehká ochrana proti náhodným
@@ -200,10 +242,7 @@ tady v repozitáři.
   v `%LOCALAPPDATA%`), mezipaměť stažených snímků (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, lze kdykoli smazat),
   npm při instalaci webu a přihlášení nástroje pro nasazení (Netlify, CapRover), pokud web zveřejňujete. Mimo
   projekt nic nemažou ani nepřepisují – kromě nejdéle nepoužitých snímků ve vlastní mezipaměti nad limitem.
-  Limit i složku mezipaměti lze změnit v nastavení Claude Code – mezipaměť je společná všem projektům, proto
-  v uživatelském `~/.claude/settings.json` (Windows `%USERPROFILE%\.claude\settings.json`), např.
-  `"env": {"RODOKMEN_SNIMKY_GB": "10", "RODOKMEN_SNIMKY": "D:\\rodokmen_snimky"}` (velikost v GB, smí být
-  i desetinná). Projeví se po restartu Claude Code, ověří `python3 -I tools/cache.py stav`.
+  Limit a složky jdou změnit, viz [Nastavení](#nastavení).
 - **Na které servery chodí:** archivní portály (ARON SOA Zámrsk, SOA Třeboň, SOA Plzeň – Porta fontium, SOA Praha –
   eBadatelna, AHMP, Národní archiv, SOA Litoměřice, Matricula), noviny (ANNO, Kramerius), OpenStreetMap (mapa
   a souřadnice obcí) a při instalaci webu registr npm.
