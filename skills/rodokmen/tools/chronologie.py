@@ -97,6 +97,92 @@ def udalosti(P, k):
     return {"narozeni": prvni("*") or yb, "snatek": datum(snatek[0]) if snatek else None, "umrti": prvni("†") or yd}
 
 
+PRAVIDLA = ("umrti-pred-narozenim", "snatek-mlady", "snatek-po-umrti", "otec-zemrel", "matka-zemrela",
+            "vek-matky", "vek-otce")
+POHROBEK_DNI = 280                    # dítě se může narodit až ~9 měsíců po smrti otce
+NEJISTE_STAVY = ("prob", "mh", "fam")
+_JISTE, _NEJISTE = " – jeden z údajů asi nesedí.", " – údaje jsou nejisté, možná nesedí."
+
+
+@dataclass(frozen=True)
+class Varovani:
+    k: int                  # osoba, u které se ukazuje ⚠ (u pravidel rodič–dítě dítě)
+    pravidlo: str           # klíč z PRAVIDLA (do pole overeno)
+    text: str               # neutrální věta pro web i terminál
+    mozna: bool             # nejisté údaje („asi“, stav prob/mh/fam) – mírnější znění
+    osoby: tuple            # dotčené osoby (hlavní čísla): k a případně rodič
+
+
+def _vek(od, do):
+    """Celé roky mezi dvěma daty (u otevřených mezí vyjde nesmyslně velké nebo záporné číslo – pravidlo pak nevyjde)."""
+    return do.year - od.year - ((do.month, do.day) < (od.month, od.day))
+
+
+def _let(n):
+    return f"{n} {'rok' if n == 1 else 'roky' if 2 <= n <= 4 else 'let'}"
+
+
+def kontrola(P, SAME=None):
+    """Rozpory v časové návaznosti, které platí pro všechna možná data v intervalech. Bez odškrtnutých (overeno)."""
+    SAME = SAME or {}
+    osoby = {k for k in P if isinstance(k, int) and k >= 1 and k not in SAME and not zastupna(P[k])}
+    ud = {k: udalosti(P, k) for k in osoby}
+    overeno = {}
+    for k in P:
+        o = P[k].get("overeno") if isinstance(P[k], dict) else None
+        overeno.setdefault(SAME.get(k, k), set()).update(o if isinstance(o, dict) else ())
+
+    def muz(k):
+        return P[1].get("sex", "M") == "M" if k == 1 else k % 2 == 0
+
+    def rodic(pozice):
+        k = SAME.get(pozice, pozice)
+        return k if k in osoby else None
+
+    out = []
+
+    def pridej(k, pravidlo, text, data, lide):
+        if pravidlo in overeno.get(k, ()):
+            return
+        mozna = any(d.approx for d in data) or any(P[x].get("st") in NEJISTE_STAVY for x in lide)
+        out.append(Varovani(k, pravidlo, text + (_NEJISTE if mozna else _JISTE), mozna, tuple(lide)))
+
+    for k in sorted(osoby):
+        n, u = P[k]["n"], ud[k]
+        b, m, d = u["narozeni"], u["snatek"], u["umrti"]
+        jemu = "mu" if muz(k) else "jí"
+        if b and d and d.do < b.od:
+            pridej(k, "umrti-pred-narozenim", f"{n}: úmrtí ({d.text}) je dřív než narození ({b.text})", (b, d), (k,))
+        if b and m and _vek(b.od, m.do) < 15:
+            pridej(k, "snatek-mlady", f"{n}: při sňatku ({m.text}) by {jemu} bylo nejvýš {_let(_vek(b.od, m.do))}",
+                   (b, m), (k,))
+        if m and d and m.od > d.do:
+            pridej(k, "snatek-po-umrti", f"{n}: sňatek ({m.text}) je až po úmrtí ({d.text})", (m, d), (k,))
+        if not b:
+            continue
+        syn, syna, narodil = ("syn", "syna", "narodil") if muz(k) else ("dcera", "dcery", "narodila")
+        o, ma = rodic(2 * k), rodic(2 * k + 1)
+        if o:
+            ob, od_ = ud[o]["narozeni"], ud[o]["umrti"]
+            on = P[o]["n"]
+            if od_ and (b.od - od_.do).days > POHROBEK_DNI:
+                pridej(k, "otec-zemrel", f"{on} zemřel {od_.text}, {syn} {n} se {narodil} {b.text}", (b, od_), (k, o))
+            if ob and _vek(ob.od, b.do) < 15:
+                pridej(k, "vek-otce", f"{on}: při narození {syna} ({n}, {b.text}) by mu bylo nejvýš {_let(_vek(ob.od, b.do))}",
+                       (b, ob), (k, o))
+        if ma:
+            mb, md = ud[ma]["narozeni"], ud[ma]["umrti"]
+            mn = P[ma]["n"]
+            if md and b.od > md.do:
+                pridej(k, "matka-zemrela", f"{mn} zemřela {md.text}, {syn} {n} se {narodil} {b.text}", (b, md), (k, ma))
+            if mb:
+                kolik = (f"nejvýš {_let(_vek(mb.od, b.do))}" if _vek(mb.od, b.do) < 15 else
+                         f"nejméně {_let(_vek(mb.do, b.od))}" if _vek(mb.do, b.od) > 50 else None)
+                if kolik:
+                    pridej(k, "vek-matky", f"{mn}: při narození {syna} ({n}, {b.text}) by jí bylo {kolik}", (b, mb), (k, ma))
+    return out
+
+
 def zije(p, ud, dnes):
     """Žijící: poznámka „Žijící…“ (reference/soukromi.md), nebo bez úmrtí a narozen v posledních 100 letech."""
     if (p.get("note") or "").startswith("Žijící"):
