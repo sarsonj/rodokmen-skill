@@ -208,6 +208,21 @@ main.full { max-width: none; padding: 0; }
 .card-link h3 { padding-right: 1.4rem; }
 
 /* časová osa (pages/osa.astro) */
+.osa-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem; margin: 0 0 0.5rem; }
+.osa-bar[hidden] { display: none; }
+.osa-roky { font-size: 0.9rem; color: var(--muted); white-space: nowrap; min-width: 9.5rem; }
+.osa-roky output { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.osa-range { position: relative; flex: 1; min-width: 200px; height: 28px; }
+.osa-track { position: absolute; left: 8px; right: 8px; top: 12px; height: 4px; border-radius: 2px; background: var(--line); }
+.osa-sel { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+.osa-range input { position: absolute; left: 0; top: 0; width: 100%; height: 28px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.osa-range input::-webkit-slider-runnable-track { height: 28px; background: none; }
+.osa-range input::-moz-range-track { height: 28px; background: none; }
+.osa-range input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 16px; height: 16px; margin-top: 6px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--accent); cursor: ew-resize; }
+.osa-range input::-moz-range-thumb { pointer-events: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--accent); cursor: ew-resize; }
+.osa-range input:focus-visible::-webkit-slider-thumb { outline: 3px solid #e0952f; outline-offset: 1px; }
+.osa-range input:focus-visible::-moz-range-thumb { outline: 3px solid #e0952f; }
+.osa-bar button { font: inherit; font-size: 0.88rem; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 0.2rem 0.65rem; cursor: pointer; }
 .osa-wrap { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; max-height: 85vh; }
 .osa-wrap svg { display: block; }
 .osa-axis { position: sticky; top: 0; z-index: 1; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -215,8 +230,10 @@ main.full { max-width: none; padding: 0; }
 .osa-wrap text { font: 10px var(--sans); fill: var(--ink); }
 .osa-axis text { fill: var(--muted); }
 .osa-grid { stroke: var(--line); stroke-width: 0.6; }
-.osa-birth { stroke: var(--ink); stroke-opacity: 0.35; stroke-width: 1; }
-.osa-wed { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
+.osa-top { pointer-events: none; }
+.osa-birth { stroke: var(--ink); stroke-opacity: 0.45; stroke-width: 1; }
+.osa-joint { fill: var(--ink); fill-opacity: 0.6; }
+.osa-wed { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; }
 .osa-name { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; stroke-linejoin: round; }
 .osa a:hover rect { stroke: var(--accent); stroke-width: 1.5; }
 .osa a:hover .osa-name { fill: var(--accent); }
