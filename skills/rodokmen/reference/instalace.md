@@ -51,6 +51,8 @@ Bez prohlížeče ať uživatel posílá snímky obrazovky.
    Vysvětli jednou větou: archivy blokují IP adresu po sérii rychlých dotazů. Hlídač je malý skript v projektu
    (`tools/hlidac_site.py`), který před každým příkazem zkontroluje, že stahování jde přes brzdu, a jinak ho zamítne.
    Sám nic nestahuje. Bez něj platí jen pravidla brzdy a zákaz přímého `curl`/`wget` v `.claude/settings.json`.
+   V Devinu se tentýž hook zapíše do `.devin/hooks.v1.json` (tam se shellový nástroj jmenuje `exec`, ne `Bash`)
+   a zákaz přímého `curl`/`wget` do `permissions.deny` v `.devin/config.json`.
 3. V projektu `git init` a první uložení (git = historie změn, kdyby se něco pokazilo). Doporuč pokračovat v Claude Code
    **z této složky** (soubor `CLAUDE.md` v ní zajistí, že příště navážeš).
 4. Vyplň v `data/STAV.md` sekci „Pro koho“ a v `data/web.json` název webu („Rodokmen Novákových“), jakmile znáš
