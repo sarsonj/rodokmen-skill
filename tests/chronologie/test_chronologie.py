@@ -8,7 +8,7 @@ from datetime import date
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "skills", "rodokmen", "tools"))
-from chronologie import MIN, MAX, datum, kontrola, udalosti, zije  # noqa: E402
+from chronologie import MIN, MAX, datum, kontrola, radky, rok, udalosti, zije  # noqa: E402
 
 
 def test_cele_datum():
@@ -180,6 +180,35 @@ def test_ukazka_bez_varovani():
     ns = {}
     exec(open(os.path.join(REPO, "skills", "rodokmen", "template", "ukazka", "osoby.py"), encoding="utf-8").read(), ns)
     assert kontrola(ns["P"], ns.get("SAME", {})) == []
+
+
+# --- řádky osy -------------------------------------------------------------------------------------------------
+def test_radky_poradi():
+    P = {k: dict(n=f"O{k}", f=[]) for k in range(1, 8)}
+    assert [p for p, _ in radky(P)] == [4, 2, 5, 1, 6, 3, 7]
+
+
+def test_radky_same_zrcadli_vetev():
+    P = {k: dict(n=f"O{k}", f=[]) for k in (1, 2, 3, 4, 5, 6, 7, 8, 9)}
+    P[6] = dict(n="TÁŽ", f=["TÁŽ OSOBA jako 4"])
+    r = radky(P, {6: 4})
+    assert (12, 8) in r and (13, 9) in r and (6, 4) in r
+    assert [p for p, _ in r] == [8, 4, 9, 2, 5, 1, 12, 6, 13, 3, 7]
+
+
+def test_radky_bez_zastupnych():
+    P = {1: dict(n="A", f=[]), 2: dict(n="otec neuveden", f=[]), 3: dict(n="B", f=[])}
+    assert [p for p, _ in radky(P)] == [1, 3]
+
+
+def test_radky_s_mezerou():
+    P = {1: dict(n="A", f=[]), 4: dict(n="B", f=[])}   # otec 2 chybí, dědeček 4 je známý
+    assert [p for p, _ in radky(P)] == [4, 1]
+
+
+def test_rok():
+    assert rok(date(1890, 1, 1)) == 1890.0
+    assert abs(rok(date(1890, 7, 2)) - 1890.5) < 0.01
 
 
 # --- nálezy závěrečné revize -------------------------------------------------------------------------------------

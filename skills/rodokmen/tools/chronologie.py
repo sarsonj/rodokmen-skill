@@ -9,6 +9,7 @@ Každé datum je interval „nejdřív – nejpozději“ podle toho, jak přesn
 „před 1740“ cokoli do konce roku 1740, „po 1921“ cokoli od roku 1921.
 """
 import calendar, re
+from fractions import Fraction
 from dataclasses import dataclass
 from datetime import date
 
@@ -193,6 +194,32 @@ def kontrola(P, SAME=None):
                 elif kolik:
                     pridej(k, "vek-matky", f"{mn}: při narození {syna} ({n}, {b.text}) by jí bylo {kolik}", (b, mb), (k, ma))
     return out
+
+
+def radky(P, SAME=None):
+    """Řádky časové osy [(pozice, hlavní číslo)]: otec nad dítětem, matka pod ním (průchod stromem in-order).
+
+    Předek v rodokmenu vícekrát (SAME = {alias: hlavní}) se na místě aliasu zopakuje i s celou větví předků
+    – stejně jako ve vějíři (fan_chart.py, #31). Zástupné osoby („otec neuveden“) řádek nemají.
+    """
+    SAME = SAME or {}
+    mapa = {k: k for k in P if isinstance(k, int) and k >= 1 and k not in SAME}
+    vlastni = sorted(mapa)
+    for a, c in sorted(SAME.items()):
+        for k in vlastni:
+            d = k.bit_length() - c.bit_length()
+            if d >= 0 and k >> d == c:
+                mapa.setdefault((a << d) | (k - (c << d)), k)
+
+    def poradi(k):   # pořadí uzlu k v nekonečném binárním stromu při průchodu in-order (mezery ve stromu nevadí)
+        g = k.bit_length() - 1
+        return Fraction(2 * (k - (1 << g)) + 1, 1 << (g + 1))
+    return [(k, mapa[k]) for k in sorted(mapa, key=poradi) if not zastupna(P[mapa[k]])]
+
+
+def rok(d):
+    """Desetinný rok pro kreslení osy (2. 7. 1890 ≈ 1890,5)."""
+    return d.year + (d.timetuple().tm_yday - 1) / (366 if calendar.isleap(d.year) else 365)
 
 
 def zije(p, ud, dnes):

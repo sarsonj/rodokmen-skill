@@ -8,10 +8,12 @@ web/nginx.conf a web/netlify/edge-functions/brana.js.
 
 Spouští se z web/ příkazem `npm run data` (nebo přímo `python3 -I tools/export_web.py`, na Windows `python -I -X utf8 …`).
 """
-import hashlib, html, json, os, re, shutil, subprocess, sys, unicodedata
+import datetime, hashlib, html, json, os, re, shutil, subprocess, sys, unicodedata
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I nepřidává složku skriptu do cesty
+import chronologie  # noqa: E402 – data a pravidla časové osy (tools/chronologie.py)
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TOOLS)
@@ -115,7 +117,35 @@ def relation(k):
 
 
 def placeholder(p):
-    return p["n"].startswith(("otec neuveden", "matka neuvedena")) or p["n"] in ("", "?")
+    return chronologie.zastupna(p)
+
+
+def timeline_data(P, SAME, slugs, people, line_of):
+    """Časová osa: řádky v pořadí otec – dítě – matka, události jako intervaly v desetinných letech, varování."""
+    dnes = datetime.date.today()
+
+    def ev(d):
+        if d is None:
+            return None
+        return {"from": None if d.od == chronologie.MIN else round(chronologie.rok(d.od), 3),
+                "to": None if d.do == chronologie.MAX else round(chronologie.rok(d.do), 3), "text": d.text}
+    warns = chronologie.kontrola(P, SAME)
+    s_varovanim = {v.k for v in warns}
+    ud = {k: chronologie.udalosti(P, k) for k in slugs if k not in SAME}
+    rows = []
+    for pos, k in chronologie.radky(P, SAME):
+        if k not in ud:
+            continue
+        p, u = P[k], ud[k]
+        rows.append(dict(k=pos, slug=slugs[k], name=p["n"], line=line_of(pos), years=people[slugs[k]]["years"],
+                         birth=ev(u["narozeni"]), marriage=ev(u["snatek"]), death=ev(u["umrti"]),
+                         living=chronologie.zije(p, u, dnes),
+                         uncertain=p.get("st") in ("prob", "mh") or any(d and d.approx for d in u.values()),
+                         warn=k in s_varovanim))
+    roky = [x for r in rows for e in (r["birth"], r["marriage"], r["death"]) if e for x in (e["from"], e["to"]) if x is not None]
+    return {"from": int(min(roky)) // 10 * 10 if roky else dnes.year - 100, "to": dnes.year, "rows": rows,
+            "warnings": [dict(k=v.k, slug=slugs[v.k], rule=v.pravidlo, text=v.text, maybe=v.mozna,
+                              people=[slugs[x] for x in v.osoby if x in slugs]) for v in warns]}
 
 
 def magick_bin():   # ImageMagick 7 (magick), jinak 6 (convert) – ten ale ne na Windows, tam je convert.exe jiný program
@@ -333,7 +363,8 @@ def main():
                 families=families, records=records, lines=lines,
                 issues=[dict(title=i, text="") if isinstance(i, str) else dict(title=i[0], text=i[1]) for i in ISSUES], stats=stats, hypotheses=hypotheses,
                 docs=[dict(img=d["img"], caption=d["popis"], people=[slugs[k] for k in d.get("osoby", []) if k in slugs])
-                      for d in docs_cfg if os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))])
+                      for d in docs_cfg if os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))],
+                timeline=timeline_data(P, SAME, slugs, people, line_of))
 
     write(os.path.join(WEB, "src", "data", "site.json"), json.dumps(site, ensure_ascii=False, indent=1))
     gen_dir = os.path.join(WEB, "src", "generated")
