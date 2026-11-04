@@ -190,6 +190,9 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
 - **Mezipaměť obrázků:** co se stáhne přes brzdu (snímky, dlaždice), uloží se a příště se vezme z disku
   (`tools/cache.py`, společná pro všechny projekty). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`).
   Kolik stažení z archivu ušetřila, ukáže `python3 -I tools/cache.py stav` (stažené vs. vzaté z disku, po webech).
+  Nejvýš 5 GB; chce-li uživatel jiný limit nebo jinou složku, doplň (se souhlasem) do uživatelského
+  `~/.claude/settings.json` – ne do projektu, mezipaměť je společná – `"env": {"RODOKMEN_SNIMKY_GB": "<GB>"}`,
+  případně `"RODOKMEN_SNIMKY": "<složka>"`; ostatní obsah souboru zachovej. Pak ať restartuje Claude Code.
 
 ### Pomocníci (subagenti) – šetrně
 Na velké kolo (např. „projdi 5 svazků a najdi všechny Nováky“) můžeš pustit 2–4 pomocníky paralelně.

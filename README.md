@@ -200,6 +200,10 @@ tady v repozitáři.
   v `%LOCALAPPDATA%`), mezipaměť stažených snímků (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, lze kdykoli smazat),
   npm při instalaci webu a přihlášení nástroje pro nasazení (Netlify, CapRover), pokud web zveřejňujete. Mimo
   projekt nic nemažou ani nepřepisují – kromě nejdéle nepoužitých snímků ve vlastní mezipaměti nad limitem.
+  Limit i složku mezipaměti lze změnit v nastavení Claude Code – mezipaměť je společná všem projektům, proto
+  v uživatelském `~/.claude/settings.json` (Windows `%USERPROFILE%\.claude\settings.json`), např.
+  `"env": {"RODOKMEN_SNIMKY_GB": "10", "RODOKMEN_SNIMKY": "D:\\rodokmen_snimky"}` (velikost v GB, smí být
+  i desetinná). Projeví se po restartu Claude Code, ověří `python3 -I tools/cache.py stav`.
 - **Na které servery chodí:** archivní portály (ARON SOA Zámrsk, SOA Třeboň, SOA Plzeň – Porta fontium, SOA Praha –
   eBadatelna, AHMP, Národní archiv, SOA Litoměřice, Matricula), noviny (ANNO, Kramerius), OpenStreetMap (mapa
   a souřadnice obcí) a při instalaci webu registr npm.
