@@ -19,11 +19,14 @@ def zapis(cesta, text):
         f.write(text)
 
 
-def kontrola(P, SAME=None, zaznamy=(), prepisy=None, ukazka=()):
-    """Postaví projekt a vrátí výstup kontrola.py; zápisy s klíčem v `ukazka` jsou vymyšlené (jako v ukázce)."""
+def kontrola(P, SAME=None, zaznamy=(), prepisy=None, ukazka=(), mista=None):
+    """Postaví projekt a vrátí výstup kontrola.py; zápisy s klíčem v `ukazka` jsou vymyšlené (jako v ukázce).
+    Když kontrola neskončí kódem 0 (chyba v datech, pád), výstup začíná „NÁVRATOVÝ KÓD“ a případ neprojde."""
     tmp = tempfile.mkdtemp(prefix="kontrola_cisla_")
     try:
         zapis(os.path.join(tmp, "data", "osoby.py"), f"P = {P!r}\nSAME = {SAME or {}!r}\n")
+        if mista:
+            zapis(os.path.join(tmp, "data", "mista.json"), json.dumps(mista, ensure_ascii=False))
         zaz = [dict(klic=k, druh="křest", datum="1900", nazev=k, shrnuti=s, odkaz="https://example.org/snimek",
                     **({"ukazka": True} if k in ukazka else {})) for k, s in zaznamy]
         zapis(os.path.join(tmp, "data", "zaznamy.json"), json.dumps(zaz, ensure_ascii=False))
@@ -32,13 +35,13 @@ def kontrola(P, SAME=None, zaznamy=(), prepisy=None, ukazka=()):
         shutil.copy(KONTROLA, os.path.join(tmp, "tools", "kontrola.py"))
         r = subprocess.run(PY + [os.path.join(tmp, "tools", "kontrola.py")], capture_output=True, text=True,
                            encoding="utf-8")
-        return r.stdout + r.stderr
+        return (f"NÁVRATOVÝ KÓD {r.returncode}\n" if r.returncode else "") + r.stdout + r.stderr
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
 def ma(nazev, vystup, text, cekam):
-    ok = (text in vystup) == cekam
+    ok = (text in vystup) == cekam and not vystup.startswith("NÁVRATOVÝ KÓD")
     VYSLEDKY.append(ok)
     print(("OK  " if ok else "CHYBA ") + nazev)
     if not ok:
@@ -134,6 +137,60 @@ ma("jiná závorka („(mlýn)“) zdroj neoznačuje – upozornění", out, "č
 
 P = {1: osoba("Jan Novák", "* 3. 5. 1900 Holice čp. 36", r=["krest_jan_1900"])}
 ma("osoba není 'doc' – bez upozornění", kontrola(P, zaznamy=ZAZ, prepisy=PRE), CP, False)
+
+# Regrese z revize: datum, věk ani jiné číslo nedokládá číslo domu
+PRE_DAT = {"krest_jan_1900": {"orig": "[Datum] 5. 1. 1767\n[Dům] No 34\n[Věk] 23 let", "cs": "Narozen 5. ledna 1767."}}
+P = {1: osoba("Jan Novák", "* 5. 1. 1767 Holice čp. 5", "kovář v Holicích čp. 1", "rolník, Holice čp. 23", st="doc",
+              r=["krest_jan_1900"])}
+out = kontrola(P, zaznamy=ZAZ, prepisy=PRE_DAT)
+ma("den v datu nedokládá čp. 5 – upozornění", out, "čp. 5 " + CP, True)
+ma("měsíc v datu nedokládá čp. 1 – upozornění", out, "čp. 1 " + CP, True)
+ma("věk nedokládá čp. 23 – upozornění", out, "čp. 23 " + CP, True)
+
+# Zápisy čísel domů z reálných přepisů (vymyšlená místa a čísla)
+TVARY = ["Rottenschachen No 34", "z Neplachova No 21", "Putim No. 81", "Neplachov čp. 35", "č. 18", "N. 6", "Nro 7",
+         "N° 9", "Stožice čís. 10, okres Vodňany", "Erdweiss No. 5 |", "domu 44", "Haus 45", "v domě čp. 112"]
+PRE_TV = {"krest_jan_1900": {"orig": "[Datum] 3. 5. 1900\n" + "\n".join(f"[Svědek] Josef Malý, {t}" for t in TVARY)
+                             + "\n[Dům] Neplachov 46\n[Haus] 47\n[Číslo domu nevěsty] 48 | kath. | 24",
+                             "cs": ""}}
+CISLA = [34, 21, 81, 35, 18, 6, 7, 9, 10, 5, 44, 45, 112, 46, 47, 48]
+P = {1: osoba("Jan Novák", *[f"Holice čp. {c}" for c in CISLA], st="doc", r=["krest_jan_1900"])}
+out = kontrola(P, zaznamy=ZAZ, prepisy=PRE_TV)
+for c in CISLA:
+    ma(f"tvar čísla domu {c} z přepisu se uzná", out, f"čp. {c} " + CP, False)
+
+# Číslo hned za obcí z mista.json („z Holic 23“, „Holice 24;“), ale ne datum ani rok za obcí
+MISTA = {"Holice": {"lat": 50.0, "lon": 16.0, "re": "Holic"}}
+PRE_OB = {"krest_jan_1900": {"orig": "Holice 24; 26; ledig | Holice 5. 1. 1767 | Holice 1767",
+                             "cs": "Jan Novák, sedlák z Holic 23, 55 let."}}
+P = {1: osoba("Jan Novák", "* Holice čp. 23", "Holice čp. 24", "Holice čp. 5", "Holice čp. 176", st="doc",
+              r=["krest_jan_1900"])}
+out = kontrola(P, zaznamy=ZAZ, prepisy=PRE_OB, mista=MISTA)
+ma("„z Holic 23“ dokládá čp. 23", out, "čp. 23 " + CP, False)
+ma("„Holice 24;“ dokládá čp. 24", out, "čp. 24 " + CP, False)
+ma("„Holice 5. 1. 1767“ nedokládá čp. 5 – upozornění", out, "čp. 5 " + CP, True)
+ma("„Holice 1767“ nedokládá čp. 176 – upozornění", out, "čp. 176 " + CP, True)
+
+# Neznámý rodič („otec neuveden“, „?“) není partner, kterého by sňatek měl jmenovat
+for nezn in ("otec neuveden", "?"):
+    P = {1: osoba("Petr Novák"), 2: osoba(nezn, st="unk"), 3: osoba("Anna Malá", "× 1900 Holice Josef Hrubý")}
+    ma(f"partner „{nezn}“ – bez upozornění", kontrola(P), PARTNER, False)
+
+# SAME: zápis citovaný u aliasu dokládá číslo domu hlavní osoby (a naopak)
+P = {1: osoba("Petr Novák"), 2: osoba("Jan Novák"), 3: osoba("Marie Králová"),
+     4: osoba("Josef Novák", "* 1880 Holice čp. 34", st="doc", r=["r1"]), 6: osoba("Karel Král"),
+     7: osoba("Ludmila Malá"), 12: osoba("Josef Novák", "TÁŽ OSOBA jako 4", "rolník, Holice čp. 35", st="doc", r=["r2"])}
+out = kontrola(P, SAME={12: 4}, zaznamy=[("r1", "Křest Josefa Nováka, Holice čp. 35"), ("r2", "Sňatek")],
+               prepisy={"r2": {"orig": "[Dům] No 34", "cs": ""}})
+ma("SAME – čp. doložené zápisem aliasu – bez upozornění", out, "čp. 34 " + CP, False)
+ma("SAME – čp. aliasu doložené zápisem hlavní osoby – bez upozornění", out, "čp. 35 " + CP, False)
+
+# Místo sňatku se jménem partnera nepočítá (Holice × Holický)
+MISTA = {"Holice": {"lat": 50.0, "lon": 16.0, "re": "Holic"}}
+P = {1: osoba("Petr Novák"), 2: osoba("Jan Holický", "× 1950 Holice Marie Králová"),
+     3: osoba("Anna Malá", "× 1950 Holice Karel Hrubý")}
+ma("místo sňatku (Holice) neznamená partnera Holického – upozornění", kontrola(P, mista=MISTA),
+   "osoba 3 (Anna Malá): žádný sňatek (×) nejmenuje partnera 2", True)
 
 print(f"\n{sum(VYSLEDKY)} z {len(VYSLEDKY)} v pořádku")
 sys.exit(0 if all(VYSLEDKY) else 1)

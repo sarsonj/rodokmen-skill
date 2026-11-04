@@ -64,35 +64,6 @@ def main():
         if k not in range(8, 16):
             err.append(f"LINES: rod {k} – rody mají čísla 8 až 15 (pradědečci a prababičky)")
 
-    def kmeny(s):   # první 4 písmena slov bez diakritiky; text v závorce se nepočítá
-        s = "".join(c for c in unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", s).lower())
-                    if not unicodedata.combining(c))
-        return {w[:4] for w in re.findall(r"[a-z]{3,}", s)}
-    for k, p in P.items():   # sňatek „× Jméno“ má jmenovat partnera na sousedním čísle (k ^ 1, SAME vzít v úvahu)
-        satky = [kmeny(f) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×") and kmeny(f)]
-        if not isinstance(k, int) or not satky:
-            continue
-        kandidati = {k ^ 1} | {a ^ 1 for a, c in SAME.items() if c == k and isinstance(a, int)}
-        partneri = {SAME.get(sp, sp) for sp in kandidati} & set(P)
-        if partneri and not any(kmeny(P[sp].get("n", "")) & s for sp in partneri for s in satky):
-            sp = min(partneri)
-            warn.append(f"osoba {k} ({p.get('n')}): žádný sňatek (×) nejmenuje partnera {sp} ({P[sp].get('n')})"
-                        " – patří sňatek k této osobě, je číslo správně?")
-
-    texty_zaz = {z.get("klic"): f"{z.get('shrnuti', '')} {z.get('nazev', '')}" for z in zaz}
-    ukazka_zaz = {z.get("klic") for z in zaz if z.get("ukazka")}
-    for k, p in P.items():   # čp. z faktů má být v citovaném zápisu (přepisy píšou „No 56“, „N. 56“, „č. 56“)
-        if p.get("st") != "doc" or not set(p.get("r", [])) - ukazka_zaz:   # vymyšlené zápisy ukázky přepis nemají
-            continue
-        texty = [texty_zaz.get(r, "") + " " + " ".join(str(prep.get(r, {}).get(x, "")) for x in ("orig", "cs"))
-                 for r in p["r"]]
-        fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
-                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
-        for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))), key=int):
-            if not any(re.search(rf"(?<!\d){c}(?!\d)", t) for t in texty):
-                warn.append(f"osoba {k} ({p.get('n')}): čp. {c} není v žádném citovaném zápisu – ověřit, "
-                            "nebo označit zdroj (strom, vyprávění)")
-
     cited = ({r for p in P.values() for r in p.get("r", [])} | {r for s in SIDE for r in s.get("r", [])}
              | {r for h in ns.get("HYPOTEZY", []) if isinstance(h, dict) for r in h.get("zaznamy", [])})
     for z in zaz:
@@ -134,6 +105,58 @@ def main():
         ukazka = ", ".join(f"{k} {P[k].get('n', '?')}" for k in bez_mista[:3])
         warn.append(f"mapa: {len(bez_mista)} doložených předků nemá v údajích žádnou obec z data/mista.json (např. {ukazka})"
                     " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py")
+
+    def kmeny(s):   # první 4 písmena slov bez diakritiky; text v závorce se nepočítá
+        s = "".join(c for c in unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", s).lower())
+                    if not unicodedata.combining(c))
+        return {w[:4] for w in re.findall(r"[a-z]{3,}", s)}
+
+    def bez_obci(f):   # „× 1950 Holice Karel Hrubý“ → jméno bez obce (Holice ≠ Holický)
+        for rx in vzory:
+            f = re.sub(rf"\w*(?:{rx.pattern})\w*", " ", f)
+        return f
+
+    def neznamy(p):   # jako placeholder() v export_web.py
+        return p.get("n", "").startswith(("otec neuveden", "matka neuvedena")) or p.get("n", "") in ("", "?")
+    for k, p in P.items():   # sňatek „× Jméno“ má jmenovat partnera na sousedním čísle (k ^ 1, SAME vzít v úvahu)
+        satky = [kmeny(bez_obci(f)) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×")]
+        satky = [s for s in satky if s]
+        if not isinstance(k, int) or not satky:
+            continue
+        kandidati = {k ^ 1} | {a ^ 1 for a, c in SAME.items() if c == k and isinstance(a, int)}
+        partneri = {sp for sp in {SAME.get(sp, sp) for sp in kandidati} if sp in P and not neznamy(P[sp])}
+        if partneri and not any(kmeny(P[sp].get("n", "")) & s for sp in partneri for s in satky):
+            sp = min(partneri)
+            warn.append(f"osoba {k} ({p.get('n')}): žádný sňatek (×) nejmenuje partnera {sp} ({P[sp].get('n')})"
+                        " – patří sňatek k této osobě, je číslo správně?")
+
+    # Číslo domu v zápisu: za „čp.“, „č.“, „čís.“, „No“, „N.“, „N°“, „Nro“, „Nr.“, „Haus“, „domu“, v poli „[Dům] …“
+    # nebo hned za obcí z mista.json („z Břilic 23“). Číslo, za kterým je tečka a další číslo, je datum („5. 1. 1767“);
+    # věk a datum dům nedokládají.
+    za_cislo = r"(\d+)(?!\d|\.\s*\d)"
+    s_predponou = re.compile(r"(?<![^\W\d_])(?:čp|čís|č|nro|nr|no|n°|n|haus|dům|domu|domě)\.?\s*" + za_cislo, re.I)
+    pole_domu = re.compile(r"\[[^\]\n]*(?:dům|domu|haus)[^\]\n]*\]([^\n|\[]*)", re.I)
+    za_obci = [re.compile(rf"(?:{rx.pattern})\w*,?\s+(\d{{1,3}})(?!\d|\.\s*\d)") for rx in vzory]   # ne rok
+
+    def cisla_domu(t):
+        return (set(s_predponou.findall(t)) | {c for rx in za_obci for c in rx.findall(t)}
+                | {c for v in pole_domu.findall(t) for c in re.findall(r"(?<!\d)" + za_cislo, v)})
+    cisla_zaz = {z.get("klic"): cisla_domu(f"{z.get('shrnuti', '')} {z.get('nazev', '')}") for z in zaz}
+    ukazka_zaz = {z.get("klic") for z in zaz if z.get("ukazka")}
+    zapisy_osoby = {}   # předek v rodokmenu dvakrát (SAME): zápisy hlavní osoby i všech aliasů
+    for k, p in P.items():
+        zapisy_osoby.setdefault(SAME.get(k, k), set()).update(p.get("r", []))
+    for k, p in P.items():   # čp. z faktů má být v citovaném zápisu
+        zapisy = zapisy_osoby.get(SAME.get(k, k), set())
+        if p.get("st") != "doc" or not zapisy - ukazka_zaz:   # vymyšlené zápisy ukázky přepis nemají
+            continue
+        dolozena = set().union(*(cisla_zaz.get(r, set()) | cisla_domu(
+            " ".join(str(prep.get(r, {}).get(x, "")) for x in ("orig", "cs"))) for r in zapisy))
+        fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
+                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
+        for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))) - dolozena, key=int):
+            warn.append(f"osoba {k} ({p.get('n')}): čp. {c} není v žádném citovaném zápisu – ověřit, "
+                        "nebo označit zdroj (strom, vyprávění)")
 
     for name, e in mista.items():
         if "lat" not in e:
