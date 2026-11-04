@@ -263,6 +263,14 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   (plné rozlišení), malé náhledy `…/image_files/8/0_0.jpg`. **Po ~1000 rychlých požadavcích přijde HTTP 429** a blokace
   na desítky minut – stahuj jen konkrétní snímky, nanejvýš pár za sekundu, hromadné procházení knih nedělej.
 
+## Databáze obětí nacistického pronásledování (holocaust.cz) – `tools/obeti.py`
+- Terezínská iniciativa: Židé deportovaní z českých zemí, vězni terezínského ghetta, Romové a Sintové z tábora v Letech u Písku. `obeti.py hledat --prijmeni Neumannová --jmeno Anna
+  [--bydliste Ostrava] [--misto-narozeni …] [--rok 1906]` → jméno, datum narození, transporty (Terezín → Osvětim…), osud, odkaz; `obeti.py detail <odkaz nebo číslo-jméno>` → poslední bydliště
+  před deportací, adresa v protektorátu, transporty, související dokumenty. Příjmení hledej **v ženském tvaru** a nejdřív samotné.
+- Portál při vstupu žádá o „Podmínky vstupu do databáze“ (citlivé údaje, osobní odpovědnost uživatele). Nástroj proto bez souhlasu nic nestahuje (kód 4) a **souhlas musí potvrdit uživatel sám**:
+  `!python3 -I tools/obeti.py souhlas` (jednou za 30 dní); Claude ho nikdy nepotvrzuje za uživatele. robots.txt hledání nezakazuje.
+- Údaje jsou citlivé – na web jen se souhlasem rodiny (`soukromi.md`). Je to vodítko k osudu a k původu rodiny (poslední bydliště), ne náhrada matriky.
+
 ## Hroby a hřbitovy
 - Kde jsou předci pohřbeni, víš z rozhovoru s rodinou (Fáze 1). Fotky náhrobků (jména, data, rodná příjmení) jsou
   cenný pramen hlavně pro 20. století, kde matriky ještě nejsou přístupné.
