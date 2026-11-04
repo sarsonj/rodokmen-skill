@@ -230,6 +230,13 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   nad 20) – vypíše citaci a trvalý odkaz (`index.php?action=link&ref=czarch:CZ-100000010:874&karton=K&folium=F`).
 - **Nepokrývá Smíchov, Vinohrady, Žižkov, Karlín a další předměstí před 1922** (byla to samostatná města). Náboženství karty neuvádějí.
 
+## Encyklopedie dějin města Brna (encyklopedie.brna.cz) – `tools/brno_encyklopedie.py`
+- Provozují ji Masarykova univerzita a Muzeum města Brna. `brno_encyklopedie.py hledat "Novák klempíř Králova"` → až ~30 zásahů fulltextu (osobnost, ulice, objekt, spolek…)
+  s úryvkem a odkazem; portál vrací jen první stránku, proto zužuj dalšími slovy (příjmení, ulice, povolání). `brno_encyklopedie.py detail osobnosti:15` (nebo odkaz z výpisu)
+  vypíše celé heslo: narození, úmrtí, **bydliště s adresou**, vzdělání, zaměstnání, **hrob (hřbitov, skupina, číslo hrobu)**, poznámky.
+- Je to encyklopedie významných osob a míst, ne evidence obyvatel – běžní předkové tu být nemusí. U brněnských řemeslníků a úředníků ale často dá adresy, povolání a hrob na Ústředním
+  hřbitově, z čehož se pokračuje v matrikách (MZA, jen v prohlížeči). Zdroj cituj jako „Encyklopedie dějin města Brna“. robots.txt portálu nic nezakazuje; nástroj jde přes brzdu `slusne.py`.
+
 ## Matricula (Rakousko, Bavorsko, Polsko…; data.matricula-online.eu) – `tools/matricula_*.sh`
 - Bez přihlášení. Seznam knih: `…/de/oesterreich/<diecéze>/<farnost>/?page=N`; snímek knihy `…/<id>/?pg=<snímek>`
   (zároveň trvalý odkaz).
