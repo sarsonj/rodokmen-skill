@@ -111,15 +111,25 @@ def main():
                     if not unicodedata.combining(c))
         return {w[:4] for w in re.findall(r"[a-z]{3,}", s)}
 
-    def bez_obci(f):   # „× 1950 Holice Karel Hrubý“ → jméno bez obce (Holice ≠ Holický)
-        for rx in vzory:
-            f = re.sub(rf"\w*(?:{rx.pattern})\w*", " ", f)
+    obce = []   # všechny platné výrazy obcí, i bez souřadnic (vzory výš jsou jen obce na mapě)
+    for n, e in mista.items():
+        try:
+            obce.append(re.compile(e.get("re") or re.escape(n)))
+        except re.error:
+            pass
+
+    def bez_obce(f):   # „× 1950 Holice Karel Hrubý“ → bez obce hned za datem (Holice ≠ Holický), jméno zůstane
+        i = re.match(r"×[\s\d.,?/–-]*", f).end()
+        for rx in obce:
+            m = rx.match(f, i)
+            if m and m.end() > i:
+                return f[:i] + " " + f[re.compile(r"\w*").match(f, m.end()).end():]
         return f
 
     def neznamy(p):   # jako placeholder() v export_web.py
         return p.get("n", "").startswith(("otec neuveden", "matka neuvedena")) or p.get("n", "") in ("", "?")
     for k, p in P.items():   # sňatek „× Jméno“ má jmenovat partnera na sousedním čísle (k ^ 1, SAME vzít v úvahu)
-        satky = [kmeny(bez_obci(f)) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×")]
+        satky = [kmeny(bez_obce(f)) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×")]
         satky = [s for s in satky if s]
         if not isinstance(k, int) or not satky:
             continue
@@ -131,17 +141,30 @@ def main():
                         " – patří sňatek k této osobě, je číslo správně?")
 
     # Číslo domu v zápisu: za „čp.“, „č.“, „čís.“, „No“, „N.“, „N°“, „Nro“, „Nr.“, „Haus“, „domu“, v poli „[Dům] …“
-    # nebo hned za obcí z mista.json („z Břilic 23“). Číslo, za kterým je tečka a další číslo, je datum („5. 1. 1767“);
-    # věk a datum dům nedokládají.
-    za_cislo = r"(\d+)(?!\d|\.\s*\d)"
+    # nebo hned za obcí z mista.json („z Břilic 23“). Datum („5. 1. 1767“, „23. února“, „9. 9bris“), věk, rok
+    # ani číslo zápisu, strany či snímku („zápis č. 23“) dům nedokládají.
+    mesic = (r"ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince|"
+             r"jänner|januar|feber|februar|märz|april|mai|juni|juli|august|september|oktober|october|november|"
+             r"dezember|december|januarii|februarii|martii|aprilis|maii|junii|julii|augusti|septembris|octobris|"
+             r"novembris|decembris|[7-9x]bris|10bris|jan|feb|mär|apr|aug|sept?|okt|oct|nov|dez|dec")
+    ne_datum = rf"(?!\d|\.\s*(?:\d|(?:{mesic})(?![^\W\d_])))"
+    za_cislo = r"(\d+)" + ne_datum
     s_predponou = re.compile(r"(?<![^\W\d_])(?:čp|čís|č|nro|nr|no|n°|n|haus|dům|domu|domě)\.?\s*" + za_cislo, re.I)
     pole_domu = re.compile(r"\[[^\]\n]*(?:dům|domu|haus)[^\]\n]*\]([^\n|\[]*)", re.I)
-    za_obci = [re.compile(rf"(?:{rx.pattern})\w*,?\s+(\d{{1,3}})(?!\d|\.\s*\d)") for rx in vzory]   # ne rok
+    po_obci = re.compile(r"\w*,?\s+(\d{1,3})" + ne_datum, re.I)   # číslo hned za obcí, ne rok
+    ne_dum = re.compile(r"(?<![^\W\d_])(?:zápis\w*|záznam\w*|stran\w*|str|list\w*|fol|folio|sním\w*|sn|pag)\.?\s*$",
+                        re.I)
 
-    def cisla_domu(t):
-        return (set(s_predponou.findall(t)) | {c for rx in za_obci for c in rx.findall(t)}
-                | {c for v in pole_domu.findall(t) for c in re.findall(r"(?<!\d)" + za_cislo, v)})
-    cisla_zaz = {z.get("klic"): cisla_domu(f"{z.get('shrnuti', '')} {z.get('nazev', '')}") for z in zaz}
+    def cisla_domu(t):   # každé pole zvlášť, aby se pole „[Dům]“ nepřelilo do dalšího textu
+        cisla = {m.group(1) for m in s_predponou.finditer(t) if not ne_dum.search(t[max(0, m.start() - 12):m.start()])}
+        cisla |= {c for v in pole_domu.findall(t) for c in re.findall(r"(?<!\d)" + za_cislo, v, re.I)}
+        for rx in obce:   # výraz obce se jen hledá, do jiných výrazů se nevkládá (vlastní příznaky a skupiny)
+            for m in rx.finditer(t):
+                c = po_obci.match(t, m.end())
+                if c and m.end() > m.start():
+                    cisla.add(c.group(1))
+        return cisla
+    cisla_zaz = {z.get("klic"): cisla_domu(str(z.get("shrnuti", ""))) | cisla_domu(str(z.get("nazev", ""))) for z in zaz}
     ukazka_zaz = {z.get("klic") for z in zaz if z.get("ukazka")}
     zapisy_osoby = {}   # předek v rodokmenu dvakrát (SAME): zápisy hlavní osoby i všech aliasů
     for k, p in P.items():
@@ -150,8 +173,8 @@ def main():
         zapisy = zapisy_osoby.get(SAME.get(k, k), set())
         if p.get("st") != "doc" or not zapisy - ukazka_zaz:   # vymyšlené zápisy ukázky přepis nemají
             continue
-        dolozena = set().union(*(cisla_zaz.get(r, set()) | cisla_domu(
-            " ".join(str(prep.get(r, {}).get(x, "")) for x in ("orig", "cs"))) for r in zapisy))
+        dolozena = set().union(*(cisla_zaz.get(r, set()) | cisla_domu(str(prep.get(r, {}).get("orig", "")))
+                                 | cisla_domu(str(prep.get(r, {}).get("cs", ""))) for r in zapisy))
         fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
                  and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
         for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))) - dolozena, key=int):

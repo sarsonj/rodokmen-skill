@@ -192,5 +192,49 @@ P = {1: osoba("Petr Novák"), 2: osoba("Jan Holický", "× 1950 Holice Marie Kr�
 ma("místo sňatku (Holice) neznamená partnera Holického – upozornění", kontrola(P, mista=MISTA),
    "osoba 3 (Anna Malá): žádný sňatek (×) nejmenuje partnera 2", True)
 
+# Regrese z 2. revize
+# Výraz obce s vlastním příznakem nebo skupinou: kontrola nespadne a číslo za obcí najde
+for vyraz, obec in (("(?i)Holic", "z holic 23"), ("(Holic|Holitz)", "z Holitz 23")):
+    P = {1: osoba("Jan Novák", "* Holice čp. 23", "× 1920 Holice Marie Králová", st="doc", r=["krest_jan_1900"]),
+         2: osoba("Karel Novák"), 3: osoba("Marie Králová", "× 1920 Holice Karel Novák")}
+    out = kontrola(P, zaznamy=ZAZ, prepisy={"krest_jan_1900": {"orig": obec, "cs": ""}},
+                   mista={"Holice": {"lat": 50.0, "lon": 16.0, "re": vyraz}})
+    ma(f"výraz obce {vyraz} – kontrola doběhne a „{obec}“ dokládá čp. 23", out, "čp. 23 " + CP, False)
+
+# Datum se jménem měsíce není číslo domu
+for datum in ("v Holicích 23. února 1890", "Holic No 23. Februar 1890", "Holice 23. Januarii 1767", "Holice 23. 9bris"):
+    P = {1: osoba("Jan Novák", "* Holice čp. 23", st="doc", r=["krest_jan_1900"])}
+    out = kontrola(P, zaznamy=ZAZ, prepisy={"krest_jan_1900": {"orig": "", "cs": f"Jan se narodil {datum}."}},
+                   mista=MISTA)
+    ma(f"„{datum}“ nedokládá čp. 23 – upozornění", out, "čp. 23 " + CP, True)
+
+# Přepis a překlad se čtou zvlášť: pole [Dům] na konci přepisu nepokračuje do překladu
+P = {1: osoba("Jan Novák", "* Holice čp. 23", "Holice čp. 34", st="doc", r=["krest_jan_1900"])}
+out = kontrola(P, zaznamy=ZAZ, prepisy={"krest_jan_1900": {"orig": "[Datum] 1900\n[Dům] 34",
+                                                           "cs": "Jan zemřel ve věku 23 let."}})
+ma("věk v překladu za polem [Dům] nedokládá čp. 23 – upozornění", out, "čp. 23 " + CP, True)
+ma("pole [Dům] na konci přepisu dokládá čp. 34", out, "čp. 34 " + CP, False)
+
+# Obec se z faktu sňatku odstraní jen na začátku (za datem), ne ze jména partnera
+P = {1: osoba("Petr Novák"), 2: osoba("Jan Holický", "× 1900 Holice Anna Malá"),
+     3: osoba("Anna Malá", "× 1900 Holice Johann Holický")}
+ma("„× 1900 Holice Johann Holický“ jmenuje Jana Holického – bez upozornění", kontrola(P, mista=MISTA), PARTNER, False)
+
+# Obec bez souřadnic se v textu pozná taky
+BEZ_LAT = {"Holice": {"re": "Holic"}}
+P = {1: osoba("Jan Novák", "* Holice čp. 23", st="doc", r=["krest_jan_1900"])}
+out = kontrola(P, zaznamy=ZAZ, prepisy={"krest_jan_1900": {"orig": "", "cs": "rolník z Holic 23"}}, mista=BEZ_LAT)
+ma("obec bez souřadnic – „z Holic 23“ dokládá čp. 23", out, "čp. 23 " + CP, False)
+P = {1: osoba("Petr Novák"), 2: osoba("Jan Holický", "× 1950 Holice Marie Králová"),
+     3: osoba("Anna Malá", "× 1950 Holice Karel Hrubý")}
+ma("obec bez souřadnic – Holice neznamená partnera Holického – upozornění", kontrola(P, mista=BEZ_LAT),
+   "osoba 3 (Anna Malá): žádný sňatek (×) nejmenuje partnera 2", True)
+
+# Číslo zápisu, strany nebo snímku není číslo domu
+for cislo in ("zápis č. 23", "str. č. 23", "snímek č. 23", "fol. No 23"):
+    P = {1: osoba("Jan Novák", "* Holice čp. 23", st="doc", r=["krest_jan_1900"])}
+    out = kontrola(P, zaznamy=[("krest_jan_1900", f"Křest Jana Nováka, {cislo}")])
+    ma(f"„{cislo}“ nedokládá čp. 23 – upozornění", out, "čp. 23 " + CP, True)
+
 print(f"\n{sum(VYSLEDKY)} z {len(VYSLEDKY)} v pořádku")
 sys.exit(0 if all(VYSLEDKY) else 1)
