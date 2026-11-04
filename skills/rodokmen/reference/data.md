@@ -29,9 +29,17 @@ P = {
 - `n` jméno (ženy rodným příjmením), `y` roky pro přehledy (`"* 1895"`, `"1890–1944"`, `"asi 1720–1785"`, `"1680 – před 1740"`,
   `"† 1940"` když známe jen úmrtí; nic nevíme → `""`).
 - `f` fakta: začínají `*` (narození), `×` (sňatek), `†` (úmrtí) nebo jsou volný text (řemeslo, bydliště).
-  Názvy obcí ve faktech používá mapa (`mista.json` → `re`).
+  Názvy obcí ve faktech používá mapa (`mista.json` → `re`). Datum piš hned za značku (`"* 14. 2. 1890 Holice"`,
+  `"× 3/1867"`, `"† asi 1785"`, `"† před 1740"`): podle jeho přesnosti hlídá `kontrola.py` i stránka Časová osa
+  časovou návaznost (otec zemřel dřív, než se dítě mohlo narodit, matce by bylo 12 let…). Celé datum pozná víc než
+  jen rok, „asi“ počítá s tolerancí ±5 let a hlásí se jen rozpor, který platí pro všechna možná data.
 - `r` klíče zápisů ze `zaznamy.json`. `st` viz `matriky.md`: `doc` přečteno v matrice, `prob` pravděpodobné,
   `fam` od rodiny (i strom, který si rodina vede sama, např. GEDCOM z jejího MyHeritage), `mh` cizí strom z internetu, `unk`.
+- `overeno` (nepovinné) – neobvyklý údaj, který jsi ověřil(a), a varování časové návaznosti u téže osoby
+  (u pravidel o rodičích a dítěti u dítěte) pak zmizí z `kontrola.py` i z webu:
+  `overeno={"vek-matky": "věk 51 let potvrzuje křest i úmrtí matky"}`. Klíče: `umrti-pred-narozenim`, `snatek-mlady`,
+  `snatek-po-umrti`, `otec-zemrel`, `matka-zemrela`, `vek-matky`, `vek-otce` – `kontrola.py` u každého upozornění
+  vypíše, co přesně doplnit. Důvod piš vždy, ať je za rok jasné, proč to platí.
 - `LINES = {8: ("Novákové", "Kováři z Holic…"), …}` – jen čísla 8–15; název rodu = příjmení v množném čísle. Vyplň hned, jak znáš pradědečka nebo prababičku – bez LINES web neukáže rody a nepřijde rada k příběhu.
 - `SIDE` – sourozenci a další příbuzní: `dict(k=<číslo předka>, n="Josef Novák (1865–1920)", t="text", r=[klíče])`.
 - `ISSUES` – dvojice `("Otázka", "Vyřešeno: … / Hypotéza: … / Otevřené: …")` → stránka „Co hledáme“ (vyřešené se skryjí).
