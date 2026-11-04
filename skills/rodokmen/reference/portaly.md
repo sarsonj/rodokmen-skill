@@ -320,6 +320,11 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
 - **Mauthausen – Raum der Namen** (raumdernamen.mauthausen-memorial.org): vězni zemřelí v Mauthausenu, s datem a místem
   narození i úmrtí. Takové údaje jsou citlivé – na web jen se souhlasem rodiny (`soukromi.md`).
 
+## Mauthausen – Raum der Namen (raumdernamen.mauthausen-memorial.org) – `tools/mauthausen.py`
+- `mauthausen.py hledat "Novak" [--stran N]` → jméno | roky | narození | úmrtí | odkaz na stránku osoby (často s fotografiemi a životopisem), po 25 osobách; zužuj dalším slovem
+  (křestní jméno, rok). Jsou tu jen **zemřelí** v Mauthausenu a pobočkách (Gusen, Ebensee, Melk…), přeživší ne (ty hledej v Arolsenu, viz výše). Jména bývají v místním tvaru (Novak, Nowak).
+  Portál nemá robots.txt ani vstupní prohlášení; nástroj jde přes brzdu `slusne.py`. Údaje jsou citlivé – na web jen se souhlasem rodiny (`soukromi.md`).
+
 ## Příjmení dnes a DNA
 - **Rozšíření příjmení dnes**: kdejsme.cz (počty nositelů po okresech). Rychle ukáže, jestli je příjmení vzácné a kde
   jsou jeho „hnízda“. Při hledání vzdálených příbuzných vyškrtni vlastní rodinu.
