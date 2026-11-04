@@ -198,6 +198,27 @@ try:
     r, _ = login(CFG, [O1])
     ok("starší šablona brány a odkazy: chyba s výzvou k aktualizaci", str(r).startswith("EXIT CHYBA")
        and "Aktualizujte" in r, r)
+    with open(os.path.join(ROOT, "skills", "rodokmen", "template", "web", "nginx.sablona.conf"), encoding="utf-8") as f:
+        sablona_nginx = f.read()
+    ok("šablona nginx sama nikoho nepustí (default 0; i se starším exportem)",
+       re.search(r"\{\s*\n\s*default 0;\n", sablona_nginx.split("map $cookie_rodokmen")[1]), sablona_nginx)
+    w = web({"nginx.sablona.conf": "map $cookie_rodokmen $rodokmen_ok {\n  default 0;\n\n  # odpověď\n{{ODPOVED}}\n}\n"})
+    login(dict(CFG, prihlaseni={"otevreny": True}), [])
+    ok("upravená starší šablona nginx a otevřený web: jediný default 1",
+       mapa(w).count("default") == 1 and "default 1;" in mapa(w), mapa(w))
+    login(CFG, [])
+    ok("upravená starší šablona nginx a otázka: jediný default 0",
+       mapa(w).count("default") == 1 and "default 0;" in mapa(w) and OTAZKA_HASH in mapa(w), mapa(w))
+    w = web({"nginx.sablona.conf": "map $cookie_rodokmen $rodokmen_ok {\n  default 1;\n{{ODPOVED}}\n}\n"})
+    r, _ = login(CFG, [])
+    ok("šablona nginx s jiným default: chyba místo otevřeného webu", str(r).startswith("EXIT CHYBA"), r)
+
+    # 9b. prázdné (null) položky kontaktu export nezhodí
+    for kontakt in ({"email": None}, {"jmeno": None, "kdo": None, "email": None}):
+        for otisky in ([], [O1]):
+            w = web()
+            r, _ = login(dict(BEZ_OTAZKY, kontakt=kontakt, prihlaseni={"odpoved": "x"} if not otisky else {}), otisky)
+            ok(f"kontakt {kontakt} ({len(otisky)} odkazů) projde", r is True and "None" not in stranka(w), r)
 
     # 10. načtení otisků z data/pozvanky.json
     data = tempfile.mkdtemp(prefix="prihlaseni_data_")
@@ -208,6 +229,10 @@ try:
         json.dump([{"id": "p1", "jmeno": "A", "otisk": O1, "vytvoreno": "2026-11-04"},
                    {"id": "p2", "jmeno": "B", "otisk": O2, "vytvoreno": "2026-11-04"}], f)
     ok("otisky z pozvanky.json", export_web.load_otisky() == [O1, O2], export_web.load_otisky())
+    with open(os.path.join(data, "pozvanky.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump([{"id": "p1", "jmeno": "A", "otisk": O1, "vytvoreno": "2026-11-04"},
+                   {"id": "p2", "jmeno": "B", "vytvoreno": "2026-11-04", "zruseno": "2026-11-05"}], f)
+    ok("zrušený odkaz (bez otisku) se přeskočí", export_web.load_otisky() == [O1], export_web.load_otisky())
     for spatny in ("klic-v-cisté-podobě", O1.upper(), O1[:-1], "'];alert(1);//" + O1):
         with open(os.path.join(data, "pozvanky.json"), "w", encoding="utf-8", newline="\n") as f:
             json.dump([{"id": "p1", "jmeno": "A", "otisk": spatny, "vytvoreno": "2026-11-04"}], f)

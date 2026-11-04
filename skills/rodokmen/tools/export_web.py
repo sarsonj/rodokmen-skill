@@ -157,6 +157,8 @@ def load_otisky():
     """Otisky klíčů osobních odkazů z data/pozvanky.json (tools/pozvanky.py); klíče samotné tam nejsou."""
     otisky = []
     for z in jload("pozvanky.json", []):
+        if "zruseno" in z:   # zrušený odkaz: záznam zůstává jen kvůli id
+            continue
         if not re.fullmatch(r"[0-9a-f]{64}", str(z.get("otisk", ""))):
             sys.exit(f"CHYBA: v data/pozvanky.json má odkaz {z.get('id', '?')} neplatný otisk. "
                      f"Vytvořte mu nový: python3 -I tools/pozvanky.py nova {z.get('id', '<id>')}")
@@ -172,7 +174,7 @@ def section(tpl, name, keep):
 
 def link_hint(contact):
     """Věta pro přihlašovací stránku, jak získat nový osobní odkaz. `jmeno` je ve 3. pádě („Petrovi“)."""
-    who, email = html.escape(contact.get("jmeno", "")), html.escape(contact.get("email", ""))
+    who, email = html.escape(contact.get("jmeno") or ""), html.escape(contact.get("email") or "")
     if email:
         link = f'<a href="mailto:{email}">{email}</a>'
         return f"Napište {who} na {link}, pošle vám nový." if who else f"Napište na {link}, pošleme vám nový."
@@ -195,7 +197,7 @@ def login_files(cfg, otisky):
     contact = cfg.get("kontakt") or {}
     hint = ""
     if contact.get("email"):
-        hint = (f'Neznáte odpověď? Napište {html.escape(contact.get("jmeno", ""))} na '
+        hint = (f'Neznáte odpověď? Napište {html.escape(contact.get("jmeno") or "")} na '
                 f'<a href="mailto:{html.escape(contact["email"])}">{html.escape(contact["email"])}</a>.')
     question = bool(answer) or not otisky   # bez otázky i odkazů (místní náhled) stránka jako dřív
     tpl = section(section(section(tpl, "odkaz", bool(otisky)), "otazka", question), "odkazy", not question)
@@ -212,7 +214,7 @@ def login_files(cfg, otisky):
     digest = hashlib.sha256(("rodokmen:" + answer).encode()).hexdigest() if answer else ""
     if gated:
         write(edge, gate_tpl.replace("{{HASH}}", digest).replace("{{OTISKY}}", json.dumps(sorted(otisky))))
-        nginx_map = "  default 0;" + (f'\n  "{digest}" 1;' if digest else "")
+        nginx_map = f'  "{digest}" 1;' if digest else ""   # default 0 (nepustit) je v šabloně
         if otisky:
             print("POZOR: nginx.conf (Docker/CapRover) osobní odkazy neumí – "
                   + ("pustí jen přes rodinnou otázku." if digest else "nepustí nikoho.")
@@ -222,8 +224,14 @@ def login_files(cfg, otisky):
         if os.path.exists(edge):
             os.remove(edge)
     nginx_tpl = open(os.path.join(WEB, "nginx.sablona.conf"), encoding="utf-8").read()
-    nginx_tpl = nginx_tpl.replace("  default 0;\n{{ODPOVED}}", "{{ODPOVED}}")   # šablona do této verze měla default 0 sama
-    write(os.path.join(WEB, "nginx.conf"), nginx_tpl.replace("{{ODPOVED}}", nginx_map))
+    if not gated:   # default 0 ze šablony nahradí default 1
+        nginx_tpl = re.sub(r"^[ \t]*default[ \t]+0;[ \t]*\n", "", nginx_tpl, flags=re.M)
+    nginx = nginx_tpl.replace("{{ODPOVED}}", nginx_map)
+    mapa = nginx.split("map $cookie_rodokmen", 1)[-1].split("}", 1)[0]
+    if re.findall(r"^[ \t]*default[ \t]+(\S+);", mapa, flags=re.M) != ["0" if gated else "1"]:
+        sys.exit("CHYBA: web/nginx.sablona.conf má v mapě $cookie_rodokmen jiný default než jediné „default 0;“. "
+                 + AKTUALIZUJTE)
+    write(os.path.join(WEB, "nginx.conf"), nginx)
     return gated
 
 

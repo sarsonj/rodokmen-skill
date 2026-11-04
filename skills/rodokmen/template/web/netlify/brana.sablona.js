@@ -7,6 +7,8 @@
 const HASH = '{{HASH}}';
 const OTISKY = new Set({{OTISKY}});
 const ROBOTS = 'noindex, nofollow';
+// Neplatnou cookie smazat: zrušený klíč je v cookie HttpOnly a tu by odpověď na otázku z přihlašovací stránky nepřepsala.
+const SMAZAT = 'rodokmen=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax';
 
 async function platnyKlic(klic) {
   if (!klic || OTISKY.size === 0) return false;
@@ -28,8 +30,13 @@ function bezKlice(url) {
 
 export default async (request, context) => {
   const url = new URL(request.url);
-  if (url.pathname === '/prihlaseni.html') return context.next();
-  const cookieOk = await platnaCookie(context.cookies.get('rodokmen'));
+  const cookie = context.cookies.get('rodokmen');
+  const cookieOk = await platnaCookie(cookie);
+  if (url.pathname === '/prihlaseni.html') {
+    const res = await context.next();
+    if (cookie && !cookieOk) res.headers.append('set-cookie', SMAZAT);
+    return res;
+  }
 
   if (url.searchParams.has('k')) {
     const klic = url.searchParams.get('k');
@@ -48,8 +55,7 @@ export default async (request, context) => {
   // Přihlašovací stránka pozná neplatný odkaz podle parametru k v adrese.
   const login = await fetch(new URL('/prihlaseni.html', url));
   const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'x-robots-tag': ROBOTS };
-  // Neplatnou cookie smazat: zrušený klíč je v cookie HttpOnly a tu by odpověď na otázku z přihlašovací stránky nepřepsala.
-  if (context.cookies.get('rodokmen')) headers['set-cookie'] = 'rodokmen=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax';
+  if (cookie) headers['set-cookie'] = SMAZAT;
   return new Response(await login.text(), { status: 401, headers });
 };
 

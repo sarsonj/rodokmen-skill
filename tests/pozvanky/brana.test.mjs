@@ -145,3 +145,13 @@ test("brána běží na všech cestách", () => {
 test("neplatný klíč v adrese i v cookie: 401 a stará cookie se smaže", async () => {
   odmitne(await pozadavek(OBOJI, "/?k=spatne", "zruseny"), "zruseny");
 });
+
+test("přihlašovací stránka smaže neplatnou cookie, platnou nechá", async () => {
+  let r = await pozadavek(OBOJI, "/prihlaseni.html", "zruseny");
+  assert.equal(r.dal, true);
+  assert.equal(r.res.headers.get("set-cookie"), SMAZAT);
+  for (const cookie of [OTAZKA, "abc", undefined]) {
+    r = await pozadavek(OBOJI, "/prihlaseni.html", cookie);
+    assert.equal(r.res.headers.get("set-cookie"), null);
+  }
+});
