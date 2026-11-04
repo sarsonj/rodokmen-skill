@@ -38,6 +38,7 @@ LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
     "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
     "mza.cz": (4.0, 4.0),            # MZA Brno – skriptem jen hledání knih (ZAKAZ níže), blokuje i za rychlé dotazy na katalog
     "digi.nacr.cz": (4.0, 4.0),      # Národní archiv (policejní přihlášky) – po pár rychlých kartách přiškrcuje podle IP
+    "aron.vychodoceskearchivy.cz": (2.0, 2.0),   # ARON: celý sken (2–4 MB) jedním požadavkem; dlaždice imgx.… dál 0,1 s
 }
 ZAKAZ = {                            # konec názvu webu: (cesty povolené skriptům, hláška pro ostatní)
     suffix: (re.compile(r"/actapublica/matrika/hledani"),
@@ -68,7 +69,7 @@ STOPKY = (30 * 60, 2 * 3600, 8 * 3600)   # stopka po 1., 2. a 3. (i každém dal
 OKNO = 24 * 3600
 BAN_TEXT = {"archives.cz": re.compile(rb"zablokov[a\xc3\xa1]n|byl[a ]+zablokov|blocked", re.I)}
 OBRAZEK_RE = re.compile(r"\.(jpe?g|png|gif|webp|tiff?|jp2|bmp)(\?|$)|_files/|/tilegroup|/ximage/|zoomify|iipsrv|"
-                        r"isrv8\.cgi|/iiif/|/tile|/image/|/thumb|//img\.", re.I)
+                        r"isrv8\.cgi|/iiif/|/tile|/image/|/thumb|//img\.|/referencedfiles/", re.I)   # ARON: celý sken
 STAV = os.environ.get("SLUSNE_STAV") or os.path.join(
     os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), ".cache"), "rodokmen_slusne")
 KOD = 3
