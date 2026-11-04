@@ -6,11 +6,12 @@ Z kořene repozitáře:
   python3 -I tests/aktualizace/test_aktualizace.py skills/rodokmen
 Na Windows `python -I -X utf8`. Skončí kódem 1, když některý případ selže.
 """
-import glob, os, shutil, subprocess, sys, tempfile, traceback
+import glob, os, shutil, subprocess, sys, tempfile, time, traceback
 
 SKILL = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "skills/rodokmen")
 RADKY = [f"radek {i}" for i in range(1, 21)]
-POCET = 16   # počet případů v pripady()
+POCET = 19   # počet případů v pripady()
+PRESKOCENO = "přeskočeno: "   # případ, který tu nejde vyzkoušet (počítá se zvlášť)
 
 
 def zapis(p, text, nl="\n"):
@@ -43,7 +44,7 @@ def falesny_skill(koren):
     zapis(os.path.join(s, "tools", "skript.sh"), "#!/bin/sh\necho ahoj\n", nl="\r\n")   # skill z Windows s CRLF
     zapis(os.path.join(s, "template", "web", "src", "styl.css"), text(RADKY))
     zapis(os.path.join(s, "tools", "stary.py"), "print('zrusim')\n")
-    for n in ("index.astro", "uvod.astro", "zrus.astro"):
+    for n in ("index.astro", "uvod.astro", "zrus.astro", "mapa.astro", os.path.join("slozka", "x.astro")):
         zapis(os.path.join(s, "template", "web", "src", n), text(RADKY))
     zapis(os.path.join(s, "template", "web", "node_modules", "x.js"), "nekopirovat\n")
     zapis(os.path.join(s, "template", "data", "STAV.md"), "# Stav\n")
@@ -136,14 +137,22 @@ def pripady(koren):
     assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(nove2), out
     yield "nevyřešený konflikt se hlásí znovu"
 
-    # 6b. --vyreseno po ručním sloučení: uloží novou šablonu jako základ, projekt nechá; konflikt se už nehlásí
+    # 6b. --vyreseno po ručním sloučení uloží jako základ návrh, který uživatel dostal (A), ne mezitím novější šablonu
+    #     (B); další aktualizace pak doplní změnu z B
+    navrh = zmen(nove2, 10, "radek 11 jinak v sablone")
+    zapis(sab("src", "styl.css"), text(zmen(navrh, 14, "radek 15 sablona B")))   # skill se mezitím posunul
+    rucne = zmen(zmen(vlastni, 19, "radek 20 z dalsi sablony"), 10, "radek 11 vlastni + jinak")
+    zapis(proj("web", "src", "styl.css"), text(rucne))
     out = spust(s, p, "--vyreseno", "web/src/styl.css")
-    assert cti(proj("web", "src", "styl.css")) == pred, out
-    assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(zmen(nove2, 10, "radek 11 jinak v sablone"))
+    assert cti(proj("web", "src", "styl.css")) == text(rucne), out
+    assert cti(proj(".skill_sablona", "web", "src", "styl.css")) == text(navrh), out
+    cekajici = proj(".skill_sablona", "cekajici.json")   # prázdný záznam se smaže
+    assert not os.path.exists(cekajici) or "web/src/styl.css" not in cti(cekajici), out
     out = spust(s, p)
     assert "web/src/styl.css" not in sekce(out, "Ke kontrole"), out
-    assert cti(proj("web", "src", "styl.css")) == pred, out
-    yield "--vyreseno ukončí hlášení konfliktu"
+    assert "web/src/styl.css" in sekce(out, "Sloučeno"), out
+    assert cti(proj("web", "src", "styl.css")) == text(zmen(rucne, 14, "radek 15 sablona B")), out
+    yield "--vyreseno uloží zaznamenaný návrh, novější šablona se pak sloučí"
 
     # 7. bez gitu v PATH se nesloučí ani nepřekrývající se změny; s gitem se sloučí při dalším spuštění
     vlastni_uvod = zmen(RADKY, 2, "radek 3 vlastni")
@@ -188,29 +197,53 @@ def pripady(koren):
     assert nova and cti(nova[-1]) == text(zmen(RADKY, 0, "radek 1 po smazani")), out
     yield "smazaný soubor se nevrátí"
 
-    # 10. šablona soubor odstranila: neupravený přesunout do zálohy, upravený nechat a hlásit
+    # 10. šablona soubor odstranila: nic nemazat ani nepřesouvat, jen hlásit (neupravený i upravený)
     zapis(proj("web", "src", "zrus.astro"), text(zmen(RADKY, 4, "radek 5 vlastni")))
     os.remove(os.path.join(s, "tools", "stary.py"))
     os.remove(sab("src", "zrus.astro"))
-    out = spust(s, p)
-    assert not os.path.exists(proj("tools", "stary.py")), out
-    assert not os.path.exists(proj(".skill_sablona", "tools", "stary.py")), out
-    zal = zalohy(p, "odstraneno", "tools", "stary.py")
-    assert zal and cti(zal[-1]) == "print('zrusim')\n", out
-    assert "tools/stary.py" in sekce(out, "Odstraněno"), out
-    assert cti(proj("web", "src", "zrus.astro")) == text(zmen(RADKY, 4, "radek 5 vlastni")), out
-    assert "web/src/zrus.astro" in sekce(out, "Šablona už nemá"), out
-    yield "soubor odstraněný ze šablony: neupravený do zálohy, upravený zůstane"
+    for _ in range(2):
+        out = spust(s, p)
+        assert cti(proj("tools", "stary.py")) == "print('zrusim')\n", out
+        assert os.path.isfile(proj(".skill_sablona", "tools", "stary.py")), out
+        assert cti(proj("web", "src", "zrus.astro")) == text(zmen(RADKY, 4, "radek 5 vlastni")), out
+        assert {"tools/stary.py", "web/src/zrus.astro"} <= set(sekce(out, "Šablona už nemá")), out
+    assert not zalohy(p, "odstraneno"), out
+    yield "soubor odstraněný ze šablony zůstane a hlásí se"
 
-    # 10b. upravený soubor, který šablona už nemá, se hlásí dál, dokud ho --vyreseno nepřevezme jako vlastní
+    # 10b. --vyreseno u souboru, který šablona už nemá, smaže jen základ; bez záznamu konfliktu uloží aktuální šablonu
+    out = spust(s, p, "--vyreseno", "web/src/zrus.astro", "--vyreseno", "tools/stary.py")
+    assert not os.path.exists(proj(".skill_sablona", "web", "src", "zrus.astro")), out
+    assert not os.path.exists(proj(".skill_sablona", "tools", "stary.py")), out
     out = spust(s, p)
-    assert "web/src/zrus.astro" in sekce(out, "Šablona už nemá"), out
-    spust(s, p, "--vyreseno", "web/src/zrus.astro")
-    assert not os.path.exists(proj(".skill_sablona", "web", "src", "zrus.astro"))
-    out = spust(s, p)
-    assert "web/src/zrus.astro" not in sekce(out, "Šablona už nemá"), out
+    assert not set(sekce(out, "Šablona už nemá")) & {"tools/stary.py", "web/src/zrus.astro"}, out
     assert cti(proj("web", "src", "zrus.astro")) == text(zmen(RADKY, 4, "radek 5 vlastni")), out
+    assert os.path.isfile(proj("tools", "stary.py")), out
+    out = spust(s, p, "--vyreseno", "web/src/index.astro")
+    assert "není zaznamenaný" in out, out
     yield "odstranění ze šablony se hlásí, dokud není vyřešené"
+
+    # 10c. složka v projektu, kde má nová šablona soubor: nespadnout, nic nepřepsat, hlásit
+    os.remove(sab("src", "slozka", "x.astro"))
+    os.rmdir(sab("src", "slozka"))
+    zapis(sab("src", "slozka"), "teď soubor\n")
+    out = spust(s, p)
+    assert "POZOR" in out, out
+    assert os.path.isfile(proj("web", "src", "slozka", "x.astro")), out
+    assert any(f.startswith("web/src/slozka") for f in sekce(out, "Ke kontrole")), out
+    yield "složka místo souboru se ohlásí"
+
+    # 10d. přejmenování jen ve velikosti písmen (Windows, macOS): jeden soubor, nezapisovat dvakrát, hlásit
+    if os.name == "nt" or sys.platform == "darwin":
+        os.remove(sab("src", "mapa.astro"))
+        zapis(sab("src", "Mapa.astro"), text(zmen(RADKY, 0, "radek 1 Mapa")))
+        out = spust(s, p)
+        assert os.path.isfile(proj("web", "src", "mapa.astro")), out
+        assert cti(proj("web", "src", "mapa.astro")) == text(RADKY), out
+        assert os.path.isfile(proj(".skill_sablona", "web", "src", "mapa.astro")), out
+        assert any(f.lower().startswith("web/src/mapa.astro") for f in sekce(out, "Ke kontrole")), out
+        yield "přejmenování jen ve velikosti písmen se ohlásí"
+    else:
+        yield PRESKOCENO + "velikost písmen (souborový systém ji rozlišuje)"
 
     # 11. projekt s CRLF (git na Windows), obsahem stejný jako šablona → bere se jako neupravený
     zapis(proj("web", "src", "index.astro"), text(RADKY), nl="\r\n")
@@ -244,32 +277,77 @@ def pripady(koren):
             import _winapi
             _winapi.CreateJunction(venku, odkaz)
         except (ImportError, OSError):
-            print("  [PŘESKOČENO] odkaz na složku nejde vytvořit (chybí oprávnění)")
-            yield "odkaz mimo projekt (přeskočeno)"
-            return
-    try:
+            odkaz = None
+    if odkaz:
+        try:
+            out = spust(s, p)
+            assert cti(os.path.join(venku, "poznamky.txt")) == "cizi\n", out
+            assert sorted(os.listdir(venku)) == ["poznamky.txt"], out
+            assert "POZOR" in out, out
+        finally:
+            os.unlink(odkaz) if os.path.islink(odkaz) else os.rmdir(odkaz)
+        yield "odkaz z .skill_sablona/ mimo projekt se odmítne"
+    else:
+        yield PRESKOCENO + "odkaz na složku nejde vytvořit (chybí oprávnění)"
+
+    # 14. záloha starého projektu: cíl zálohy je předem odkaz ven (soubor symlink, jinak junction) → nezapsat, nepřepsat
+    shutil.rmtree(proj(".skill_sablona"))
+    zapis(proj("tools", "nastroj.py"), text(zmen(RADKY, 6, "radek 7 vlastni")))
+    zapis(os.path.join(s, "tools", "nastroj.py"), text(zmen(RADKY, 8, "radek 9 novy")))
+    cil = os.path.join(venku, "cil.txt")
+    zapis(cil, "cizi cil\n")
+    odkazy, druh = [], None
+    for z in zalohy(p):   # zálohy předchozích případů (mohou mít stejnou sekundu)
+        shutil.rmtree(z)
+    ted = time.time()
+    for t in range(-1, 15):   # název zálohy má čas na sekundy – připravit odkazy pro nejbližší sekundy
+        leaf = proj("pracovni", "zaloha_" + time.strftime("%Y%m%d-%H%M%S", time.localtime(ted + t)),
+                    "puvodni", "tools", "nastroj.py")
+        os.makedirs(os.path.dirname(leaf), exist_ok=True)
+        try:
+            if druh != "junction":
+                os.symlink(cil, leaf)
+                druh = "symlink"
+            else:
+                raise OSError
+        except (OSError, NotImplementedError):
+            try:
+                import _winapi
+                _winapi.CreateJunction(venku, leaf)
+                druh = "junction"
+            except (ImportError, OSError):
+                break
+        odkazy.append(leaf)
+    if odkazy:
         out = spust(s, p)
-        assert cti(os.path.join(venku, "poznamky.txt")) == "cizi\n", out
-        assert sorted(os.listdir(venku)) == ["poznamky.txt"], out
+        for leaf in odkazy:
+            os.unlink(leaf) if os.path.islink(leaf) else os.rmdir(leaf)
+        assert cti(cil) == "cizi cil\n", out
+        assert sorted(os.listdir(venku)) == ["cil.txt", "poznamky.txt"], out
         assert "POZOR" in out, out
-    finally:
-        os.unlink(odkaz) if os.path.islink(odkaz) else os.rmdir(odkaz)
-    yield "odkaz z .skill_sablona/ mimo projekt se odmítne"
+        assert cti(proj("tools", "nastroj.py")) == text(zmen(RADKY, 6, "radek 7 vlastni")), out
+        yield f"cíl zálohy jako odkaz ({druh}) se odmítne"
+    else:
+        yield PRESKOCENO + "odkaz na místě zálohy nejde vytvořit (chybí oprávnění)"
 
 
 def main():
     koren = tempfile.mkdtemp(prefix="test_aktualizace_")
-    ok = 0
+    ok = preskoceno = 0
     try:
         for popis in pripady(koren):
-            ok += 1
-            print("  [OK]", popis)
+            if popis.startswith(PRESKOCENO):
+                preskoceno += 1
+                print("  [PŘESKOČENO]", popis[len(PRESKOCENO):])
+            else:
+                ok += 1
+                print("  [OK]", popis)
     except Exception:   # i chybějící soubor je selhání případu
-        print("  [CHYBA] případ", ok + 1, "\n", traceback.format_exc())
+        print("  [CHYBA] případ", ok + preskoceno + 1, "\n", traceback.format_exc())
     finally:
         shutil.rmtree(koren, ignore_errors=True)
-    print(f"== aktualizace: {ok} z {POCET} správně")
-    sys.exit(0 if ok == POCET else 1)
+    print(f"== aktualizace: {ok} z {POCET} správně, přeskočeno {preskoceno}")
+    sys.exit(0 if ok + preskoceno == POCET else 1)
 
 
 if __name__ == "__main__":
