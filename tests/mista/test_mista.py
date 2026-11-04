@@ -135,6 +135,10 @@ ok("vyber: jen kraj = s příznakem", mista.vyber([KRAJ]) == (KRAJ, False), mist
 ok("vyber: jen okres = s příznakem", mista.vyber([OKRES]) == (OKRES, False), mista.vyber([OKRES]))
 ok("vyber: obecní hranice bez addresstype, place_rank 16 je obec",
    mista.vyber([{"class": "boundary", "type": "administrative", "place_rank": 16}])[1] is True)
+POLE = {"class": "place", "type": "locality", "lat": "50.0", "lon": "15.0", "display_name": "Na Vinici, Česko"}
+ok("vyber: pojmenované místo (locality) před vsí – vezme ves", mista.vyber([POLE, VES]) == (VES, True),
+   mista.vyber([POLE, VES]))
+ok("vyber: jen locality = s příznakem", mista.vyber([POLE]) == (POLE, False), mista.vyber([POLE]))
 
 # bod(): nekonečno, NaN a souřadnice mimo rozsah jsou nepoužitelné; dávka se uloží
 for spatne in ({"lat": "Infinity", "lon": "15"}, {"lat": "NaN", "lon": "15"}, {"lat": 50, "lon": "-inf"},

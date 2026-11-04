@@ -40,7 +40,8 @@ def nominatim(par):
 
 
 SIDLA = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "isolated_dwelling", "farm",
-         "locality", "municipality", "borough", "cadastral_community"}   # typy ve třídě place; z boundary jen administrative (obce, katastry)
+         "municipality", "borough", "cadastral_community"}   # typy ve třídě place; z boundary jen administrative (obce, katastry)
+# place=locality chybí schválně: v OSM je to pojmenované neobydlené místo (pole, trať), ne sídlo
 
 
 def je_sidlo(r):
