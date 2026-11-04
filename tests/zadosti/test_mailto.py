@@ -125,6 +125,7 @@ kod, out, err = spust(cesta, "--seznam")
 text = open(cesta, encoding="utf-8", newline="").read()
 s = odkazy(text, "https://email.seznam.cz/")
 ok("--seznam: dva odkazy do Seznam Emailu", kod == 0 and len(s) == 2, (err, s))
+ok("--seznam: upozornění, že Seznam spojí odstavce", "spojí odstavce" in out and out.count("spojí odstavce") == 1, out[-300:])
 if s:
     zaklad, dotaz = s[0].split("?", 1)
     q = urllib.parse.parse_qs(dotaz)

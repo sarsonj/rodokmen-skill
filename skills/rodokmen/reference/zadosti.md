@@ -46,7 +46,8 @@ mezi značky `<!-- odkazy:zacatek -->` a `<!-- odkazy:konec -->` a při dalším
 se tedy dá připsat kamkoli.
 Pak `python3 -I tools/mailto.py pracovni/zadosti/<soubor>.md`. Odkaz `mailto:` otevře výchozí poštovní program.
 Kdo píše z pošty v prohlížeči, dostane odkaz navíc: `--gmail`, `--outlook` (outlook.office.com), `--seznam`
-(Seznam Email; uživatel musí být v Seznamu přihlášený předem, jinak přihlašovací stránka text zahodí). Odkaz
+(Seznam Email; uživatel musí být v Seznamu přihlášený předem, jinak přihlašovací stránka text zahodí. Adresáta,
+předmět i diakritiku Seznam vyplní, ale odstavce spojí do jednoho, takže je před odesláním rozdělte). Odkaz
 `mailto:` delší než 1800 znaků některé programy uříznou, nástroj na to upozorní. Pak raději pošta v prohlížeči,
 nebo ať uživatel text zkopíruje z konceptu.
 

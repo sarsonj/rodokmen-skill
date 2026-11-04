@@ -6,7 +6,8 @@ Použití: python3 -I tools/mailto.py pracovni/zadosti/<koncept>.md [--gmail] [-
   --gmail     navíc odkaz do Gmailu na webu (když aplikace odkazy mailto: neotevře)
   --outlook   navíc odkaz do Outlooku na webu (outlook.office.com)
   --seznam    navíc odkaz do Seznam Emailu (email.seznam.cz); v Seznamu buďte předem přihlášeni,
-              přihlašovací stránka rozepsaný e-mail zahodí
+              přihlašovací stránka rozepsaný e-mail zahodí. Seznam z odkazu spojí odstavce do jednoho,
+              před odesláním je rozdělte (nebo text zkopírujte z konceptu)
 
 Formát konceptu: bloky oddělené řádkem ---, v bloku nadpis „## …“, hned pod ním řádky **Komu:** (víc adres odděl
 čárkou), volitelně **Kopie:**, a **Předmět:**, pod nimi text e-mailu. Od prvního řádku, který není pole, je všechno
@@ -30,7 +31,8 @@ WEB = {"--gmail": ("Gmail", "https://mail.google.com/mail/?", {"view": "cm", "fs
        "--outlook": ("Outlook", "https://outlook.office.com/mail/deeplink/compose?", {}, "subject"),
        # Seznam bere celý odkaz mailto: v parametru mailto; tvar je z obsluhy mailto: v české verzi Firefoxu
        # (https://bugzilla.mozilla.org/show_bug.cgi?id=428475). Bez přihlášení přesměruje na login.seznam.cz
-       # a rozepsaný e-mail zahodí (ověřeno 4. 11. 2026).
+       # a rozepsaný e-mail zahodí (ověřeno 4. 11. 2026). Přihlášenému vyplní adresáta, předmět i diakritiku,
+       # ale zalomení řádků zahodí (CRLF i LF), text přijde jako jeden odstavec (ověřeno 4. 11. 2026).
        "--seznam": ("Seznam Email", "https://email.seznam.cz/newMessageScreen?", None, "mailto")}
 
 
@@ -148,6 +150,9 @@ def main():
         sys.exit("V konceptu není žádný blok s řádky **Komu:** a **Předmět:**.")
     novy = (ZACATEK + "\n---\n\n" + NADPIS + " (klikněte, otevře se e-mail s vyplněným textem)\n\n"
             + "\n".join(radky) + "\n" + KONEC + "\n")
+    if "--seznam" in volby:
+        varovani.append("POZOR: Seznam Email z odkazu spojí odstavce do jednoho. Před odesláním je rozdělte, "
+                        "nebo text zkopírujte z konceptu.")
     zapis(src, pred.rstrip() + "\n\n" + novy + ("\n" + po.lstrip("\n") if po.strip() else ""))
     print("\n".join(radky + varovani))
 
