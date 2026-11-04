@@ -34,6 +34,10 @@ P = {
   `fam` od rodiny (i strom, který si rodina vede sama, např. GEDCOM z jejího MyHeritage), `mh` cizí strom z internetu, `unk`.
 - `LINES = {8: ("Novákové", "Kováři z Holic…"), …}` – jen čísla 8–15; název rodu = příjmení v množném čísle. Vyplň hned, jak znáš pradědečka nebo prababičku – bez LINES web neukáže rody a nepřijde rada k příběhu.
 - `SIDE` – sourozenci a další příbuzní: `dict(k=<číslo předka>, n="Josef Novák (1865–1920)", t="text", r=[klíče])`.
+  **`k` = předek, jehož je sourozencem** (ne „ke kterému patří“): web ho ukáže jako bratra/sestru předka `k`.
+  Dítě předka 16, které není v linii, je sourozenec předka 8 → `k=8`; strýc výchozí osoby → `k=2` nebo `3`.
+  `t` začni vztahem k předkovi `k` („Bratr Jana.“, „Sestra Marie.“, „Nevlastní bratr Jana.“) – podle prvního slova
+  „Bratr“/„Sestra“ ho stránka rodiče ukáže mezi dětmi. `kontrola.py` upozorní na text „Syn/Dcera <jméno předka k>“.
 - `ISSUES` – dvojice `("Otázka", "Vyřešeno: … / Hypotéza: … / Otevřené: …")` → stránka „Co hledáme“ (vyřešené se skryjí).
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.
@@ -53,11 +57,15 @@ P = {
 ## `svazky.json`
 `{"1a0b2337": {"archiv": "SOA Zámrsk – Sbírka matrik…", "portal": "ARON", "svazek": "N Holice 1880–1900, sign. …",
 "popis": "obce", "url": "odkaz na svazek"}}` – u ARON zapisuje `aron_img.py <apu> svazek`.
+Doklad, který online není (rodný list od rodiny, kopie z badatelny), má svazek bez `portal` a `url`, např.
+`"rodina": {"archiv": "doklady od rodiny", "svazek": "Rodné a oddací listy", "popis": "dokumenty/…"}` – `kontrola.py`
+pak u jeho zápisů nechce odkaz na snímek.
 
 ## `prepisy.json`
 `{"<klic>": {"orig": "[Datum] 14. února 1890\n[Dům] 112\n[Otec] …", "cs": "Český překlad celou větou…"}}`
 - `orig` věrný přepis po sloupcích, `[Název sloupce]` v hranatých závorkách, nejisté „(?)“, nečitelné „[…]“, zkratky ponechat.
 - `cs` srozumitelný překlad pro rodinu; vysvětli staré pojmy (domkář, podruh).
+- Jiná pole web nezobrazí (třeba `preklad`) – `zapis.py prepisy` je odmítne a `kontrola.py` je ohlásí.
 
 ## `zvyrazneni.json`
 `{"<klic>": {"boxes": [[x0, y0, x1, y1]], "status": "ok", "note": ""}}` – zlomky šířky/výšky obrázku `vyrezy/<klic>.jpg`.

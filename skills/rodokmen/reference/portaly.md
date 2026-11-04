@@ -298,8 +298,33 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
 
 ## Starší prameny (17.–18. století)
 - **Soupis poddaných podle víry 1651** – celé rodiny s věkem, po krajích; edice Národního archivu jako PDF
-  (nacr.cz, hledej „Soupis poddaných podle víry“ + kraj). Fulltext v PDF, příjmení často bez diakritiky / s jinou ortografií
-  (Šaršoun → „Šaroun“, dlouhé ſ jako f). Ves je v rámci panství; poznamenej si stránku edice.
+  (na.gov.cz → Výzkum, publikace → Publikace → E-knihy; na stránce publikace odkaz na PDF – Boleslavsko, Berounsko,
+  Loketsko, Plzeňsko, Kouřimsko, Rakovnicko, Čáslavsko, Chrudimsko, Hradecko-Bydžovsko, Bechyňsko…). Svazky jsou
+  **volně ke stažení zdarma**, nic se nekupuje ani nepůjčuje – ať je uživatel stáhne (stovky stran, jednotky MB)
+  do `dokumenty/soupis1651/`. Postup:
+  1. **Nejdřív úvod svazku**: soupis se nezachoval celý. V úvodu edice je seznam panství (a statků), jejichž soupis
+     se dochoval (za Boleslavsko jen 11 panství a 27 statků, asi 41 % panství). Najdi panství, kam ves v roce 1651
+     patřila (vrchnost uvádějí starší zápisy v matrikách nebo popis obce), a podívej se, jestli v seznamu je. Když není, soupis pro ves nemáš – zapiš to do
+     deníku a dál nehledej. Úvod říká i to, jestli se u panství zapsali všichni poddaní, nebo jen část (v některých
+     krajích jen nekatolíci) – pak chybějící rodina nic nedokazuje. Soupis je řazený **podle panství, ne podle obcí**:
+     stejnojmenná ves může patřit k jinému panství, než čekáš – ověř ji podle sousedních vsí v soupisu.
+     Ves rychle najdeš přes **rejstřík míst na konci svazku** (má i německá jména obcí a odkazy „viz“).
+  2. **Text z PDF**: `pdftotext -layout -f <od> -l <do> svazek.pdf pracovni/soupis.txt` (jen strany panství).
+     `pdftotext` u těchto edic **rozbije diakritiku** (ě → ì, ř → ø, š a ž zmizí úplně), takže hledání „Šaršoun“
+     nic nenajde. Hledej proto **část jména bez písmen s diakritikou** (u „Šaršoun“ třeba `grep -i "ar.\?oun"`),
+     několik pravopisných variant (s/ss/ß, w/v, y/i, ſ čtené jako f), **německé tvary** příjmení (např. Kwaiser,
+     Qweiser) a název vsi. Edice navíc přepisuje dobový pravopis (Šaršoun → „Šaroun“).
+  3. **Přečti stránku jako obrázek**, ne z textu: `pdftoppm -f <strana> -l <strana> -r 150 -png svazek.pdf
+     pracovni/soupis_s<strana>` a výsledný obrázek si prohlédni. Z obrázku dělej i výřez pro web
+     (`vyrez.py`) – text z `pdftotext` jako přepis nepoužívej.
+  4. **Zápis do dat:** svazek do `svazky.json` (archiv „Národní archiv – edice Soupisu poddaných 1651“, kraj, rok
+     vydání, `url` na PDF), zápis s klíčem např. `soupis1651_<ves>_<příjmení>`, `odkaz` = adresa PDF + „s. <strana>“.
+     Soupis je přepis v edici, ne originál; údaj z něj je doložený, ale **ztotožnění s předkem z matrik je obvykle jen
+     `prob`** (věk je zaokrouhlený, jména se opakují). `doc` jen když sedí ves, jméno, věk i členové domácnosti
+     (manželka, děti) s pozdějšími matrikami.
+  `pdftotext` a `pdftoppm` jsou z balíku poppler (macOS `brew install poppler`, Linux `poppler-utils`). Chybí-li
+  (častěji na Windows), přečti strany přímo z PDF nástrojem pro čtení souborů (Read umí PDF po stranách, nejvýš 20
+  najednou) a obrázek strany pro výřez ať uživatel uloží jako snímek obrazovky do `pracovni/`.
 - **Berní rula 1654** – jen hospodáři s půdou; edice a rejstříky v knihovnách (Kramerius/DNNT).
 - **Gruntovní (pozemkové) knihy** – převody domů z otce na syna; online jen část (SOA Plzeň téměř vše, SOA Praha část,
   ostatní spíš badatelna). Fond „Velkostatek <panství>“.

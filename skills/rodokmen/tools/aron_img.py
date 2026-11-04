@@ -8,10 +8,15 @@ Použití:
   aron_img.py <apu_id> info          -> název svazku a počet snímků
   aron_img.py <apu_id> link <n>      -> trvalý odkaz na snímek n v prohlížeči ARON (pole "odkaz" v zaznamy.json)
   aron_img.py <apu_id> svazek        -> zapíše svazek do data/svazky.json (klíč = prvních 8 znaků apu_id)
+  aron_img.py opravit-odkazy [--zapsat]
+                                     -> odkazy v data/zaznamy.json z verzí do 0.7.0 vedly na první snímek knihy
+                                        (soubor PUBLISHED místo TILE, #18); vypíše, které opraví, s --zapsat je opraví
+                                        (přes zapis.py, formát souboru zůstane). Popis svazku bere z mezipaměti,
+                                        chybějící stáhne – jeden dotaz na svazek, přes brzdu.
 
 Popis svazků se ukládá do pracovni/.cache_aron/<apu_id>.json (ve složce projektu).
 """
-import glob, json, math, os, shutil, ssl, subprocess, sys, tempfile, time, urllib.error, urllib.request
+import glob, json, math, os, re, shutil, ssl, subprocess, sys, tempfile, time, urllib.error, urllib.request
 import concurrent.futures as cf
 import xml.etree.ElementTree as ET
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
@@ -146,7 +151,59 @@ def chyba_archivu(e):
     sys.exit(f"ARON neodpovídá ({duvod}) – zkus to později.")
 
 
+ODKAZ = re.compile(r"https://aron\.vychodoceskearchivy\.cz/apu/([^/\s]+)/dao/([^/\s]+)/file/([^/?#\s]+)")
+
+
+def opravit_odkazy(zapsat):
+    """Odkazy na soubor PUBLISHED → TILE téhož snímku (#18)."""
+    path = os.path.join(ROOT, "data", "zaznamy.json")
+    zaz = json.load(open(path, encoding="utf-8-sig")) if os.path.exists(path) else []
+    podle_apu = {}
+    for z in zaz:
+        m = ODKAZ.fullmatch((z.get("odkaz") or "").strip())
+        if m:
+            podle_apu.setdefault(m.group(1), []).append((z["klic"], m.group(3)))
+    oprava, dobre, nevim = [], 0, []
+    for apu, zaznamy in podle_apu.items():
+        try:
+            vol = volume(apu)
+        except SIT + (ValueError, urllib.error.HTTPError) as e:
+            nevim += [f"{k} (svazek {apu} se nepodařilo načíst: {e})" for k, _ in zaznamy]
+            continue
+        soubory = {f["id"]: (dao, f) for dao in vol.get("digitalObjects") or [] for f in dao.get("files", [])}
+        for klic, fid in zaznamy:
+            dao, f = soubory.get(fid, (None, None))
+            if not f:
+                nevim.append(f"{klic} (soubor {fid} ve svazku není)")
+            elif f["type"] == "TILE":
+                dobre += 1
+            else:
+                tile = [(d, x) for d in vol.get("digitalObjects") or [] for x in d.get("files", [])
+                        if x["type"] == "TILE" and x["order"] == f["order"]]
+                if tile:
+                    d, x = tile[0]
+                    oprava.append((klic, f["order"], f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{d['id']}/file/{x['id']}"))
+                else:
+                    nevim.append(f"{klic} (snímek {f['order']} nemá dlaždice)")
+    for klic, n, url in oprava:
+        print(f"{'opravuji' if zapsat else 'opravit'}: {klic} (snímek {n}) → {url}")
+        if zapsat:
+            r = subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "zapis.py"), "zaznamy", klic, "-", "--sloucit"],
+                               input=json.dumps({"odkaz": url}), text=True, encoding="utf-8", capture_output=True)
+            if r.returncode:
+                sys.exit(f"zapis.py selhal u {klic}: {r.stderr or r.stdout}")
+    for x in nevim:
+        print("nevím:", x)
+    print(f"odkazů na ARON: {dobre + len(oprava) + len(nevim)}, v pořádku {dobre}, "
+          f"{'opraveno' if zapsat else 'k opravě'} {len(oprava)}, nejasné {len(nevim)}"
+          + ("" if zapsat or not oprava else " – opravíš je: aron_img.py opravit-odkazy --zapsat"))
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "opravit-odkazy":
+        opravit_odkazy("--zapsat" in sys.argv)
+        sys.exit(0)
     if len(sys.argv) < 3 or sys.argv[1] in ("-h", "--help"):
         sys.exit(__doc__)
     apu = sys.argv[1]
@@ -178,11 +235,14 @@ if __name__ == "__main__":
         sys.exit(0)
     if sys.argv[2] == "link":
         n = int(sys.argv[3])
-        dao = (vol.get("digitalObjects") or [{}])[0]
-        pub = [f for f in dao.get("files", []) if f["type"] == "PUBLISHED" and f["order"] == n]
-        if not pub:
+        # prohlížeč ARONu najde snímek jen podle souboru typu TILE (dlaždice); s id varianty PUBLISHED
+        # otevře knihu vždy na prvním snímku (#18)
+        tile = [(dao, f) for dao in vol.get("digitalObjects") or [] for f in dao.get("files", [])
+                if f["type"] == "TILE" and f["order"] == n]
+        if not tile:
             bez_snimku(vol, tiles, n)
-        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{pub[0]['id']}")
+        dao, f = tile[0]
+        print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{f['id']}")
         sys.exit(0)
     n = int(sys.argv[2])
     lo = int(sys.argv[3]) if len(sys.argv) > 3 else 1
