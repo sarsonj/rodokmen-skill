@@ -5,7 +5,7 @@ Použití: kontrola.py
 Vypíše CHYBY (rozbijí web nebo jsou věcně špatně) a UPOZORNĚNÍ (něco chybí, doplnit).
 Návratový kód 1, pokud jsou chyby.
 """
-import datetime, json, os, re, sys
+import datetime, json, os, re, sys, unicodedata
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -63,6 +63,35 @@ def main():
     for k in LINES:
         if k not in range(8, 16):
             err.append(f"LINES: rod {k} – rody mají čísla 8 až 15 (pradědečci a prababičky)")
+
+    def kmeny(s):   # první 4 písmena slov bez diakritiky; text v závorce se nepočítá
+        s = "".join(c for c in unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", s).lower())
+                    if not unicodedata.combining(c))
+        return {w[:4] for w in re.findall(r"[a-z]{3,}", s)}
+    for k, p in P.items():   # sňatek „× Jméno“ má jmenovat partnera na sousedním čísle (k ^ 1, SAME vzít v úvahu)
+        satky = [kmeny(f) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×") and kmeny(f)]
+        if not isinstance(k, int) or not satky:
+            continue
+        kandidati = {k ^ 1} | {a ^ 1 for a, c in SAME.items() if c == k and isinstance(a, int)}
+        partneri = {SAME.get(sp, sp) for sp in kandidati} & set(P)
+        if partneri and not any(kmeny(P[sp].get("n", "")) & s for sp in partneri for s in satky):
+            sp = min(partneri)
+            warn.append(f"osoba {k} ({p.get('n')}): žádný sňatek (×) nejmenuje partnera {sp} ({P[sp].get('n')})"
+                        " – patří sňatek k této osobě, je číslo správně?")
+
+    texty_zaz = {z.get("klic"): f"{z.get('shrnuti', '')} {z.get('nazev', '')}" for z in zaz}
+    ukazka_zaz = {z.get("klic") for z in zaz if z.get("ukazka")}
+    for k, p in P.items():   # čp. z faktů má být v citovaném zápisu (přepisy píšou „No 56“, „N. 56“, „č. 56“)
+        if p.get("st") != "doc" or not set(p.get("r", [])) - ukazka_zaz:   # vymyšlené zápisy ukázky přepis nemají
+            continue
+        texty = [texty_zaz.get(r, "") + " " + " ".join(str(prep.get(r, {}).get(x, "")) for x in ("orig", "cs"))
+                 for r in p["r"]]
+        fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
+                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
+        for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))), key=int):
+            if not any(re.search(rf"(?<!\d){c}(?!\d)", t) for t in texty):
+                warn.append(f"osoba {k} ({p.get('n')}): čp. {c} není v žádném citovaném zápisu – ověřit, "
+                            "nebo označit zdroj (strom, vyprávění)")
 
     cited = ({r for p in P.values() for r in p.get("r", [])} | {r for s in SIDE for r in s.get("r", [])}
              | {r for h in ns.get("HYPOTEZY", []) if isinstance(h, dict) for r in h.get("zaznamy", [])})
