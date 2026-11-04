@@ -84,7 +84,27 @@ a po úpravě zkontroluj web na mobilu i počítači.
 `python3 -I tools/fan_chart.py vystupy/` → SVG a HTML (a PNG, je-li nainstalovaný Google Chrome, na Windows i Microsoft Edge) k tisku.
 
 ## Aktualizace staršího projektu
-Znovu spusť `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`. Data (`data/`, výřezy) zůstanou, `tools/` se přepíše
-a soubory ve `web/`, které se liší od nové šablony, taky – staré verze uloží do `pracovni/zaloha_web_<datum>/` a vypíše jejich seznam.
-Upravoval-li jsi s uživatelem vzhled (styly, stránky), převezmi úpravy ze zálohy (porovnej soubory) a ověř web. Pak ve `web/`
-`npm install` a `npm run data`. Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci.
+Znovu spusť `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`. Data (`data/`, výřezy) zůstanou. Projekt má
+v `.skill_sablona/` kopii šablony `web/` a `tools/`, ze které vznikl (commitovat s projektem), a skript podle ní rozhodne
+o každém souboru a vypíše seznam:
+- **Přepsáno**: soubor projekt neupravoval, nahradila ho nová verze.
+- **Ponecháno**: vlastní úprava, šablona se nezměnila.
+- **Sloučeno**: změnila se úprava i šablona, každá jinde; `git merge-file` je spojil. Ověř, že soubor dává smysl.
+- **Ke kontrole**: úprava i šablona změnily stejná místa, chybí `git`, soubor přidal projekt i nová šablona, nebo ho
+  projekt smazal a šablona změnila. Soubor zůstal, jak byl; nová verze je v `pracovni/zaloha_<datum>/nova_sablona/`
+  (u konfliktu sloučení, kdy je `git`, vedle i návrh se značkami `<<<<<<<` jako `.konflikt`). Převezmi změny šablony
+  ručně a pak spusť `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu> --vyreseno web/src/…` (volbu lze
+  opakovat). Jako základ uloží přesně ten návrh, který je v záloze (zapamatovaný v `.skill_sablona/cekajici.json`),
+  takže pozdější změny šablony přijdou při další aktualizaci; soubor v projektu nezmění. Bez záznamu uloží aktuální
+  verzi šablony a řekne to. Do té doby se soubor hlásí při každé aktualizaci. Do ke kontrole patří i složka na místě
+  souboru (nebo naopak) a na Windows a macOS cesty, které se liší jen velikostí písmen; ty skript nezmění.
+- **Smazáno v projektu**: soubor projekt smazal a šablona ho nezměnila, zůstane smazaný.
+- **Šablona už nemá**: soubor zůstal (skript nic nemaže) a hlásí se při každé aktualizaci. Zkontroluj, jestli ho web
+  ještě potřebuje; případně ho smaž ručně a spusť `--vyreseno` s jeho cestou.
+- **Přepsáno, původní verze v záloze**: projekt ze starší verze bez `.skill_sablona/`. Upravené soubory nahradila nová
+  verze a původní jsou v `pracovni/zaloha_<datum>/puvodni/`; vlastní úpravy z nich převezmi (porovnej soubory).
+
+Odkaz (symlink, junction) ve `web/`, `tools/`, `.skill_sablona/` nebo `pracovni/`, který vede mimo projekt, a odkaz
+nebo složku na místě zálohy skript odmítne s hláškou POZOR a soubory za nimi přeskočí (bez zálohy nic nepřepíše).
+
+Pak ověř web a ve `web/` spusť `npm install` a `npm run data`. Starou šablonu přihlášení `export_web.py` odmítne s výzvou k aktualizaci.

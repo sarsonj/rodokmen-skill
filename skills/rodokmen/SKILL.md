@@ -29,8 +29,8 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    a pokračuj podle sekce „Rozpracováno“. Krátce uživateli shrň, kde jste skončili.
    **Verze:** porovnej soubor `.skill_verze` v projektu se `SKILL_DIR/VERZE`. Chybí-li, nebo se liší, řekni jednou větou,
    že je nová verze skillu, a nabídni aktualizaci projektu: `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`
-   (data zůstanou, změněné soubory webu se zazálohují do `pracovni/`), pak ve `web/` `npm install`. Po souhlasu ji udělej
-   a podle výpisu převezmi ze zálohy případné úpravy vzhledu (viz `reference/web.md`). Odmítne-li, připomeň to až příště.
+   (data zůstanou, vlastní úpravy webu a `tools/` se sloučí s novou šablonou), pak ve `web/` `npm install`. Po souhlasu
+   ji udělej a podle výpisu vyřeš soubory ke kontrole a zálohy (viz `reference/web.md`). Odmítne-li, připomeň to až příště.
    Aktualizace z verze starší než 0.6.0 přidá brzdu proti zablokování archivem: zeptej se i na hlídač sítě (viz Fáze 0,
    krok 2). Po aktualizaci řekni uživateli, ať pro jistotu restartuje Claude Code – změny v `.claude/settings.json`
    (zákaz `curl`, hlídač) se jinak nemusí projevit hned.
