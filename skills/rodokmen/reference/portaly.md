@@ -372,6 +372,14 @@ A když osoba „chybí“ v očekávaných matrikách (stěhovala se se službo
   ALEX a annoshow jsou za Cloudflare – neobcházet.
 - Kramerius NK ČR (české noviny, ročenky, adresáře): `python3 -I tools/kramerius.py 'text_ocr:"Jan Novák" AND datum_begin:[1900 TO 1910]'`.
 - Vojenské schematismy: fulltext na archive.org (např. `militrschematis13kriegoog` = 1850).
+- **Vojáci 1. světové války – seznamy ztrát** (ANNO, plný text): `python3 -I tools/anno.py '"Příjmení Jméno"' 1914 1919 3 --snip --ztraty`
+  (jen `vll` Verlustliste, `vlv` abecední rejstřík s číslem seznamu, `nvv` Nachrichten über Verwundete; jiné listy
+  `ANNO_TITLE=ptb,wrz`). Záznam: hodnost, pluk, setnina, **domovská obec, ročník**, raněn/zajat/padl – např.
+  „Hromadko Wenzel, Inft., IR. Nr. 98, 4. Marschkomp., Rokosnitz, 1881, Schuß …“. Pořadí je „Příjmení Jméno“, německy
+  (Wenzel, Johann) a zkus i bez háčků; shodu potvrď obcí a ročníkem. Běžná příjmení mají tisíce výskytů – hledej
+  vzácným příjmením nebo domovskou obcí v německém tvaru. Krajské noviny otiskovaly seznamy padlých okresu.
+  Padlí na frontě v domovské matrice zemřelých často nejsou. Kartotéka padlých VÚA je jen v Digitální badatelně MO
+  po registraci (stará databáze VÚA už neexistuje).
 - **Rizika:** jména se opakují a fulltext šumí („Winter“ = i zima, „Novák“ = nový obyvatel). Ztotožni jen při shodě víc údajů (bydliště,
   funkce navazující na matriku, časová posloupnost). Zdroj je „J“ (jiný pramen) – vodítko a příběh, ne náhrada matriky.
 - Výstřižky jsou skvělé na web: ulož do `dokumenty/noviny/`, přes `vyrez.py` a do `dokumenty.json`.
