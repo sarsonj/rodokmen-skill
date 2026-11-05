@@ -87,13 +87,14 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   dobrovolnický rejstřík. Dobrá cesta, když farní matrika mlčí. U obce se neukážou (patří okresu) – hledej u okresního města.
 
 ## SOA Plzeň (Porta fontium, portafontium.eu) – `tools/portafontium.py`, bez prohlížeče
-- `portafontium.py fara <fara>` → knihy fary: kniha | obce | roky a druhy (`*` N, `oo` O, `+` Z, `i` index) | popis.
-  `<fara>` je název římskokatolické fary („Dolní Bělá“, „Mýto“ – diakritiku nástroj odstraní) nebo přímo část
-  její adresy (`dolni-bela` =
-  `…/contents/register/soap-pn/cirkev-rimskokatolicka/dolni-bela`). Obec → faru nástroj nehledá: faru zjisti ve vyhledávání
-  matrik na portálu (pole Místo, v prohlížeči) nebo v popisech knih okolních far. Bez prohlížeče: stránka
-  `https://www.portafontium.eu/searching/register?search_api_views_fulltext_1=<obec>` vypíše odkazy
-  `/register/soap-pn/<kniha>` – `<kniha>` (např. `kdyne-29`) rovnou použij v `portafontium.py info`.
+- **Obec → knihy:** `portafontium.py obec "<obec>"` → všechny knihy s obcí v popisu, seskupené podle fary a seřazené podle
+  let (kniha | obce | roky a druhy: `*` N, `oo` O, `+` Z, `i` index | popis). Je z něj vidět i přechod obce mezi farami
+  (Bučí: Dolní Bělá do 1795, Krašovice od 1787) a civilní matriky okresních úřadů. Portál hledá i historické a podobné
+  názvy – stejnojmenné obce jiných far (Bučí × Buč u Komárova) vyřaď podle sloupce obcí. Nic nenalezeno? Zkus jiný tvar
+  (Stajanovice × Stojanovice, německý název) nebo sousední obec.
+- `portafontium.py fara <fara>` → všechny knihy fary ve stejném tvaru. `<fara>` je název („Dolní Bělá“, „Mýto“ –
+  diakritiku nástroj odstraní) nebo část adresy fary (`dolni-bela`); stejnojmenné fary mají příponu okresu
+  (`plana-ps`, `radnice-ro`) – správnou adresu ukáže `obec`.
 - `portafontium.py info <kniha>` (`dolni-bela-17`) → signatura, druh, text desky a **obsah** – u knih psaných po vesnicích
   vypíše, na kterých foliích je která obec („Ves X z let 1862–1901 = fol. 121–200“).
 - `portafontium.py snimek <kniha> <snímek> pracovni/x.jpg [nahled] [x0,y0,x1,y1]` → celá stránka v plném rozlišení jedním
