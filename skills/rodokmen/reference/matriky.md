@@ -16,6 +16,11 @@ vojenské záznamy, domovské listy, parte. Viz `portaly.md` a `playbook.md` §2
 Do archivu (a tedy online) jde svazek, až od jeho **posledního** zápisu uplyne: narození **100 let**, sňatky **75**, úmrtí **30**.
 Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / pověřeném úřadě – výpis dostane přímý příbuzný
 (žádost + doklady o příbuzenství). Zapiš do `archivni_dotazy.md`.
+Katalogy archivů uvádějí **i svazky, které jsou ještě na úřadě**: v detailu „Technická poznámka: MATRIKA JE DOSUD
+ULOŽENA NA MATRIČNÍM ÚŘADĚ“, „Místo uložení: Obecní úřad X“ a 0 příloh (snímků). Tu poznámku přečti dřív, než hledáš
+snímky; svazek rovnou zapiš do `archivni_dotazy.md` i s místem uložení (tam se píše o výpis). Zkus **samostatný rejstřík**
+(I-N, I-O, I-Z) přes stejné roky – bývá online a dá aspoň datum a číslo domu. Uživateli řekni předem, že narození
+zhruba po roce 1910 často online nebudou (kniha pokračuje za rok 1926, lhůta běží od posledního zápisu).
 
 ## Jak vypadá hledání v praxi
 1. **Obec → farnost.** Malé vesnice patřily k faře v sousední obci; popis svazku vyjmenovává všechny obce farnosti.
