@@ -166,10 +166,17 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Hledej obec a vyfiltruj Matriky (ikona, potom znovu lupa). Hledání vrací i civilní matriky (u obce stovky svazků) –
   filtr „Datum od – do“ (podle začátku svazku, např. 1680–1873) nechá jen církevní. Knihy bývají řazené po obcích
   a na konci mají rejstřík. Vedle farních knih bývají i **druhopisy** („T“ v signatuře, viz `matriky.md`).
+  Když pole Signatura „zamrzne“ a vrací pořád předchozí knihu, napiš obec do hlavního fulltextového pole (Enter)
+  nebo ji vyber v poli „Územní rozsah“ z našeptávače.
+- **Detail svazku nikdy neotvírej přímou adresou `vysledekDetail/<id>`.** Badatelna drží výsledky hledání v relaci
+  a taková adresa ukáže N-tý (bez `page` první) výsledek posledního hledání nebo snímky naposledy otevřeného
+  svazku – ne svazek z adresy. Svazek otevři kliknutím ve výsledcích (ikona snímků v řádku, nebo mozaika výsledků
+  a dvojklik na náhled) a **vždy na stránce ověř signaturu a název knihy**, než z ní cokoli čteš.
 - **Seznam svazků a ID snímků si hned ulož** do `pracovni/<svazek>/` – relace po pár hodinách vyprší a výsledky
   hledání platí jen v ní. Na detailu svazku: entita `document.querySelector('[entityuuid]').getAttribute('entityuuid')`
   (u svazků uložených v jiném archivu nemá tvar UUID – nehledej ji regexem), ID snímků jsou hodnoty
-  `select.getScanSelect option` (tvar „N%20uuid“). Snímek pak otevřeš kdykoli bez hledání:
+  `select.getScanSelect option` (tvar „N%20uuid“). Snímek pak otevřeš kdykoli bez hledání (jediná přímá adresa,
+  která na relaci nezávisí):
   `/da/showZoomifySeparate?imageNumberSeparate=N&myEntityUuid=<entita>&myImageUuid=<uuid>`.
 - Adresa obrázku: `fetch('/da/showZoomify/<id svazku z URL>/<část option.value za „%20“>')` vrátí HTML s cestou
   `…/images/<složka>/<uuid>.jpg`. Cesta se u svazků liší (`…/CZ-217000010/NAD-165/dao/images/…`, `…/zao/matriky/dao/images/…`)
