@@ -50,6 +50,38 @@ Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / 
    Před rokem 1868 byly při katolickém otci katolické všechny děti. Dceru evangelíka a katoličky proto hledej
    nejdřív v katolické matrice, syna v evangelické.
 
+## Rekonstrukce rodiny a víc kandidátů stejného jména (`tools/rodiny.py`)
+Dvě situace, kde jeden zápis nestačí a pomůže skládat celou rodinu:
+- **Sourozenci předka.** Rodina měla často 8–15 dětí. Křty sourozenců doplní, co v zápisu předka chybí nebo je nečitelné:
+  rodné příjmení matky, dům, prarodiče, řemeslo. Přes děti z druhého manželství se najde i druhá žena a její rodiče.
+- **Víc kandidátů.** V 18. století bývá v jedné vsi několik párů stejných jmen (skutečně: dva páry „Václav Novák ×
+  Kateřina“ křtily děti ve stejných letech 1754–1764). Zápis „syn Václava a Kateřiny“ pak sedí na všechny. **Nevybírej toho, koho najdeš první.**
+
+Postup jako hledání do šířky (BFS). Případ je soubor `data/rodiny/<případ>.json` (stav výzkumu, patří do gitu; web ho nečte), vede ho `rodiny.py`:
+1. `rodiny.py novy <případ> "cíl" --osoba N`. Pak **kotvy**: zápisy, které o předkovi víme jistě (`zapis` s `"patri": "kotva"`).
+2. Každého kandidáta zapiš (`kandidat`). Kdo zjevně nesedí věkem nebo místem, hned `stav … vyloucen "důvod"`.
+3. **Vrstva 1**: vlastní zápisy kandidáta (křest, svatba, úmrtí). **Vrstva 2**: jeho děti a jejich kmotři, svědci na svatbě,
+   sourozenci, rodina nevěsty. **Vrstva 3**: rodiče, tchán, kmotři dětí jako samostatné osoby. Úkoly zapiš (`ukol`)
+   a po přečtení uzavři (`hotovo`, i „nic jsem nenašel“ s `--nic`). Vrstvu dokonči u **všech** otevřených kandidátů,
+   teprve pak jdi hlouběji. Srovnání musí být férové: u každého stejné druhy zápisů.
+4. Ke každému přečtenému zápisu vypiš **všechny osoby s rolí** (kmotři, svědci, porodní bába, sousedé). Právě kmotři
+   rozhodují: rodiny měly stálé kmotry a ti se drželi příbuzenstva a sousedů.
+5. Po každé vrstvě `prunik`: ukáže osoby a domy kandidáta, které se potkají s kotvami nebo s `osoby.py`. Shody u všech
+   kandidátů nerozlišují (vypíše je zvlášť). `rodiny` seskupí křty podle rodičů a upozorní na mezery (chybějící dítě),
+   opakované jméno (předchozí dítě zemřelo), stálé kmotry (počítá kmotry i svědky – v 18. století se titíž lidé
+   v rolích střídají) a **dva porody méně než 9 měsíců po sobě**: to jedna matka nestihne, jde o dva stejnojmenné páry,
+   nebo o špatně přečtené datum (měsíc a rok bývají v nadpisu sloupce o kus výš).
+6. Rozhoduje **doklad**, ne počet shod. Shoda kmotra nebo domu je stopa, věta „syn X“ v zápisu je důkaz. Kandidát, který
+   zemřel dřív, než se předek naposledy objevuje jako živý, odpadá. Potvrzeného (`stav … potvrzen`) zapiš do `osoby.py`
+   jako `doc` jen při přímém dokladu, jinak `prob` s poznámkou, čím se ostatní vyloučili. Do deníku zapiš i vyloučené.
+
+Pozor na závěr „ve vsi křtí jen jeden pár“ z pár let: druhý pár mohl mít zrovna přestávku. Rozhodne až souvislá řada
+let před i po narození předka a porovnání prvního dítěte se svatbami kandidátů (první dítě rok po svatbě A, ne B).
+
+Venkov se ženil v okruhu pár vsí a kmotři se drželi v rodině, proto se stopy kandidátů s kotvami obvykle potkají
+do 2.–3. vrstvy. Ve městech a v 19. století s rostoucí mobilitou to funguje hůř.
+Nástroj porovnává jména volně (latinská a německá křestní jména, -ová, -ek/-ková, w/v, cz/č) – shody jsou náměty, ne závěry.
+
 ## Knihy řazené po vsích (časté 1784–1900, všechny archivy)
 Venkovské fary vedly knihu často **po vsích**: každá ves má vlastní oddíl s vlastním stránkováním (foliací) a roky běží
 jen uvnitř oddílu. Oddíly nejdou podle let, pokračují vzadu („ad pag. 70“, „vide reliquos pag.“) a oddíl jedné vsi bývá
