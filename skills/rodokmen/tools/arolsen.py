@@ -119,7 +119,11 @@ def hledat(dotaz, maxn, jazyk, filtry=None, od=0, podrobne=False):
     else:
         if len(rows) > maxn:
             print(f"… načteno {len(rows)} z {celkem} záznamů, zobrazeno {maxn}; víc ukáže --max {len(rows)}, užší výběr rok, křestní jméno nebo filtr", file=sys.stderr)
-        if int(celkem) > od + len(rows):
+        try:
+            vic = int(re.sub(r"\D", "", str(celkem)) or 0) > od + len(rows)
+        except ValueError:
+            vic = False
+        if vic:
             print(f"… celkem {celkem} záznamů, načteno {len(rows)} (od {od}); další tisícovka: --od {od + len(rows)}, užší výběr rok, křestní jméno nebo filtr",
                   file=sys.stderr)
 
@@ -132,13 +136,15 @@ def karta(objid, out):
         sys.exit("K záznamu není obrázek (jen údaj v kartotéce).")
     base, ext = os.path.splitext(out)
     for i, o in enumerate(obrazky, 1):
-        url = o["image"].replace("\\\\", "//").replace("\\", "/")
+        url = (o.get("image") or "").replace("\\\\", "//").replace("\\", "/")
         if urllib.parse.urlsplit(url).hostname != "collections-server.arolsen-archives.org":
             sys.exit(f"Neočekávaný server obrázku: {url[:80]}")
         cil = out if i == 1 else f"{base}_{i}{ext}"
         os.makedirs(os.path.dirname(os.path.abspath(cil)), exist_ok=True)
         req = urllib.request.Request(url, headers={"Referer": WEB, "User-Agent": "Mozilla/5.0 (rodokmen)"})
         with _op.open(req, timeout=90) as r:
+            if urllib.parse.urlsplit(r.geturl()).hostname != "collections-server.arolsen-archives.org":
+                sys.exit(f"Přesměrování na neočekávaný server: {r.geturl()[:80]}")
             if not (r.headers.get("Content-Type") or "").startswith("image/"):
                 sys.exit(f"Server nevrátil obrázek ({r.headers.get('Content-Type')}).")
             data = r.read()

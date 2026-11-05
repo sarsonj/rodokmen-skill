@@ -74,5 +74,10 @@ open(os.path.join(STAV, "test_portal.json"), "w").write("{rozbitý soubor")
 k, _, _ = kod(souhlas.vyzaduj, *ARGS)
 ok("poškozený soubor se bere jako chybějící souhlas", k == souhlas.KOD, k)
 
+d["cas"] = time.time() + 10 * 24 * 3600
+json.dump(d, open(os.path.join(STAV, "test_portal.json"), "w"))
+k, _, _ = kod(souhlas.vyzaduj, *ARGS)
+ok("souhlas s časem v budoucnosti neplatí", k == souhlas.KOD, k)
+
 print(f"\n{sum(vysledky)} z {len(vysledky)} v pořádku")
 sys.exit(0 if all(vysledky) else 1)

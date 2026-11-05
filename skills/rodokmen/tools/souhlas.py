@@ -6,6 +6,9 @@ nemá, takže bez tohoto modulu by potvrzení přeskočil. Proto nástroj bez za
 Souhlas smí zapsat jen uživatel sám: příkaz `souhlas` příslušného nástroje ukáže znění a vyžaduje odpověď „ano“ zadanou
 ručně v terminálu. Claude ho nespouští a nikdy ho nepotvrzuje za uživatele (v Claude Code ho uživatel spustí s předponou `!`).
 
+POZOR: jde o pojistku proti nedopatření, ne o technickou ochranu – soubor stavu si může zapsat kdokoli, kdo smí psát
+do domovské složky (nebo přesměrovat SOUHLAS_STAV). Že Claude souhlas nepotvrzuje, drží pravidlo, ne kód.
+
 Souhlas platí 30 dní na tomto počítači a jen pro dané znění podmínek (změní-li se, zeptá se znovu).
 Stav: ~/.cache/rodokmen_souhlas/<portál>.json (Windows %LOCALAPPDATA%\\rodokmen_souhlas), jen malý soubor JSON.
 """
@@ -28,7 +31,7 @@ def ma_souhlas(klic, zneni):
     try:
         with open(os.path.join(_slozka(), klic + ".json"), encoding="utf-8") as fh:
             d = json.load(fh)
-        return d.get("otisk") == _otisk(zneni) and time.time() - float(d.get("cas", 0)) < PLATNOST
+        return d.get("otisk") == _otisk(zneni) and -300 < time.time() - float(d.get("cas", 0)) < PLATNOST
     except (OSError, ValueError, TypeError):
         return False
 
