@@ -70,5 +70,9 @@ out, err, adresy = spust(("Xqz Ž", 2), ["<html>nic</html>"])
 ok("nic nenalezeno hlásí srozumitelně a zbytečně nestránkuje", "Nic nenalezeno" in err and len(adresy) == 1, (err, adresy))
 ok("diakritika v dotazu se zakóduje", "%C5%BD" in adresy[0], adresy)
 
+BEZ_POCTU = STRANA2.replace('<a class="searchResult-menu-item" href="#aPersons">723 Personen</a>', '')
+out, err, adresy = spust(("Novak", 2), [STRANA1, BEZ_POCTU, ""])
+ok("počet nalezených osob se bere z první stránky, která ho má", "celkem 723 osob" in err, err)
+
 print(f"\n{sum(vysledky)} z {len(vysledky)} v pořádku")
 sys.exit(0 if all(vysledky) else 1)

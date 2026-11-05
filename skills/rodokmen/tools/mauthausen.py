@@ -29,7 +29,7 @@ def get(url):
             if getattr(e, "code", 0) in (403, 404):
                 break
             time.sleep(2 * (attempt + 1))
-    raise err
+    sys.exit(f"Portál neodpověděl ({type(err).__name__}: {str(err)[:100]}). Zkus to později.")
 
 
 def text(s):
@@ -41,7 +41,7 @@ def hledat(dotaz, stran):
     n, videno, celkem = 0, set(), None
     for p in range(1, stran + 1):
         page = get(f"{BASE}?txtFullSearch={q}&L=0&id=5&page={p}&count=20")   # strany portálu jsou číslované od 1
-        celkem = re.search(r'([\d.\s\xa0]+) Personen', page)
+        celkem = celkem or re.search(r'(\d[\d.\s\xa0]*) Personen', page)   # počet bereme z první stránky, která ho má
         osoby = re.findall(r'<div class="entry">.*?<h1><a href="([^"]+)">(.*?)</a></h1>\s*(?:<p class="subtext">(.*?)</p>)?', page, re.S)
         osoby = [o for o in osoby if o[0] not in videno]
         videno |= {o[0] for o in osoby}
