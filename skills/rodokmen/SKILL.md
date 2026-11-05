@@ -156,6 +156,9 @@ Pravidla, která chrání kvalitu (naučená na skutečném projektu):
 - **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka).
 - **Čti celý zápis včetně okrajů** – pozdější poznámky o úmrtí, sňatku, legitimaci bývají nejcennější.
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
+- **Celá rodina a víc kandidátů** (`tools/rodiny.py`, postup v `reference/matriky.md`): křty sourozenců doplní, co v zápisu
+  předka chybí. Když na předka sedí víc lidí stejného jména (18. století), zapiš všechny jako kandidáty a čti po vrstvách,
+  dokud se jejich kmotři, svědci nebo dům nepotkají s doloženými údaji. Nevybírej prvního nalezeného.
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne „bey Hohenelbe“ = u Vrchlabí).
 - **U úředníků, vojáků, lékařů, učitelů, farářů** zkus noviny a ročenky (`reference/portaly.md` → Noviny): ukážou
   kariéru, tedy kde člověk kdy žil, a dají výstřižky na web. U sedláků a řemeslníků na vsi se nevyplatí.
@@ -303,6 +306,7 @@ Nedělej to pořád. Postup:
 | `mapa_knihy.py aron/pf/ahmp <kniha> <od> <do> [krok]`, `--vedle --ostre --vyrez …`, `soubory …` | mapa knihy (horní pruhy snímků pod sebou) a montáž sloupce se jmény vedle sebe – orientace v knihách po vsích (`matriky.md`) |
 | `overit.py <snímek> x0,y0,x1,y1 <prefix>` | zápis na dvě čitelné poloviny – ověření čtení (souřadnice = zlomky 0–1) |
 | `napady.py` | náměty na zajímavosti z dat |
+| `rodiny.py novy/kandidat/zapis/ukol/prehled/prunik/rodiny …` | rekonstrukce rodiny ze sourozenců, rozhodování mezi kandidáty stejného jména (BFS po vrstvách) |
 | `vyrez.py <stránka.jpg> <klíč> x0,y0,x1,y1` | výřez do `zdroje/` a `vyrezy/` |
 | `ramecek.py <klíč> x0,y0,x1,y1` | rámeček čteného místa + kontrolní obrázek |
 | `mista.py pridej "Obec"` / `mista.py` | místa pro mapu (souřadnice z OpenStreetMap) |
