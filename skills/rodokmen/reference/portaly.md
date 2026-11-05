@@ -21,8 +21,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - **Hledání svazků:** `python3 -I tools/aron_search.py "Holice"` → řádky `apu_id | signatura, roky | druh, obce`.
   Popis obsahuje druh knihy (NAROZENÝCH / ODDANÝCH / ZEMŘELÝCH, index) a všechny obce farnosti.
 - **Informace o svazku:** `python3 -I tools/aron_img.py <apu_id> info` → název a počet snímků.
-- **Stažení snímku:** `python3 -I tools/aron_img.py <apu_id> <snímek> 1 pracovni/holice_n_57.jpg`
-  (úroveň 1 = poloviční rozlišení – stačí na orientaci; 0 = plné rozlišení – na čtení a výřez).
+- **Stažení snímku:** `python3 -I tools/aron_img.py <apu_id> <snímek> 0 pracovni/holice_n_57.jpg`
+  (0 = plné rozlišení – vždy na čtení a výřez; 1 = poloviční jen na rychlou orientaci, např. hledání stránky podle záhlaví).
   Jen část stránky v plném rozlišení: `… <snímek> 0 pracovni/detail.jpg 0.0,0.4,1.0,0.7`.
   Nástroj stáhne celý sken jedním požadavkem (jako tlačítko „stáhnout“ v ARONu) a zmenšení i výřez dělá z disku;
   další výřezy téže stránky už na archiv nejdou. Dlaždice (desítky pomalých požadavků) jen jako záloha.

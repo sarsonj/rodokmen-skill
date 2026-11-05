@@ -3,7 +3,7 @@
 
 Použití:
   aron_img.py <apu_id> <snimek> [uroven] [vystup.jpg] [x0,y0,x1,y1]
-      uroven: 0 = plné rozlišení, 1 = polovina (výchozí), 2 = čtvrtina
+      uroven: 0 = plné rozlišení (výchozí, na čtení), 1 = polovina, 2 = čtvrtina (jen na orientaci)
       x0,y0,x1,y1: jen výřez (zlomky 0..1 celé stránky)
       Stahuje celý sken jedním požadavkem (jako tlačítko „stáhnout“ v ARONu) a výřez i zmenšení dělá z disku;
       sken se uloží do sdílené mezipaměti (tools/cache.py), další výřezy téže stránky už na archiv nejdou.
@@ -223,7 +223,7 @@ if __name__ == "__main__":
         print(f"https://aron.vychodoceskearchivy.cz/apu/{apu}/dao/{dao['id']}/file/{pub[0]['id']}")
         sys.exit(0)
     n = int(sys.argv[2])
-    lo = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    lo = int(sys.argv[3]) if len(sys.argv) > 3 else 0
     out = sys.argv[4] if len(sys.argv) > 4 else f"{apu[:8]}_{n:04d}.jpg"
     crop = tuple(float(v) for v in sys.argv[5].split(",")) if len(sys.argv) > 5 else None
     if n not in tiles:
