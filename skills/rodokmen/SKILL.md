@@ -286,10 +286,15 @@ Nedělej to pořád. Postup:
 | `web/` | web (Astro); data do něj jdou jen přes `npm run data` |
 
 ## Nástroje (`tools/`, spouštět z kořene projektu `python3 -I tools/<nástroj>`)
+Snímky na čtení a přepis stahuj vždy v **plném rozlišení** (úroveň/zmenšení `0`, u Porta fontium a eBadatelny bez
+`nahled`). Zmenšené snímky jsou rozmazané a ruka se z nich špatně čte – hodí se jen na rychlé hledání stránky. Když je
+text i tak nečitelný, udělej z plného rozlišení výřez (`x0,y0,x1,y1`), nezvětšuj zmenšený snímek. V prohlížeči
+(Matricula, eBadatelna) před uložením přibliž na nejvyšší detail a počkej, až se snímek načte celý.
+
 | Nástroj | Co dělá |
 |---|---|
 | `aron_search.py "Obec"` | najde svazky matrik na ARON (SOA Zámrsk); `"Obec,Fara"` zúží stejnojmenné obce |
-| `aron_img.py <apu> info / <snímek> 1 pracovni/x.jpg / link <n> / svazek` | stáhne snímek, dá odkaz, zapíše svazek |
+| `aron_img.py <apu> info / <snímek> 0 pracovni/x.jpg / link <n> / svazek` | stáhne snímek, dá odkaz, zapíše svazek |
 | `portafontium.py fara / info / snimek / link / svazek` | matriky SOA Plzeň (západní Čechy, Porta fontium) bez prohlížeče (faru zjisti na portálu) |
 | `ebadatelna.py link / a-link`, `snimek / a-snimek` | trvalý odkaz; náhled a výřez ze snímku uloženého z prohlížeče – stahovat nástroj nesmí (archiv od 2. 11. 2026 zakazuje), postup v `portaly.md` |
 | `cache.py stav / najdi <adresa> / uloz <soubor.json>`, `--nahled x.jpg` | sdílená mezipaměť obrázků (ukládá ji brzda sama); uložení snímku eBadatelny z prohlížeče, rovnou s náhledem 1600 px |
