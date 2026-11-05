@@ -197,7 +197,7 @@ tady v repozitáři.
   v `.claude/settings.json` zakázané přímé `curl` a `wget`, stahuje se jen přes brzdu.
 - **Kam skripty sahají:** zapisují do složky projektu rodokmenu (stažené snímky, mezivýsledky, web).
   Výjimkou jsou dočasné soubory systému, stav brzdy (pár malých souborů v `~/.cache/rodokmen_slusne`, na Windows
-  v `%LOCALAPPDATA%`), mezipaměť stažených snímků (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, lze kdykoli smazat),
+  v `%LOCALAPPDATA%`), zapsaný souhlas s podmínkami portálů s citlivými údaji (`~/.cache/rodokmen_souhlas`), mezipaměť stažených snímků (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, lze kdykoli smazat),
   npm při instalaci webu a přihlášení nástroje pro nasazení (Netlify, CapRover), pokud web zveřejňujete. Mimo
   projekt nic nemažou ani nepřepisují – kromě nejdéle nepoužitých snímků ve vlastní mezipaměti nad limitem.
 - **Na které servery chodí:** archivní portály (ARON SOA Zámrsk, SOA Třeboň, SOA Plzeň – Porta fontium, SOA Praha –
