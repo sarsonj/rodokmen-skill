@@ -240,6 +240,13 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   snímek 16 → `…-00160.jp2`). Svazek do `svazky.json` ručně (Ostatní portály, krok 4).
 - Doména actapublica.eu MZA nepatří (MZA to potvrdila) – nepoužívej ji, jen www.mza.cz/actapublica. Když MZA nejde
   načíst ani v prohlížeči, ať uživatel zkusí vypnout VPN nebo jinou síť.
+- **Sčítací operáty (1857–1921) nejsou v Acta Publica**, ale v samostatném portálu
+  `https://www.mza.cz/scitacioperaty/digisada/search` – jen v prohlížeči (brzda jiné adresy MZA nepustí), stejná pravidla
+  jako u matrik: žádné stahování ani skládání dlaždic. Hledej obec (pole „Město/obec nebo část obce/osada“); sada =
+  jedna obec a jeden rok (u obce bývá jen některý rok, např. jen 1921), s rozsahem čísel popisných. Detail
+  `…/digisada/detail/<id>` má stejný prohlížeč `viewer` jako matriky (postup výše). Snímek 1 je soupis s metadaty
+  (rozpis čísel, poznámky typu „čp. 134 má 2 archy“), pak archy po domech. 1857 uvádí jen rok narození, 1869 a 1880
+  místo i datum; sloupec dat narození bývá psaný svisle – při čtení přiblížený výřez otoč o 90°.
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.
