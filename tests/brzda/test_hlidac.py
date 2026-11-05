@@ -1,7 +1,8 @@
 """Regresní sada pro hlídač sítě tools/hlidac_site.py: příkazy, které má zamítnout, a příkazy, které má pustit.
 
-Hlídač se spouští přesně tak, jak ho do .claude/settings.json zapíše `novy_projekt.py --hlidac`: vždy bez shellu
-(command + args – tvar pro Windows od 0.6.1) a mimo Windows i shellovým příkazem přes bash (a PowerShell, je-li).
+Hlídač se spouští přesně tak, jak ho do .claude/settings.json a .devin/hooks.v1.json zapíše `novy_projekt.py --hlidac`:
+vždy bez shellu (command + args – tvar pro Windows od 0.6.1) a mimo Windows i shellovým příkazem přes bash (a PowerShell,
+je-li); pro Devin navíc jeho shellový tvar z _devin_hook() přes bash.
 U zamítnutí kontroluje i to, že odpověď je platné UTF-8 (Claude Code ji tak čte). Hlídač nic nestahuje.
 Z kořene repozitáře (přes obal, test obsahuje příkazy s curl):
   python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_hlidac.py skills/rodokmen
@@ -9,7 +10,7 @@ Případy vznikly z testů hooku na Windows (PR #53). Stav 0.6.0 na Windows 11, 
 (zamítnutí v cp1250; `import json, urllib.request` v heredocu i ve skriptu, `bash -c "curl …"` a Monitor projdou);
 přes PowerShell 0 z 59 – příkaz hooku se nespustí (chybí &), skončí kódem 1 a pustí všechno.
 """
-import json, os, shutil, subprocess, sys, tempfile
+import json, os, re, shutil, subprocess, sys, tempfile
 
 SKILL = os.path.abspath(sys.argv[1])          # …/skills/rodokmen (tools/hlidac_site.py, tools/novy_projekt.py)
 sys.path.insert(0, os.path.join(SKILL, "tools"))
@@ -28,6 +29,14 @@ elif shutil.which("bash"):
     SHELLY["bash"] = [shutil.which("bash"), "-c", PRIKAZ]
 if shutil.which("pwsh") and "args" not in HOOK:
     SHELLY["PowerShell"] = [shutil.which("pwsh"), "-NoProfile", "-Command", PRIKAZ]
+_bash = shutil.which("bash")
+if _bash and "system32" in _bash.lower():   # WSL bash jede v Linuxu, ne ve Windows prostředí
+    _bash = None
+if _bash:   # Devin má jen shellový tvar command (bez "args") – přes bash, na Windows i POSIX
+    SHELLY["devin (bash)"] = [_bash, "-c", novy_projekt._devin_hook()["command"]]
+elif os.name == "nt":   # cmd je na každém Windows; jméno programu neumí v uvozovkách
+    _cmd = re.sub(r'^"([^"]+)"', r"\1", novy_projekt._devin_hook()["command"])
+    SHELLY["devin (cmd)"] = f'cmd /c "{_cmd}"'   # řetězec, ne list – jinak list2cmdline rozbije vnitřní uvozovky
 
 POM = tempfile.mkdtemp(prefix="test_hlidac_")
 DAVKA = os.path.join(POM, "davka.py").replace("\\", "/")          # spouští nástroj s import slusne → pustit
@@ -115,6 +124,15 @@ PRIPADY = [
     ("PowerShell", "Invoke-WebRequest https://rodokmen-adelka.netlify.app/ -UseBasicParsing", P),
     ("PowerShell", "python -m http.server 8000", P),
     ("PowerShell", "git commit -m 'Use curl https://x.cz'", P),
+    # Devin – shellový nástroj se jmenuje "exec", zamítání stejné (výstup nese "decision" i "permissionDecision")
+    ("exec", "curl -s https://example.com/a.jpg", Z),
+    ("exec", "python -c \"import urllib.request\"", Z),
+    ("exec", f"python -I -X utf8 {VLASTNI}", Z),
+    ("exec", "python -I -X utf8 tools/kontrola.py", P),
+    ("exec", "python -I -X utf8 tools/slusne.py curl -s https://example.com", P),
+    ("exec", "Invoke-WebRequest https://example.com/a.jpg -OutFile a.jpg", Z),   # exec v PowerShellu
+    ("exec", "irm https://example.com/a.jpg", Z),
+    ("exec", "ls -la", P),
 ]
 
 vse_ok = True
@@ -123,13 +141,16 @@ for shell, argv in SHELLY.items():
     for nastroj, prikaz, cekam in PRIPADY:
         vstup = json.dumps({"tool_name": nastroj, "tool_input": {"command": prikaz}, "cwd": SKILL,
                             "hook_event_name": "PreToolUse"}, ensure_ascii=False).encode("utf-8")
-        r = subprocess.run(argv, input=vstup, capture_output=True, env={**os.environ, "CLAUDE_PROJECT_DIR": SKILL})
+        r = subprocess.run(argv, input=vstup, capture_output=True,
+                           env={**os.environ, "CLAUDE_PROJECT_DIR": SKILL, "DEVIN_PROJECT_DIR": SKILL})
         try:
             out, utf8 = r.stdout.decode("utf-8"), True
         except UnicodeDecodeError:
             out, utf8 = r.stdout.decode("cp1250", "replace"), False
         try:
             rozhodnuti = json.loads(out)["hookSpecificOutput"]["permissionDecision"] if out.strip() else "allow"
+            if rozhodnuti == "deny" and json.loads(out).get("decision") != "block":
+                rozhodnuti = "?"   # chybí devin-polovina výstupu ("decision"/"reason")
         except (ValueError, KeyError):
             rozhodnuti = "?"
         vysl = Z if rozhodnuti == "deny" else P
@@ -146,4 +167,34 @@ for shell, argv in SHELLY.items():
     print("\n".join(chyby))
 if not SHELLY:
     print("Nenašel jsem bash ani pwsh – nic netestováno.")
+
+# nastaveni() pro .devin: zapnutí, cizí hooky při vypnutí, smazání hooks.v1.json, deny v config.json
+proj = tempfile.mkdtemp(prefix="test_devin_")
+devin, hooks_f = novy_projekt.AGENTI["devin"], ""
+try:
+    hooks_f = os.path.join(proj, ".devin", "hooks.v1.json")
+    ok1 = novy_projekt.nastaveni(proj, True, devin) is True
+    with open(hooks_f, encoding="utf-8") as f:
+        obsah = json.load(f)
+    ok1 = ok1 and any("hlidac_site.py" in json.dumps(h) for h in obsah.get("PreToolUse", []))
+    cizi = {"PreToolUse": [{"matcher": "x", "hooks": [{"type": "command", "command": "cizi"}]}],
+            "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "po"}]}]}
+    with open(hooks_f, "w", encoding="utf-8") as f:   # simulace cizích hooků vedle našeho
+        json.dump({**obsah, **cizi}, f)
+    ok2 = novy_projekt.nastaveni(proj, False, devin) is False
+    with open(hooks_f, encoding="utf-8") as f:
+        obsah = json.load(f)   # cizí hooky zůstaly, soubor se nesmazal
+    ok2 = ok2 and obsah.get("PreToolUse") == cizi["PreToolUse"] and "PostToolUse" in obsah
+    with open(os.path.join(proj, ".devin", "config.json"), encoding="utf-8") as f:   # Exec deny pro Devin
+        ok2 = ok2 and set(json.load(f).get("permissions", {}).get("deny", [])) == set(devin["deny"])
+    with open(hooks_f, "w", encoding="utf-8") as f:
+        json.dump({}, f)
+    ok3 = (novy_projekt.nastaveni(proj, True, devin) is True
+           and novy_projekt.nastaveni(proj, False, devin) is False
+           and not os.path.exists(hooks_f)   # hooks.v1.json mizí, config.json s deny zůstává
+           and os.path.exists(os.path.join(proj, ".devin", "config.json")))
+    vse_ok &= ok1 and ok2 and ok3
+    print(f"== .devin/hooks.v1.json: zapnuti {ok1}, cizi hooky pri vypnuti {ok2}, smazani souboru {ok3}")
+finally:
+    shutil.rmtree(proj, ignore_errors=True)
 sys.exit(0 if vse_ok and SHELLY else 1)

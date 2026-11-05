@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hlídač síťových příkazů (volitelný hook PreToolUse v .claude/settings.json projektu).
+"""Hlídač síťových příkazů (volitelný hook PreToolUse v .claude/settings.json a .devin/hooks.v1.json projektu).
 
 Zapíná se příkazem `novy_projekt.py <projekt> --hlidac`, vypíná `--bez-hlidace`.
 Než Claude spustí příkaz v Bash nebo PowerShellu, hlídač zkontroluje, jestli nejde na web archivu mimo brzdu
@@ -59,9 +59,10 @@ def cist(path, cwd):
 
 def posoudit(tool, cmd, cwd):
     """Vrátí důvod zamítnutí, nebo None (pustit)."""
-    if tool == "Monitor":   # spouští příkaz v bashi stejně jako Bash
+    ps = tool in ("PowerShell", "exec")   # "exec" (Devin) může na Windows bez Git Bashe jet v PowerShellu
+    if tool in ("Monitor", "exec"):   # Monitor spouští v bashi jako Bash; "exec" je shellový nástroj Devinu
         tool = "Bash"
-    if tool == "PowerShell":
+    if ps:
         if PS.search(cmd) and "slusne.py" not in cmd and not jen_volne(cmd):
             return "PowerShell stahuje z webu mimo brzdu"
         tool = "Bash"   # python a curl.exe v PowerShellu posoudit stejně
@@ -98,13 +99,14 @@ def main():
         vstup = json.load(sys.stdin)
         tool = vstup.get("tool_name", "")
         cmd = (vstup.get("tool_input") or {}).get("command", "") or ""
-        duvod = posoudit(tool, cmd, vstup.get("cwd") or os.getcwd())
+        duvod = posoudit(tool, cmd, vstup.get("cwd") or os.getcwd())   # payload Devinu "cwd" nemusí mít
     except Exception:          # rozbitý hlídač příkaz pustí
         return 0
-    if duvod:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason": f"Hlídač sítě: {duvod}.\n{RADA}"}}))   # \uXXXX: čeština projde i v cp1250
+    if duvod:   # oba formáty: Claude Code čte "permissionDecision" v hookSpecificOutput, Devin "decision"/"reason"
+        print(json.dumps({"decision": "block", "reason": f"Hlídač sítě: {duvod}.\n{RADA}",
+                          "hookSpecificOutput": {
+                              "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                              "permissionDecisionReason": f"Hlídač sítě: {duvod}.\n{RADA}"}}))   # \uXXXX: čeština projde i v cp1250
     return 0
 
 
