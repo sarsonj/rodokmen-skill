@@ -83,6 +83,22 @@ a po úpravě zkontroluj web na mobilu i počítači.
 ## Vějíř jako plakát
 `python3 -I tools/fan_chart.py vystupy/` → SVG a HTML (a PNG, je-li nainstalovaný Google Chrome, na Windows i Microsoft Edge) k tisku.
 
+## Strom (`/strom/`) – celá rodina jako graf
+Kartičky předků i bočních příbuzných s posouváním a přibližováním, klepnutím na kartičku se vlevo otevře panel
+(fakta, životopis, nejbližší rodina, zápisy, fotky). Data: `web/scripts/strom.py` (z `site.json` a `SIDE` →
+`src/generated/strom.json`), rozložení `web/scripts/strom-layout.mjs` (Graphviz při `npm run data`), stránka
+`src/pages/strom.astro`. Tři pohledy (prohlížeč si pamatuje poslední):
+- **Předci** – přímá linie, předpočítaná;
+- **Kolem osoby** – vybraná osoba uprostřed, předci nahoru, sourozenci vlevo, partneři vpravo, potomci dolů; počet
+  generací nahoru a dolů volí uživatel. Rozložení se počítá v prohlížeči při každém výběru, kartičky přejedou na nová
+  místa. Ikonka stromečku na kartičce = ta osoba má příbuzné, kteří v pohledu nejsou; klepnutí přepne pohled k ní.
+  U velkého rodokmenu (stovky osob) je to nejčitelnější;
+- **Zobrazit vše** – celý graf naráz jako přehled, s mapkou v rohu (klepnutím/tažením přesun).
+Filtr podle rodu (větve pradědečků 8–15 z `LINES`) ztlumí ostatní kartičky a přiblíží rod; hledání podle jména (bez
+diakritiky). Vybraná osoba je v adrese (`/strom/#<slug>`), odkaz jde poslat. Boční příbuzní se kreslí jen se `id`
+v `SIDE` (`reference/data.md`); bez nich strom ukáže předky. Siluety `public/siluety/` nahradí portrét, který je
+v `dokumenty.json` u osoby (obrázek s „portret“ v názvu nebo popisem začínajícím jménem), u bočního příbuzného `foto`.
+
 ## Aktualizace staršího projektu
 Znovu spusť `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`. Data (`data/`, výřezy) zůstanou. Projekt má
 v `.skill_sablona/` kopii šablony `web/` a `tools/`, ze které vznikl (commitovat s projektem), a skript podle ní rozhodne

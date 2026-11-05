@@ -14,7 +14,11 @@
     "deploy-caprover": "npm run data -- --nasazeni && npm run pack && caprover deploy -t ../rodokmen-web.tar.gz"
   },
   "dependencies": {
+    "@hpcc-js/wasm-graphviz": "^1.30.0",
     "astro": "^7.3.8",
+    "d3-selection": "^3.0.1",
+    "d3-transition": "^3.0.1",
+    "d3-zoom": "^3.0.1",
     "leaflet": "^1.9.4"
   },
   "devDependencies": {
