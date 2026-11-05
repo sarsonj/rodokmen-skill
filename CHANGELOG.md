@@ -6,6 +6,16 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.8.2 – 5. 11. 2026
+
+**Opravy**
+- SOA Plzeň (Porta fontium): nástroje se ptají nejvýš jednou za 10 sekund, jak archiv žádá ve svém robots.txt.
+  Stahování je pomalejší, hlavně mapa knihy (#129).
+
+**Návody**
+- Porta fontium: podmínky užití snímků – jen pro osobní potřebu, nevýdělečně a s odkazem na zdroj; rodinný web
+  za heslem ano, veřejný nebo výdělečný bez souhlasu archivu ne.
+
 ## 0.8.1 – 5. 11. 2026
 
 V dnešním vydání jsem se zaměřil na nejčastěji hlášené problémy a vylepšení.
