@@ -6,6 +6,40 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.8.1 – 5. 11. 2026
+
+V dnešním vydání jsem se zaměřil na nejčastěji hlášené problémy a vylepšení.
+
+**Nové**
+- Porta fontium: `portafontium.py obec "<obec>"` vypíše všechny knihy obce seskupené podle fary a seřazené podle let.
+  Je z toho vidět i přechod obce mezi farami a stejnojmenné obce jiných far.
+- FamilySearch: snímek z přihlášeného prohlížeče (Playwright) jde uložit do mezipaměti a do projektu v plném
+  rozlišení (`cache.py uloz`) a dál normálně vyříznout. Nový postup pro **Slovensko**: najít faru v katalogu,
+  zjistit, do kdy jsou knihy natočené (často jen do 1895), a jak pracovat s neúplným indexem.
+- Vybledlé snímky: `vyrez.py` a `overit.py` mají přepínač `--kontrast`. Bledá stránka se už nemá prohlásit za prázdnou.
+- Vojáci 1. světové války: `anno.py --ztraty` hledá jen v rakouských seznamech ztrát (pluk, domovská obec, ročník,
+  raněn/zajat/padl).
+- Netlify: po `npm run nasadit` se web sám otevře bez přihlášení a pozná, jestli ho místo rodinné otázky chrání
+  přihlášení k Netlify (ochrana týmu u nových webů). Vypíše, jak ji vypnout. Ručně `npm run overit`.
+
+**Opravy**
+- Brzda se zastaví i tehdy, když archiv přijme spojení, ale neodpovídá (noční výpadky). Dřív každé volání čekalo
+  přes dvě minuty.
+- `anno.py`: filtr podle listu (`ANNO_TITLE`) vracel vždy 0 výsledků.
+
+**Návody**
+- ZA Opava: detail svazku neotvírat přímou adresou (ukáže jiný svazek), raději trvalým odkazem `permalink?xid`.
+  Vestavěný prohlížeč aplikace Claude archiv odmítne, okno aspoň 1400×900, CAPTCHA řeší uživatel.
+- SOA Litoměřice: hledání přes pole Místo, vyzkoušený úryvek pro adresy snímků, jak poznat blokaci.
+- MZA: sčítací operáty 1857–1921 (jen v prohlížeči). Nástroj na stahování snímků z MZA nebude, archiv to zakázal.
+- Claude in Chrome: výstup JavaScriptu s adresou rozšíření zablokuje – jak to obejít.
+- Svazky „dosud uložené na matričním úřadě“, knihy řazené po vsích (neúplný popis, samostatné knihy vsí, pasti
+  rejstříků) a posun mezi číslem v rejstříku a snímkem.
+- Mapy stabilního katastru: jak se dostat k indikační skice a jak ji číst.
+- Výpadky archivů: co dělat, když archiv večer nebo v noci neodpovídá.
+
+Děkuji všem, kdo poslali zkušenosti e-mailem.
+
 ## 0.8.0 – 4. 11. 2026
 
 Bezpečná aktualizace projektu (vlastní úpravy zůstanou), rychlé stahování z ARONu a přesnější kontrola dat.
