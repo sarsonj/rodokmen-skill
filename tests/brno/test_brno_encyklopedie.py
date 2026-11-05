@@ -78,5 +78,9 @@ for zla in ("https://evil.example/?acc=profil-osobnosti&load=1", "https://encykl
     out, err, adresy = spust(["detail", zla], DETAIL)
     ok(f"detail: odmítne {zla[:48]}", not adresy and "Zadej odkaz" in err, (adresy, err))
 
+ZNACKY = json.dumps({"html": {"search-results": '<p>nalezeno 1 odkazů.</p><a href="?acc=profil-osobnosti&load=9#generator" title="x">Jan <em>Novák</em></a>\n<p>klempíř</p>'}})
+out, err, _ = spust(["hledat", "Novák"], ZNACKY)
+ok("hledat: zásah se značkou ve jméně se nevynechá", "osobnost | Jan Novák | klempíř" in out, (out, err))
+
 print(f"\n{sum(vysledky)} z {len(vysledky)} v pořádku")
 sys.exit(0 if all(vysledky) else 1)

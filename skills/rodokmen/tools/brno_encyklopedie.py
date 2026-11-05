@@ -37,7 +37,7 @@ def get(url):
             if getattr(e, "code", 0) in (403, 404):
                 break
             time.sleep(2 * (attempt + 1))
-    raise err
+    sys.exit(f"Portál neodpověděl ({type(err).__name__}: {str(err)[:100]}). Zkus to později.")
 
 
 def text(s):
@@ -52,7 +52,7 @@ def hledat(dotaz):
         sys.exit("Portál vrátil neočekávanou odpověď (změnil se?). Hledej na encyklopedie.brna.cz v prohlížeči.")
     celkem = re.search(r"nalezeno (\d+)", h)
     n = 0
-    for acc, i, nazev, popis in re.findall(r'<a href="\?acc=([a-z-]+)&load=(\d+)#generator" title="[^"]*">([^<]+)</a>\s*<p>(.*?)</p>', h, re.S):
+    for acc, i, nazev, popis in re.findall(r'<a href="\?acc=([a-z-]+)&load=(\d+)#generator" title="[^"]*">(.*?)</a>\s*<p>(.*?)</p>', h, re.S):
         popis = re.sub(r"\(\(([^|)]*)\|?[^)]*\)\)", r"\1", text(popis))   # značky odkazů ((Heslo|text)) -> Heslo
         popis = re.sub(r"\[\[([^\]]*)\]\]", r"\1", popis)
         print(f"{TYPY.get(acc, acc)} | {text(nazev)} | {popis[:200]} | {BASE}?acc={acc}&load={i}")
