@@ -220,6 +220,23 @@ r = spust([KLIENT] + [f"http://127.0.0.4:9/api?c={i}" for i in range(4)], e)
 check("3 nepovedená spojení zastaví web", r.returncode == KOD and "3 nepovedená spojení" in r.stderr,
       f"kód {r.returncode} za {round(time.time() - t0, 1)} s")
 
+# 9b) spojení vznikne, ale odpověď nepřijde (eBadatelna v noci) – 3 vypršení za sebou mají zastavit web taky
+import socket  # noqa: E402
+TICHY = socket.socket()
+TICHY.bind(("127.0.0.5", 0)); TICHY.listen(16)
+DRZENA = []
+threading.Thread(target=lambda: [DRZENA.append(TICHY.accept()) for _ in iter(int, 1)], daemon=True).start()
+POMALY = soubor("pomaly.py",
+                "import sys, urllib.request\n"
+                "for u in sys.argv[1:]:\n"
+                "    try:\n        urllib.request.urlopen(u, timeout=1).read(); st = 'ok'\n"
+                "    except OSError as e:\n        st = type(e).__name__\n"
+                "    print(u.split('/', 3)[-1], st, flush=True)\n")
+e = stav("s9b"); t0 = time.time()
+r = spust([POMALY] + [f"http://127.0.0.5:{TICHY.getsockname()[1]}/api?c={i}" for i in range(5)], e)
+check("3 vypršení odpovědi za sebou zastaví web", r.returncode == KOD and "3 nepovedená spojení" in r.stderr,
+      f"kód {r.returncode} za {round(time.time() - t0, 1)} s, výstup {r.stdout!r} {r.stderr[-300:]!r}")
+
 # 10) složka stavu, kam nejde zapisovat → dočasná složka
 e = {**os.environ, "SLUSNE_STAV": os.path.join(KLIENT, "nelze")}
 r = spust(["stav"], e)

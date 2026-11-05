@@ -177,6 +177,9 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
 - **Hláška „slusne: … je zastavený“ (kód 3)** = archiv dal najevo, že ho zatěžujeme (429/503/403, stránka
   „zablokováno“, spojení odmítnuto). Nezkoušej to znovu, neobcházej to (jiný nástroj, prohlížeč), řekni to uživateli
   a dělej jinou práci. Stav: `slusne.py stav`. `slusne.py odblokuj` jen když víš, že šlo o tvou chybu (špatná adresa).
+- **Výpadky archivů** (večer a v noci – eBadatelna zhruba 22:45–0:45 a kolem 2:00 –, údržba, prošlý certifikát):
+  nástroj hlásí „neodpovídá“ a brzda po 3 neúspěšných spojeních nebo vypršeních za sebou web zastaví. Přepni na jiný
+  archiv nebo jinou práci a zkus to později. Kontrolu certifikátu nikdy nevypínej, na prošlý certifikát jen počkej.
 - **V prohlížeči brzda neplatí, hlídáš se sám:** při cíleném hledání (konkrétní snímek, rejstřík) aspoň 5 s mezi
   stránkami, při listování stránku po stránce 10 s. Na jednom archivu jen jeden prohlížeč, žádní pomocníci, žádné
   smyčky `fetch` ani `Promise.all`.

@@ -403,7 +403,11 @@ def _zapni():
             r, velikost = _odpoved_z_disku(ulozeny)
             _zapocti(_host(self), velikost)
             return r
-        r = get(self)
+        try:
+            r = get(self)
+        except (TimeoutError, socket.timeout) as e:   # spojení vzniklo, ale odpověď nepřišla (archiv „visí“)
+            _spojeni_selhalo(_host(self), e)
+            raise
         host, obr = _host(self), getattr(self, "_slusne_obr", False)
         telo = None
         skupina, _ = _skupina(host)
