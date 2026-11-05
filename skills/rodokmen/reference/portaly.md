@@ -170,7 +170,10 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
   má ochranu proti robotům – curl ani WebFetch se nedostanou ani na hledání. Potřebuješ připojený prohlížeč (Claude in
   Chrome – uživatel ho připojí příkazem `/chrome` – nebo Playwright); jinak ať knihu najde a snímky uloží uživatel.
-  Úvodní ověření projde samo, ale hledání často skončí **CAPTCHou: tu vyřeší uživatel** v okně prohlížeče, ty nikdy.
+  **Vestavěný prohlížeč aplikace Claude** (desktop, Code) archiv odmítne hned („Anomaly detected“) – nepoužívej ho.
+  Úvodní ověření projde samo, ale jen v kartě v popředí. Okno nastav aspoň na 1400×900, v užším se nezobrazí
+  filtry ani snímek. **CAPTCHA přijde typicky už u prvního hledání**, pak zhruba po hodině a v nové relaci
+  prohlížeče vždy znovu: **vyřeší ji uživatel** v okně prohlížeče, ty nikdy.
 - Hledej obec a vyfiltruj Matriky (ikona, potom znovu lupa). Hledání vrací i civilní matriky (u obce stovky svazků) –
   filtr „Datum od – do“ (podle začátku svazku, např. 1680–1873) nechá jen církevní. Knihy bývají řazené po obcích
   a na konci mají rejstřík. Vedle farních knih bývají i **druhopisy** („T“ v signatuře, viz `matriky.md`).
@@ -178,8 +181,10 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   nebo ji vyber v poli „Územní rozsah“ z našeptávače.
 - **Detail svazku nikdy neotvírej přímou adresou `vysledekDetail/<id>`.** Badatelna drží výsledky hledání v relaci
   a taková adresa ukáže N-tý (bez `page` první) výsledek posledního hledání nebo snímky naposledy otevřeného
-  svazku – ne svazek z adresy. Svazek otevři kliknutím ve výsledcích (ikona snímků v řádku, nebo mozaika výsledků
-  a dvojklik na náhled) a **vždy na stránce ověř signaturu a název knihy**, než z ní cokoli čteš.
+  svazku – ne svazek z adresy. Svazek otevři trvalým odkazem `https://digi.archives.cz/da/permalink?xid=<id>`
+  (id je konec cesty odkazu ve výsledcích, `vysledekDetail/<id>`) – ten ukáže svazek podle id bez ohledu na poslední
+  hledání, ale jen v prohlížeči, který už prošel ověřením. Jinak klikni ve výsledcích (ikona snímků v řádku, nebo
+  mozaika výsledků a dvojklik na náhled). **Vždy na stránce ověř signaturu a název knihy**, než z ní cokoli čteš.
 - **Seznam svazků a ID snímků si hned ulož** do `pracovni/<svazek>/` – relace po pár hodinách vyprší a výsledky
   hledání platí jen v ní. Na detailu svazku: entita `document.querySelector('[entityuuid]').getAttribute('entityuuid')`
   (u svazků uložených v jiném archivu nemá tvar UUID – nehledej ji regexem), ID snímků jsou hodnoty
