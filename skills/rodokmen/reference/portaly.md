@@ -120,6 +120,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   `…/pages/ArchivaliePage/archivalieId/<id>`) – `document.body.innerText`. „Obecný popis matriky“ uvádí u knih psaných
   po vsích **rozvržení stran** („1–48 Ves A, 49–82 Ves B …“, každá ves může mít vlastní stránkování) – neodhaduj snímek
   podle roku, ale podle stran vsi; je-li rejstřík, začni jím.
+  Archiv popis ořezává asi na 250 znaků (konec rozvržení chybí) – úplný seznam vsí je v poli Lokality, zbytek viz
+  `matriky.md` (Knihy řazené po vsích).
 - Snímek: `https://ebadatelna.soapraha.cz/d/<matrikaId>/<snímek>` (archiválie `/a/<archivalieId>/<snímek>`, zároveň
   trvalý odkaz, do `odkaz`; šipky „<“ a „>“ v prohlížeči na tuto adresu taky přejdou). Prohlížeč načte celý snímek
   v plném rozlišení. **Ulož ho jednou do mezipaměti a dál pracuj z disku** – archiv už nedostane žádný další dotaz.

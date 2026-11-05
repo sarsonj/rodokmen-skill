@@ -62,8 +62,15 @@ až na konci knihy. Odhad snímku podle roku pak selže a „zápis tam není“
 vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–405).
 1. **Popis knihy první:** eBadatelna „Obecný popis“ (rozvržení stran po vsích), MZA „Části matriky“, ARON „územní
    rozsah“, Porta fontium `info`. Přechody vsí mezi farami mívají mezery – zápis z mezery hledej v obou farách.
+   Popis bývá **neúplný**: eBadatelna rozvržení ořízne asi na 250 znaků (konec chybí i na webu archivu), u jiných knih
+   chybí úplně, i když je kniha po vsích řazená, a název vsi bývá zkomolený („Onšovec“ = Vonšovec). Úplný seznam vsí
+   knihy je v poli **Lokality**; zbylé oddíly najdi mapou knihy (bod 3) podle čísel stran „Pag.“ a nadpisu vsi
+   (bývá jen na první straně oddílu).
 2. **Rejstřík fary:** uvádí ves (písmenem nebo „tom“ = kniha vsi, ne pořadí svazku) a **stranu uvnitř oddílu**, ne celé
    knihy. Snímek ≈ začátek oddílu + strana/2 (folio/2), dolaď podle čísla na snímku. Uvnitř písmene jde rejstřík podle let.
+   Staré rejstříky odkazují často na **přeškrtnutá stará čísla** listů a rok s listem bývá posunutý o řádek proti jménu –
+   čti i sousední položky a ověř na snímku. Na konci knih bývá i ručně psaný **rejstřík po obcích** (prohlédni poslední
+   snímky). Dobrovolnické rejstříky nejsou úplné – při neúspěchu čti oddíl vsi přímo.
    Klíč písmeno/tom → ves zjistíš ze záhlaví stránek; sestav si tabulku do deníku.
 3. **Mapa knihy:** z každého 5.–30. snímku jen horní pruh (název vsi, rok) v malém rozlišení, slepit pod sebe s číslem
    snímku → stavba celé knihy na jednom obrázku: `python3 -I tools/mapa_knihy.py aron|pf|ahmp <kniha> <od> <do> [krok]`
@@ -76,6 +83,9 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 5. **Pasti:** sňatek bývá v oddílu vsi nevěsty, ale některé fary řadily podle ženicha (Držkov); starší knihy mají
    narozené, oddané a zemřelé proložené a bez obsahu; čísla stran v samostatném rejstříku nemusí sedět se stránkováním
    knihy. Než napíšeš „nenalezeno“, zmapuj **všechny** oddíly.
+6. **Samostatné knihy vsí:** velké fary vedly pro některé vesnice vlastní knihy (Nové Strašecí × Pecínov). Hledej knihy
+   i podle obce bydliště, ne jen podle fary, a u každé zkontroluj Lokality. **„Nenalezeno“ platí jen pro knihu, která ves
+   pokrývá** (skutečná chyba: sňatek „nenalezen“ ve dvou farách, přitom byl ve vesnické knize správné fary).
 
 ## Čtení písma
 - Kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na čtvrtiny (sloupec jmen + data),
@@ -148,6 +158,7 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 - Nemanželské dítě nese příjmení matky; otec chybí nebo je dopsán později (legitimace na okraji).
 - Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`.
 - Index nenašel ≠ zápis neexistuje. Zapiš, co přesně jsi prošel.
+- Oddací zápis uvádí „narozen dle mat. IV f. 149“ – podle folia najdeš křest jedním stažením (folio ≈ snímek − posun knihy).
 - Pomocníci (subagenti) a OCR/AI čtou historické písmo chybně – vždy ověř sám (viz `playbook.md` §1 bod 10).
 
 ## Technické pasti (macOS, zsh) – napiš je i pomocníkům do zadání
