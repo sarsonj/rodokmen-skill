@@ -315,6 +315,21 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   (`images[]` = ARK). Snímek: `https://www.familysearch.org/service/records/storage/deepzoomcloud/dz/v1/<ARK 3:1:…>/$dist`
   (plné rozlišení), malé náhledy `…/image_files/8/0_0.jpg`. **Po ~1000 rychlých požadavcích přijde HTTP 429** a blokace
   na desítky minut – stahuj jen konkrétní snímky, nanejvýš pár za sekundu, hromadné procházení knih nedělej.
+- **Slovensko** (sbírka „Slovakia Church and Synagogue Books 1592–1935“; bez účtu FamilySearch to nejde):
+  1. **Fara:** katalog `https://www.familysearch.org/search/catalog/results?q.keywords=Farský úrad <obec>` (také
+     „Grécko-katolícka …“, „Evanjelická …“). Najde i fary celého okolí – v závorce za farou je obec, pod kterou je
+     katalog vede. Hledání podle místa (`q.place`) a maďarské názvy obcí často nenajdou nic nebo stejnojmennou obec v ČR.
+  2. **Natočené roky:** v záznamu fary přečti tabulku filmů (`browser_evaluate`, jen text, bez odkazů):
+     `[...document.querySelectorAll('tr')].map(r => [...r.cells].map(c => c.innerText.trim()).join(' | '))`
+     → Poznámka (druhy a roky) | Film | **DGS**. Název záznamu přeceňuje: „Cirkevná matrika, 1762–1927“ má křty,
+     sňatky i úmrtí jen do **1895** (do 1927 jen biřmování). Po ~1895 vedl stát civilní matriky – mladší zápisy jsou
+     ve státním archivu nebo na matričním úřadě (na Slovensku 100 let i u úmrtí), ne online.
+  3. **Index je neúplný** (hlavně křty) a jména zkomolená, u dvou křestních jmen bývá jen jedno; `q.anyPlace`
+     výsledky nefiltruje, jen řadí. Hledej přes rodiče a bez křestního jména, jinak listuj snímky filmu (DGS výše;
+     nejdřív rejstřík „Zoznam krstov A–Z“, bývá na začátku knihy).
+  4. **1900–1940:** doklady od rodiny (rodné listy dětí uvádějí i prarodiče), náhrobky a evidence hrobů (Košice:
+     gisplan.kosice.sk; cintoriny.sk jen část obcí). Rusíni vedení po 1950 jako pravoslavní mají starší zápisy
+     v řeckokatolických knihách.
 - **Snímek do projektu (Playwright):** nástroje dostanou od FamilySearch 403, snímek vydá jen přihlášený prohlížeč.
   Uživatel se jednou přihlásí v okně Playwrightu (přihlášení zůstane). ARK snímku je v adrese prohlížeče
   (`/ark:/61903/3:1:…`) i ve výsledcích hledání. Nejdřív `python3 -I tools/cache.py najdi <adresa nebo ark>
