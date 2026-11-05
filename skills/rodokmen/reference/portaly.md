@@ -17,6 +17,14 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `playbook.md` §2
 (Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže.
 
+**Claude in Chrome – výstup JavaScriptu** (platí pro všechny portály):
+- Výstup, který obsahuje adresu s parametry (`?`, `&`, `=`) nebo dlouhý hex, rozšíření zahodí jako
+  „[BLOCKED: Cookie/query string data]“. Vracej jen cestu (`location.pathname`, `new URL(a.href).pathname`) a hodnoty
+  parametrů zvlášť, případně znaky `?&=` nahraď mezerami; celou adresu slož až v shellu.
+- Výstup se ořízne asi na 1000 znaků (u seznamů asi 30 řádků) – delší seznamy vypisuj po částech (`.slice(0, 25)`, …).
+- Snímky obrazovky na těžkých stránkách padají na timeout; text čti přes `get_page_text` / `read_page` nebo
+  `innerText`.
+
 ## ARON (SOA Zámrsk) – hotové nástroje
 - **Hledání svazků:** `python3 -I tools/aron_search.py "Holice"` → řádky `apu_id | signatura, roky | druh, obce`.
   Popis obsahuje druh knihy (NAROZENÝCH / ODDANÝCH / ZEMŘELÝCH, index) a všechny obce farnosti.
