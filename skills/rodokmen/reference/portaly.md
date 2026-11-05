@@ -156,16 +156,41 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   a farností je mnoho – bez přesného data a farnosti (z úmrtí/sňatku nebo od rodiny) je hledání velmi drahé.
 
 ## SOA Litoměřice (severní Čechy) – `tools/soal_zoomify.py`
-- Digitální badatelna digi.soalitomerice.cz má na vstupu automatické ověření (asi 15 s „počítání“) → knihu a snímek
-  najdi v prohlížeči. Pak zjisti **celou adresu obrázku** (`https://images.soalitomerice.cz/…`): v síťovém provozu
-  požadavek na `…/ImageProperties.xml`, nebo `document.querySelector('#navigatorImage').src` na stránce snímku.
-  Archiv koncem října 2026 změnil cesty (nově `…/CZ-214000010/NAD-<číslo>/dao/images/<složka>/<uuid>.jpg`),
-  starší zkrácená `<cesta>` za `…/matriky/` pak vrací 404 – nástroji dávej vždy celou adresu.
+Stejný software jako ZA Opava (Digitální badatelna) – platí i tamní pasti (`vysledekDetail` přímou adresou ukáže jiný
+svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
+- `https://digi.soalitomerice.cz/digitalnibadatelna/` má na vstupu automatické ověření (asi 15 s „počítání“, projde
+  samo) → knihu a cestu k obrázkům najdi v prohlížeči (Playwright nebo Claude in Chrome), snímky stahuj nástrojem.
+- **Hledání:** ikona Matriky a obec do pole **„Místo / Lokalita“** (hlavní fulltext vrací všech ~18 000 matrik), Enter.
+  Výsledky všechny najednou (počet na stránku přepni jedním výběrem, neprocházej stránky). Svazek otevři kliknutím
+  ve výsledcích a **na detailu ověř signaturu**. Popis knihy uvádí „Územní rozsah“ (obce knihy) – čti ho první.
+  Knihy bývají **rozdělené po obcích** s vlastním stránkováním a rejstříkem na konci.
+- **Adresy snímků** (záložka snímků, `actualDetailTab=attachmentsImg`) zjisti úryvkem – jen pro snímky, které čteš,
+  postupně s pauzou 3 s (`browser_evaluate`; na stránce téhož svazku, jinak showZoomify vrací prázdnou odpověď):
+  ```js
+  async () => {
+    const snimky = [1, 50, 120];   // jen snímky, které opravdu čteš
+    const ent = document.querySelector('[entityuuid]').getAttribute('entityuuid');
+    const ids = Object.fromEntries([...document.querySelectorAll('select.getScanSelect option')].map(o => o.value.split('%20')));
+    const out = [];
+    for (const n of snimky) {
+      if (!ids[n]) { out.push(`${n}: snímek v knize není`); continue; }
+      const h = await (await fetch(`/digitalnibadatelna/showZoomify/${ent}/${ids[n]}`)).text();
+      if (h.trim().length < 300 && !/images\//.test(h)) { out.push(`${n}: BLOKACE („${h.trim().slice(0, 20)}“) – přestaň na 35 minut`); break; }
+      const m = h.match(/https?:\/\/images\.[^"'\s]+?\/images\/[^"'\s]+?\.jpe?g/i);
+      out.push(`${n}: ${m ? m[0] : 'adresa v odpovědi nenalezena'}`);
+      await new Promise(ok => setTimeout(ok, 3000));
+    }
+    return out.join('\n');
+  }
+  ```
+  Složka v cestě (`…/images/0046/…`, `…/NAD-856/dao/images/0701/…`) se liší mezi knihami i uvnitř jedné knihy –
+  adresu nikdy neskládej, vždy celou z výstupu.
 - Snímky stahuj nástrojem: `python3 -I tools/soal_zoomify.py "<celá adresa>" 0 pracovni/x.jpg` (0 = plné rozlišení,
-  1 = poloviční). Obrázkový server neomezuje a cookies nepotřebuje.
-- **POZOR: po zhruba 100 rychlých požadavcích na stránky aplikace (prohlížení snímků, detail výsledku) archiv zablokuje
-  přístup na 30 minut.** V prohlížeči proto jen najdi knihu a cestu k obrázkům, pak už jen nástroj. Pomocníkům to napiš do zadání.
-
+  1 = poloviční, 2 = čtvrtinové na orientaci). Obrázkový server images.soalitomerice.cz neomezuje a cookies nepotřebuje.
+- **POZOR na blokaci aplikace** (obrázky ne): přijde už po 25–100 rychlých krocích (listování výsledky, Zpět, rychlé
+  `fetch`). Ohlásí ji stránka „!“ s **HTTP 200** (asi 116 bajtů) – kontroluj obsah, ne stavový kód. Dotazy jen postupně
+  (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka; po blokaci 35 minut nic (další pokusy ji prodlužují).
+  Pomocníkům to napiš do zadání.
 ## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – `tools/soal_zoomify.py`
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
