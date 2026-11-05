@@ -16,10 +16,11 @@ nejdéle nepoužité soubory se mažou samy. Celou složku lze kdykoli smazat, n
 Použití (z kořene projektu):
   cache.py stav                       -> kolik místa zabírá a kolik stažení z archivu ušetřila (podrobně slusne.py stav)
   cache.py uloz <soubor.json> [vystup.jpg] [--nahled nahled.jpg]
-                                      -> uloží snímek z prohlížeče eBadatelny (výsledek úryvku v reference/portaly.md,
-                                         SOA Praha); soubor .json pak smaže
+                                      -> uloží snímek z prohlížeče eBadatelny nebo FamilySearch (výsledek úryvku
+                                         v reference/portaly.md); soubor .json pak smaže
   cache.py najdi <adresa snímku> [--nahled nahled.jpg]
-                                      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…), jinak kód 1
+                                      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…) nebo FamilySearch
+                                         (adresa $dist nebo /ark:/61903/3:1:…), jinak kód 1
                                          (nalezený snímek se počítá jako ušetřené otevření v prohlížeči)
   --nahled nahled.jpg                 -> k tomu rovnou náhled široký 1600 px (k přečtení stránky, bez sítě)
 
@@ -201,7 +202,7 @@ def odvod(src, out, crop=None, zmenseni=1):
     return subprocess.run(args + ["-quality", "90", out], capture_output=True).returncode == 0
 
 
-# --- snímky z prohlížeče (eBadatelna) -------------------------------------------------------------------------------
+# --- snímky z prohlížeče (eBadatelna, FamilySearch) -------------------------------------------------------------------------------
 EBAD = re.compile(r"ebadatelna\.soapraha\.cz/(d|a)/(\d+)/(\d+)")
 
 
@@ -228,6 +229,22 @@ def _zapocti(host, velikost, z_disku=True):
 
 def klic_ebadatelna(druh, xid, n):
     return f"ebadatelna/{druh}/{xid}/sn{int(n):04d}.jpg"
+
+
+# FamilySearch: snímek určuje ARK „3:1:XXXX-XXXX-XXX“ – stejný v adrese $dist i v trvalém odkazu /ark:/61903/3:1:…
+FS = re.compile(r"familysearch\.org/.*?\b3:1:([0-9A-Z]{4}-[0-9A-Z-]{4,})")
+FS_WEB = "www.familysearch.org"
+
+
+def z_prohlizece(adresa):
+    """(klíč v mezipaměti, web) pro adresu snímku z prohlížeče (eBadatelna, FamilySearch), jinak None."""
+    m = EBAD.search(adresa or "")
+    if m:
+        return klic_ebadatelna(*m.groups()), EBAD_WEB
+    m = FS.search(adresa or "")
+    if m:
+        return f"familysearch/3_1_{m.group(1)}.jpg", FS_WEB   # bez dvojteček – Windows je v názvu souboru neumí
+    return None
 
 
 def _ze_souboru(path):
@@ -282,16 +299,16 @@ def main(a):
             pass
     elif a[0] == "uloz" and len(a) > 1:
         d = _ze_souboru(a[1])
-        m = EBAD.search(d.get("adresa", ""))
-        if not m or not str(d.get("data", "")).startswith("data:image/"):
-            sys.exit("soubor není výsledek úryvku pro eBadatelnu (chybí adresa snímku nebo obrázek)")
-        klic = klic_ebadatelna(*m.groups())
+        zdroj = z_prohlizece(d.get("adresa", ""))
+        if not zdroj or not str(d.get("data", "")).startswith("data:image/"):
+            sys.exit("soubor není výsledek úryvku pro eBadatelnu ani FamilySearch (chybí adresa snímku nebo obrázek)")
+        klic, web = zdroj
         znovu = os.path.exists(cesta(klic))   # snímek už byl uložený – prohlížeč ho načetl z archivu zbytečně
         data = base64.b64decode(d["data"].split(",", 1)[1])
         if not cely(data):
             sys.exit("snímek z prohlížeče není celý (chybí konec obrázku) – počkej na načtení a ulož ho znovu")
         p = uloz(klic, data)
-        _zapocti(EBAD_WEB, len(data), z_disku=False)
+        _zapocti(web, len(data), z_disku=False)
         if not p:
             sys.exit(f"do {KOREN} nejde zapisovat")
         os.remove(a[1])
@@ -304,15 +321,15 @@ def main(a):
             print(a[2])
         _nahled(p, nahled, d.get("w"))
     elif a[0] == "najdi" and len(a) > 1:
-        m = EBAD.search(a[1])
-        p = cesta(klic_ebadatelna(*m.groups())) if m else None
+        zdroj = z_prohlizece(a[1])
+        p = cesta(zdroj[0]) if zdroj else None
         if not p or not os.path.exists(p):
             sys.exit(1)
         if not cely_soubor(p):   # zkrácený – smazat, snímek se uloží znovu z prohlížeče
             os.remove(p)
             sys.exit(1)
         _pouzito(p)
-        _zapocti(EBAD_WEB, os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči
+        _zapocti(zdroj[1], os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči
         print(p)
         _nahled(p, nahled)
     else:
