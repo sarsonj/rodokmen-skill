@@ -410,6 +410,16 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
   Na **císařských otiscích** chybí u části listů barvy a čísla domů. Lepší jsou **indikační skici**: mají čísla domů
   a u pozemků jméno majitele („N. 13“ = patří k domu čp. 13). Dům bez pozemků mimo ves = domkář bez polí.
   Jméno majitele samotného domu bývá jen v písemném operátu (archiv, ne online). Výřezy map patří na web k rodině.
+  - **Postup (jen v prohlížeči, služby jsou za tokenem – ten si stránka bere sama, nevypisuj ho):** na ags.cuzk.gov.cz/archiv
+    najdi katastrální území, klikni do mapy na obec → „Indikační skici“ (nebo „Císařské povinné otisky“) → ID rastru
+    (např. `HRA235018400`). Skica pak jde otevřít přímo: `https://ags.cuzk.gov.cz/archiv/openmap.html?typ=skicic&idrastru=<ID>`
+    (list otisku `typ=cioc`); načítá se asi 20 s. Osada často nemá vlastní katastr (Polom → k. ú. Lhota u Dobrušky) –
+    hledej podle sousední obce. Přibližuj kolečkem na bod, tažení myší mapu posouvá nevyzpytatelně.
+  - **Morava:** odkaz vede do prohlížeče MZA (fond D 9, často dva listy: původní z 30. let a reambulace ze 70. let 19. stol.).
+    MZA stahovací skripty zakazuje – jen přiblížit a snímek obrazovky (jako u matrik MZA). Listy Moravy nejsou georeferencované.
+  - **Čtení:** černá čísla v budovách = čísla domů, červená = parcely; „N° 35 Příjmení“ u pozemku = patří k domu čp. 35.
+    Žlutá stavba dřevěná, růžová zděná. Popisky bývají vzhůru nohama (výřez otoč o 180°). U měst bývá intravilán prázdný.
+    Ulož jen snímkem obrazovky (stahování je placené) a na web dej výřez se zakroužkovaným domem.
 - **Dnešní adresa domu** podle čísla popisného: RÚIAN (ČÚZK, vrstva AdresniMisto). Pozor, staré centrum mívá od 19. století
   stejná čp., ale předměstí a vesnice čísla přečíslovávaly. Hodí se na „procházku po stopách předků“.
   Stavbu podle obce a čísla popisného najde i nahlizenidokn.cuzk.gov.cz (ověření adresy z dokladu); vlastník je za
