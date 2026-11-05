@@ -43,7 +43,7 @@ def get(url, data=None):
             if getattr(e, "code", 0) in (403, 404):
                 break
             time.sleep(2 * (attempt + 1))
-    raise err
+    sys.exit(f"Portál neodpověděl ({type(err).__name__}: {str(err)[:100]}). Zkus to později.")
 
 
 def text(s):
