@@ -26,7 +26,7 @@ junction) mimo projekt a na místě záloh, složku místo souboru a cesty liš�
 Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze změněných souborů uloží do
 pracovni/zaloha_<datum>/puvodni/.
 """
-import hashlib, json, os, shutil, subprocess, sys, tempfile, time
+import hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -370,6 +370,26 @@ def nastaveni(dst, hlidac):
     print("Hlídač sítě:", "zapnutý" if zapnuty else "vypnutý (zapnout: --hlidac)")
 
 
+def _verze(text):
+    m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", (text or "").strip())
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def zkontroluj_verzi(dst):
+    """Projekt založený novějším skillem neaktualizovat starší kopií skillu – vrátilo by ho to ke staré verzi."""
+    try:
+        with open(os.path.join(dst, ".skill_verze"), encoding="utf-8") as f:
+            projekt = f.read().strip()
+        with open(os.path.join(SKILL, "VERZE"), encoding="utf-8") as f:
+            skill = f.read().strip()
+    except OSError:
+        return
+    p, s = _verze(projekt), _verze(skill)
+    if p and s and p > s:
+        sys.exit(f"CHYBA: projekt je z verze skillu {projekt}, tento skill je starší ({skill}). Aktualizace by projekt vrátila\n"
+                 "ke starší verzi, proto nic neměním. Aktualizujte nejdřív skill (README, část Instalace) a pak to zkuste znovu.")
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1].startswith("-"):
         sys.exit(__doc__)
@@ -379,6 +399,7 @@ def main():
         if not cesty:
             sys.exit(__doc__)
         sys.exit(0 if all([vyresit(dst, c) for c in cesty]) else 1)
+    zkontroluj_verzi(dst)
     demo = "--ukazka" in sys.argv
     os.makedirs(dst, exist_ok=True)
     copy_tree(os.path.join(SKILL, "template", "ukazka" if demo else "data"), os.path.join(dst, "data"))

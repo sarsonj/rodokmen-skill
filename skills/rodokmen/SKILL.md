@@ -31,8 +31,12 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
 ## Na začátku každé konverzace
 1. Jsi ve složce projektu? (`data/STAV.md` existuje.) → Přečti `data/STAV.md`, konec `data/research_log.md`
    a pokračuj podle sekce „Rozpracováno“. Krátce uživateli shrň, kde jste skončili.
-   **Verze:** porovnej soubor `.skill_verze` v projektu se `SKILL_DIR/VERZE`. Chybí-li, nebo se liší, řekni jednou větou,
-   že je nová verze skillu, a nabídni aktualizaci projektu: `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`
+   **Verze:** spusť `python3 -I SKILL_DIR/tools/verze.py <složka projektu>` (porovná projekt, nainstalovaný skill
+   a nejnovější vydání na GitHubu; GitHubu se ptá nejvýš jednou denně). Podle posledního řádku:
+   `NOVA_VERZE_SKILLU` → řekni jednou větou, že vyšla nová verze, a poraď, jak aktualizovat skill (vypíše jak); projekt
+   aktualizuj až z nového skillu (po restartu), nikdy ne z klonu GitHubu. `PROJEKT_NOVEJSI` → projekt neaktualizuj,
+   jen poraď aktualizovat skill. `AKTUALIZUJ_PROJEKT` → nabídni aktualizaci projektu:
+   `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`
    (data zůstanou, vlastní úpravy webu a `tools/` se sloučí s novou šablonou), pak ve `web/` `npm install`. Po souhlasu
    ji udělej a výpis projdi s uživatelem: u souborů ke kontrole a zálohovaných úprav porovnej, co změnila šablona
    a co uživatel, navrhni sloučení a po souhlasu ho udělej (postup `reference/web.md`). Odmítne-li, připomeň to až příště.
