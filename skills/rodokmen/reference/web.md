@@ -76,11 +76,14 @@ Nasazování i přenos jsou zdarma bez limitu; brána běží před každým sou
    před každým souborem (`run_worker_first`), jinak by šly stránky a fotky stáhnout bez přihlášení.
 Další aktualizace = jen `npm run nasadit-cloudflare`.
 
-**Pasti:** „You need to verify your email address to use Workers“ (403) u nového účtu = Cloudflare chce ověřený e-mail –
-ověření v dashboardu (pruh nahoře / My Profile), potvrdit odkaz v poště, nasadit znovu (subdoména už zůstane založená). Safari s blokátorem obsahu ukáže místo ověřovací stránky Cloudflare prázdnou stránku 403 – zkus jiný prohlížeč
-(kontrola to pozná). Nepoužívej `wrangler pages project create/deploy` ani „Import a repository“ v administraci –
-založí jiný typ projektu, případně sám přepíše `astro.config`/`package.json`; nasazuj jen přes `npm run nasadit-cloudflare`.
-V cloudovém prostředí (claude.ai), kde se přihlášení přes prohlížeč nevrátí do terminálu, použij Netlify (`login --request`).
+**Pasti:**
+- „You need to verify your email address to use Workers“ (403) u nového účtu: Cloudflare chce ověřený e-mail – ověření
+  v dashboardu (pruh nahoře / My Profile), potvrdit odkaz v poště, nasadit znovu (subdoména už zůstane založená).
+- Safari s blokátorem obsahu ukáže místo ověřovací stránky Cloudflare prázdnou stránku 403 – zkus jiný prohlížeč
+  (kontrola to pozná).
+- Nepoužívej `wrangler pages project create/deploy` ani „Import a repository“ v administraci – založí jiný typ projektu,
+  případně sám přepíše `astro.config`/`package.json`. Nasazuj jen přes `npm run nasadit-cloudflare`.
+- V cloudovém prostředí (claude.ai), kde se přihlášení přes prohlížeč nevrátí do terminálu, použij Netlify (`login --request`).
 
 ## Zveřejnění na Netlify (druhá možnost)
 Pro uživatele, kteří už web na Netlify mají. Bezplatný účet vystačí jen na asi 20 nasazení měsíčně (viz kredity níže).
