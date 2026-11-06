@@ -6,6 +6,16 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.9.1 – 6. 11. 2026
+
+**Nové**
+- Kontrola nové verze i proti GitHubu: Claude na začátku konverzace zjistí, jestli nevyšla novější verze, než je
+  nainstalovaná (nejvýš jednou denně), a poradí, jak skill aktualizovat. Dřív to poznal, jen když se kopie skillu
+  aktualizovala sama, a to se u některých instalací děje se zpožděním hodin až dnů (#98).
+
+**Opravy**
+- Aktualizace projektu odmítne starší kopii skillu, než ze které projekt vznikl – projekt se tak nevrátí ke staré verzi.
+
 ## 0.9.0 – 6. 11. 2026
 
 Hlavní novinka: **rodinný web se nově zveřejňuje na Cloudflare.** Nasazování i přenos jsou zdarma bez limitu,
