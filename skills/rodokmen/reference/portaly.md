@@ -430,8 +430,15 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
   CAPTCHou a je to údaj o žijícím člověku – nezjišťuj ho.
 
 ## Oběti 2. světové války
-- **Arolsen Archives** (collections.arolsen-archives.org): dokumenty o vězních, nuceně nasazených a vysídlených. Vyhledávání
-  v prohlížeči, vstupní prohlášení musí odsouhlasit uživatel.
+- **Arolsen Archives** (collections.arolsen-archives.org): dokumenty o vězních, nuceně nasazených a vysídlených – kartotéky Dachau, Mauthausenu, Buchenwaldu,
+  Flossenbürgu, Terezína, část Osvětimi, seznamy transportů a poválečné vysídlené osoby (DP), přes 30 milionů záznamů. Nástroj `tools/arolsen.py`:
+  `arolsen.py hledat "Novák Josef 1905"` (slova „a zároveň“, hláskové varianty; po 1000 záznamech, další přes `--od 1000`), filtry `--misto-narozeni Praha`, `--rodne`, `--cislo <číslo vězně>`,
+  `--narodnost Czech`, `--vyznani Jewish` (přesný název z portálu; při chybě nástroj vypíše nabídku), `--podrobne` (otec, matka, vyznání, povolání, místo věznění, poslední bydliště),
+  `arolsen.py karta <id> pracovni/x.jpg` stáhne kartotéční kartu nebo dokument. Datum narození je v databázi měsíc/den/rok (nástroj převádí). Shoda jména není ztotožnění
+  (Novák/Nowak/Novak, chybná data) – ověř na kartě a v rodině.
+  **Vstupní prohlášení:** portál při vstupu žádá o souhlas s podmínkami (citlivé údaje, trestní odpovědnost za porušení zákonů o ochraně údajů). Nástroj proto bez souhlasu nic nestahuje
+  (kód 4) a **souhlas musí potvrdit uživatel sám**: `!python3 -I tools/arolsen.py souhlas` (jednou za 30 dní); Claude ho nikdy nepotvrzuje za uživatele. Podmínky:
+  arolsen-archives.org/en/materials/terms-of-use/ (programový přístup k větším souborům nabízí archiv na požádání). Údaje o obětech jsou citlivé – na web jen se souhlasem rodiny (`soukromi.md`).
 - **Mauthausen – Raum der Namen** (raumdernamen.mauthausen-memorial.org): vězni zemřelí v Mauthausenu, s datem a místem
   narození i úmrtí. Takové údaje jsou citlivé – na web jen se souhlasem rodiny (`soukromi.md`).
 
