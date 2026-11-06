@@ -183,7 +183,33 @@ def login_files(cfg):
         nginx = re.sub(r"(map \$cookie_rodokmen \$rodokmen_ok \{.*?)\n *default 0;", r"\1", nginx, count=1, flags=re.S)
     nginx = nginx.replace("{{ODPOVED}}", nginx_map)
     write(os.path.join(WEB, "nginx.conf"), nginx)
+    cloudflare_files(cfg, digest if answer else "")
     return bool(answer)
+
+
+def cloudflare_files(cfg, digest):
+    """Brána pro Cloudflare (web/cloudflare/worker.js) a web/wrangler.jsonc pro `npm run nasadit-cloudflare`."""
+    tpl = os.path.join(WEB, "cloudflare", "worker.sablona.js")
+    if not os.path.exists(tpl):
+        return
+    # cloudflare.nazev = subdoména účtu (adresa https://rodokmen.<nazev>.workers.dev), zakládá ji nasadit_cloudflare.mjs
+    name = ((cfg.get("cloudflare") or {}).get("nazev") or "").strip()
+    if name and not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?", name):
+        sys.exit(f"CHYBA: cloudflare.nazev v data/web.json „{name}“ nejde použít – jen malá písmena bez diakritiky, "
+                 "číslice a pomlčky (nejvýš 50 znaků), např. „novakovi“.")
+    worker = (open(tpl, encoding="utf-8").read().replace("{{HASH}}", digest)
+              .replace("{{OTEVRENY}}", "false" if digest else "true"))
+    write(os.path.join(WEB, "cloudflare", "worker.js"), worker)
+    wrangler = {
+        "name": "rodokmen",
+        "main": "cloudflare/worker.js",
+        "compatibility_date": "2026-10-01",
+        "assets": {"directory": "./dist", "binding": "ASSETS", "run_worker_first": True,
+                   "not_found_handling": "404-page"},
+    }
+    write(os.path.join(WEB, "wrangler.jsonc"),
+          "// Vyrábí tools/export_web.py – ručně neupravovat. Nasazení: npm run nasadit-cloudflare.\n"
+          + json.dumps(wrangler, ensure_ascii=False, indent=2) + "\n")
 
 
 def main():

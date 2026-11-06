@@ -17,3 +17,6 @@ web/public/zdroje/
 web/public/prihlaseni.html
 web/nginx.conf
 web/netlify/edge-functions/
+web/cloudflare/worker.js
+web/wrangler.jsonc
+web/.wrangler/

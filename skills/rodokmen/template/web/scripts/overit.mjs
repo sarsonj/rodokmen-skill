@@ -7,7 +7,9 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const BRANA = /document\.cookie\s*=\s*'rodokmen=/;   // přihlašovací stránka (prihlaseni.html z tools/export_web.py)
-const maBranu = existsSync("netlify/edge-functions/brana.js");   // export ji vyrobí, jen když je v nastavení otázka
+// export vyrobí bránu Netlify jen s otázkou v nastavení; bránu Cloudflare vždy, u otevřeného webu s OTEVRENY = true
+const maBranu = existsSync("netlify/edge-functions/brana.js") ||
+  (existsSync("cloudflare/worker.js") && !/OTEVRENY = true/.test(readFileSync("cloudflare/worker.js", "utf8")));
 const a = process.argv.slice(2);
 let url = a[a.indexOf("--url") + 1] && a.includes("--url") ? a[a.indexOf("--url") + 1] : null;
 let siteId = null;
@@ -27,6 +29,10 @@ function ochranaTymu() {
     "Nebo v administraci webu: Project configuration → Access & security → Visitor access → Project visibility →",
     "  Edit visibility → Public (Production i Deploy Preview) → Save. Web pak chrání rodinná otázka.",
     "Potom znovu: node scripts/overit.mjs");
+}
+
+if (!url && !existsSync(".netlify/state.json") && existsSync(".wrangler/adresa.txt")) {
+  url = readFileSync(".wrangler/adresa.txt", "utf8").trim();   // uloží ji scripts/nasadit_cloudflare.mjs
 }
 
 if (!url) {
@@ -51,6 +57,24 @@ if (!url) {
   url = site.ssl_url || site.url;
 }
 
+// Nová subdoména workers.dev se šíří několik minut. Kdyby se počítač zeptal moc brzy, zapamatuje si
+// „neexistuje“ a web pak chvíli nevidí – proto nejdřív čekáme přes DNS Cloudflare (DoH), ne přes počítač.
+async function cekejNaDns(host) {
+  for (let i = 0; i < 36; i++) {
+    try {
+      const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${host}&type=A`, { headers: { accept: "application/dns-json" } });
+      if ((await r.json()).Answer?.length) return true;
+    } catch {}
+    if (i === 0) console.log("Čekám, až se nová adresa rozšíří (může trvat pár minut)…");
+    await new Promise((ok) => setTimeout(ok, 5000));
+  }
+  return false;
+}
+const host = new URL(url).hostname;
+if (host.endsWith(".workers.dev") && !(await cekejNaDns(host))) {
+  konec(0, `Adresa ${url} se ještě šíří. Za pár minut ji otevři v anonymním okně nebo spusť: npm run overit`);
+}
+
 let res, text;
 for (let pokus = 0; pokus < 3; pokus++) {   // hned po nasazení může web pár sekund chybět
   try {
@@ -58,6 +82,10 @@ for (let pokus = 0; pokus < 3; pokus++) {   // hned po nasazení může web pár
     text = await res.text();
     if (res.status !== 404 || pokus === 2) break;
   } catch (e) {
+    if (pokus === 2 && e.cause?.code === "ENOTFOUND" && host.endsWith(".workers.dev")) {
+      konec(0, `Web je nahraný, ale tento počítač adresu ${url} ještě nezná (nová adresa se šíří).`,
+        "Za pár minut ji otevři v anonymním okně nebo spusť: npm run overit");
+    }
     if (pokus === 2) konec(1, `CHYBA: web ${url} nejde otevřít (${e.cause?.code || e.message}).`);
   }
   await new Promise((ok) => setTimeout(ok, 5000));
@@ -71,10 +99,19 @@ if ((res.status >= 300 && res.status < 400 && /netlify\.com/.test(kam)) ||
     ((res.status === 401 || res.status === 403) && /netlify|login/i.test(text))) {
   ochranaTymu();
 }
+if (res.status === 429) {
+  konec(1, `CHYBA: ${url} vrátil 429 – vyčerpaný denní limit Cloudflare zdarma (100 000 požadavků, obnoví se o půlnoci UTC).`,
+    "Brána web dál chrání, jen se teď nikdo nedostane dovnitř. Kdyby se to opakovalo, zvaž placený tarif nebo menší výřezy.");
+}
+if ((res.status === 403 || res.status === 503) && /cf-chl|challenge-platform|Just a moment/i.test(text)) {
+  konec(1, `CHYBA: ${url} ukázal ověřovací stránku Cloudflare (ochrana proti robotům), ne rodinnou otázku.`,
+    "Otevři adresu v anonymním okně prohlížeče. Safari s blokátorem obsahu ji zobrazí jako prázdnou stránku 403 –",
+    "zkus jiný prohlížeč. Pokud se otázka v prohlížeči ukáže, je web v pořádku.");
+}
 if (res.status === 200) {
   if (maBranu) {
     konec(1, `CHYBA: ${url} se otevře bez rodinné otázky, ačkoli ji nastavení webu má.`,
-      "Brána (Edge Function) se nenasadila – nasazuj jen přes `npm run nasadit`, ne přetažením složky (Netlify Drop).");
+      "Brána se nenasadila – nasazuj jen přes `npm run nasadit` / `npm run nasadit-cloudflare`, ne přetažením složky (Netlify Drop).");
   }
   konec(0, `Pozor: ${url} je bez přihlášení (v data/web.json není rodinná otázka) – vidí ho kdokoli.`);
 }

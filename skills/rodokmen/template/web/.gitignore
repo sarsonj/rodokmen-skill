@@ -10,3 +10,6 @@ public/zdroje/
 public/prihlaseni.html
 nginx.conf
 netlify/edge-functions/
+cloudflare/worker.js
+wrangler.jsonc
+.wrangler

@@ -56,7 +56,7 @@
         document.cookie = 'rodokmen=' + hash + '; Max-Age=31536000; Path=/; SameSite=Lax' + secure;
         // úvodní lomítka sloučit: z adresy „https://web//cizi.web“ by jinak „//cizi.web“ přesměrovalo na cizí web
         var path = location.pathname.replace(/^[\/\\]+/, '/');
-        var back = path === '/prihlaseni.html' ? '/' : path + location.search;
+        var back = /^\/prihlaseni(\.html)?$/.test(path) ? '/' : path + location.search;   // Cloudflare: /prihlaseni
         return fetch(back, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
           if (r.status === 401) {
             document.getElementById('err').textContent = 'To není ono – zkuste to znovu.';

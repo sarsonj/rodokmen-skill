@@ -245,11 +245,12 @@ Podrobně `reference/web.md`. Ve zkratce:
    co na webu nechat smí, zapiš úryvkem textu do `web.json` → `citlive_schvaleno` (pak se už nehlásí).
 
 ## Fáze 5 – Zveřejnění (volitelné, jen se souhlasem)
-Výchozí cesta je **Netlify** (zdarma): `npm run nasadit`. Přihlášení k Netlify a první propojení webu jsou interaktivní –
-dej je uživateli jako `! npx netlify-cli login` atd. (postup v `reference/web.md`). Pokročilá varianta: vlastní server (Docker/CapRover).
+Výchozí cesta je **Cloudflare** (zdarma, nasazování bez limitu): přihlášení `npx -y wrangler@4 login` (uživatel jen
+klikne v prohlížeči na Allow), název adresy do `web.json` (`cloudflare.nazev`) a `npm run nasadit-cloudflare` – postup
+v `reference/web.md`. Kdo už má web na Netlify, pokračuje `npm run nasadit`. Pokročilá varianta: vlastní server (Docker/CapRover).
 Nic nezveřejňuj bez výslovného souhlasu uživatele.
-Po zveřejnění **nenasazuj po každém kole**: Netlify zdarma vystačí jen na zhruba 20 nasazení měsíčně (kredity, viz
-`reference/web.md`). Mezi tím obnovuj jen náhled (`npm run data && npm run build`) a nasazuj na pokyn uživatele nebo
+Po zveřejnění **nenasazuj po každém kole** (Netlify zdarma vystačí jen na zhruba 20 nasazení měsíčně, u Cloudflare to
+zbytečně zdržuje). Mezi tím obnovuj jen náhled (`npm run data && npm run build`) a nasazuj na pokyn uživatele nebo
 jednou na konci sezení.
 
 ## Poznámky pro správce skillu

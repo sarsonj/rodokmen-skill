@@ -30,7 +30,7 @@ HEREDOC = re.compile(r"<<-?\s*['\"]?\w+|@['\"]\s*\n")   # bash <<EOF, PowerShell
 PS = re.compile(r"\b(Invoke-WebRequest|Invoke-RestMethod|iwr|irm|curl\.exe|wget|Start-BitsTransfer|Net\.WebClient|"
                 r"HttpClient|DownloadString|DownloadFile)\b", re.I)
 URL = re.compile(r"https?://([^/\s\"'`:;)]+)", re.I)
-VOLNE = ("localhost", "127.0.0.1", "0.0.0.0", "netlify.app", "netlify.com", "github.com", "githubusercontent.com",
+VOLNE = ("localhost", "127.0.0.1", "0.0.0.0", "netlify.app", "netlify.com", "workers.dev", "cloudflare.com", "github.com", "githubusercontent.com",
          "npmjs.org", "pypi.org", "pythonhosted.org")
 RADA = ("Síť na weby archivů jen přes brzdu proti zablokování (tools/slusne.py), i u pomocníků:\n"
         "  python3 -I tools/slusne.py curl …            místo curl/wget\n"

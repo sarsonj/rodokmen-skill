@@ -13,8 +13,9 @@ a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hle
 | `npm run build` | sestaví web do `dist/` |
 | `npm run nahled` | data + build + náhled na http://localhost:4321 (Ctrl+C ukončí) |
 | `npm run dev` | vývojový režim při úpravách vzhledu |
-| `npm run nasadit` | data + build + nahrání na Netlify |
-| `npm run overit` | kontrola nasazeného webu bez přihlášení (rodinná otázka × ochrana týmu Netlify) |
+| `npm run nasadit-cloudflare` | data + build + nahrání na Cloudflare (výchozí) + kontrola |
+| `npm run nasadit` | data + build + nahrání na Netlify + kontrola |
+| `npm run overit` | kontrola nasazeného webu bez přihlášení (rodinná otázka × ochrana týmu Netlify / stránka Cloudflare) |
 
 Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (snímek obrazovky přes prohlížeč, je-li k dispozici).
 
@@ -45,7 +46,32 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 - `citlive_schvaleno`: seznam úryvků textu, které uživatel na webu schválil (např. `["oběsil se ve stodole"]`) –
   `kontrola.py` je pak nehlásí jako `CITLIVÉ`. Úryvek musí obsahovat hlášené slovo; když se text změní, hlásí se znovu.
 
-## Zveřejnění na Netlify (výchozí, zdarma)
+## Zveřejnění na Cloudflare (výchozí, zdarma)
+Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
+(stránka webu je asi 20–40 požadavků → tisíce zobrazení denně; po vyčerpání vrací web do půlnoci UTC chybu 429).
+1. **Účet a přihlášení:** spusť sám na pozadí `cd web && npx -y wrangler@4 login` – otevře prohlížeč. Řekni uživateli
+   předem: „Otevře se stránka Cloudflare – přihlas se (nebo si tam zdarma založ účet, stačí e-mail) a klikni na **Allow**,
+   máš na to asi 2 minuty.“ Vyprší-li to, spusť login znovu. Ověření: `npx -y wrangler@4 whoami`.
+2. **Adresa webu:** web poběží na `https://rodokmen.<název>.workers.dev`. Navrhni uživateli název podle rodu (malá
+   písmena bez diakritiky, pomlčky, např. `novakovi`) a zapiš ho do `data/web.json` jako `"cloudflare": {"nazev": "novakovi"}`.
+   Název platí pro celý účet Cloudflare (založí se při prvním nasazení, změnit jde jen v administraci); je-li obsazený,
+   nasazení samo zkusí variantu s číslem. Má-li účet už subdoménu, použije se ta.
+3. **Nasazení:** `cd web && npm run nasadit-cloudflare` (spusť sám). Vypíše adresu a sám spustí kontrolu
+   `scripts/overit.mjs`. U nové adresy kontrola počká, až se rozšíří (pár minut); když ji počítač ještě nezná, řekne to
+   a skončí bez chyby – pak ověř později `npm run overit`. Do té doby adresu v prohlížeči neotvírej (počítač by si
+   zapamatoval, že neexistuje, a pár minut by ji neviděl).
+4. Ověř i sám v anonymním okně: rodinná otázka, po správné odpovědi web.
+   Bránu (`web/cloudflare/worker.js`) a `web/wrangler.jsonc` vyrábí export – ručně neupravovat. Brána musí běžet
+   před každým souborem (`run_worker_first`), jinak by šly stránky a fotky stáhnout bez přihlášení.
+Další aktualizace = jen `npm run nasadit-cloudflare`.
+
+**Pasti:** Safari s blokátorem obsahu ukáže místo ověřovací stránky Cloudflare prázdnou stránku 403 – zkus jiný prohlížeč
+(kontrola to pozná). Nepoužívej `wrangler pages project create/deploy` ani „Import a repository“ v administraci –
+založí jiný typ projektu, případně sám přepíše `astro.config`/`package.json`; nasazuj jen přes `npm run nasadit-cloudflare`.
+V cloudovém prostředí (claude.ai), kde se přihlášení přes prohlížeč nevrátí do terminálu, použij Netlify (`login --request`).
+
+## Zveřejnění na Netlify (druhá možnost)
+Pro uživatele, kteří už web na Netlify mají. Bezplatný účet vystačí jen na asi 20 nasazení měsíčně (viz kredity níže).
 1. Uživatel si založí účet na netlify.com (stačí přihlášení přes Google/GitHub) – udělá sám.
 2. Přihlášení CLI (otevře prohlížeč) – dej uživateli: `! cd web && npx -y netlify-cli@latest login`.
    Když `!` nejde (cloudové prostředí): `npx -y netlify-cli@latest login --request "Rodokmen"` vypíše odkaz a číslo

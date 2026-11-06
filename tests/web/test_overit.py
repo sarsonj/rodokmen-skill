@@ -30,6 +30,10 @@ class H(BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", "https://app.netlify.com/login?redirect=1")
             self.end_headers()
+        elif p.startswith("/cf429"):
+            self.odpoved(429, "error code: 1027")
+        elif p.startswith("/cfvyzva"):   # ověřovací stránka Cloudflare (ne naše brána)
+            self.odpoved(403, "<html><title>Just a moment...</title><body>cf-chl challenge-platform</body></html>")
         elif p.startswith("/verejny"):
             self.odpoved(200, "<html><title>Rodokmen</title><body>Rodokmen Nováků</body></html>")
         else:
@@ -57,8 +61,15 @@ try:
     os.makedirs(os.path.join(web, "scripts"))
     shutil.copy(os.path.join(SABLONA, "scripts", "overit.mjs"), os.path.join(web, "scripts", "overit.mjs"))
 
-    def overit(cesta, brana=True):
+    def overit(cesta, brana=True, cloudflare=None):
         edge = os.path.join(web, "netlify", "edge-functions", "brana.js")
+        cf = os.path.join(web, "cloudflare", "worker.js")
+        if cloudflare is None and os.path.exists(cf):
+            os.remove(cf)
+        elif cloudflare is not None:
+            os.makedirs(os.path.dirname(cf), exist_ok=True)
+            open(cf, "w").write("const OTEVRENY = %s;" % cloudflare)
+            brana = False
         if brana:
             os.makedirs(os.path.dirname(edge), exist_ok=True)
             open(edge, "w").write("// brana")
@@ -85,6 +96,18 @@ try:
 
     kod, out = overit("/neni")
     check("nečekaná odpověď (404): chyba s kódem odpovědi", kod == 1 and "404" in out, out)
+
+    kod, out = overit("/verejny", cloudflare="false")
+    check("Cloudflare: brána v projektu, ale web veřejný: chyba", kod == 1 and "bez rodinné otázky" in out, out)
+
+    kod, out = overit("/verejny", cloudflare="true")
+    check("Cloudflare: otevřený web – jen informace, kód 0", kod == 0 and "bez přihlášení" in out, out)
+
+    kod, out = overit("/cf429", cloudflare="false")
+    check("Cloudflare 429: vysvětlí denní limit", kod == 1 and "limit" in out, out)
+
+    kod, out = overit("/cfvyzva", cloudflare="false")
+    check("ověřovací stránka Cloudflare: vysvětlí, že to není brána", kod == 1 and "ověřovací" in out, out)
 
     # bez --url a bez .netlify/state.json: nic neověří, ale nasazení nezastaví
     r = subprocess.run(["node", "scripts/overit.mjs"], cwd=web, capture_output=True, text=True, timeout=60)
