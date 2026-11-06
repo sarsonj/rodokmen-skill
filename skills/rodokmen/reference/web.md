@@ -49,10 +49,16 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
 (stránka webu je asi 20–40 požadavků → tisíce zobrazení denně; po vyčerpání vrací web do půlnoci UTC chybu 429).
-1. **Účet a přihlášení:** spusť sám na pozadí `cd web && npx -y wrangler@4 login` – otevře prohlížeč. Řekni uživateli
-   předem: „Otevře se stránka Cloudflare – přihlas se (nebo si tam zdarma založ účet, stačí e-mail) a klikni na **Allow**,
-   máš na to asi 2 minuty.“ Vyprší-li to, spusť login znovu. Ověření: `npx -y wrangler@4 whoami`.
-2. **Adresa webu:** web poběží na `https://rodokmen.<název>.workers.dev`. Vymysli 2–3 názvy podle rodu (malá písmena
+1. **Účet:** nemá-li uživatel účet Cloudflare, ať si ho **nejdřív** založí na dash.cloudflare.com (zdarma, stačí e-mail)
+   a potvrdí e-mail z pošty – registrace se do dvou minut přihlášení nevejde. Až je v dashboardu přihlášený, pokračuj.
+2. **Přihlášení:** spusť sám na pozadí `cd web && npx -y wrangler@4 login` – otevře prohlížeč. Řekni uživateli:
+   „Otevře se stránka Cloudflare – klikni na **Allow**, máš na to asi 2 minuty.“ Ověření: `npx -y wrangler@4 whoami`.
+   - **„Application authorization failed / Authentication error, please login“:** prohlížeč není u Cloudflare přihlášený
+     (typicky hned po registraci, nebo jiné okno/anonymní okno). „Retry authorization“ nepomůže, když login mezitím
+     vypršel. Ať se uživatel v tom prohlížeči přihlásí na dash.cloudflare.com, pak spusť `wrangler login` znovu
+     (nový odkaz). Odkaz bez otevření prohlížeče: `npx -y wrangler@4 login --browser=false`.
+   - „Timed out waiting for authorization code“ = vypršely 2 minuty, spusť login znovu.
+3. **Adresa webu:** web poběží na `https://rodokmen.<název>.workers.dev`. Vymysli 2–3 názvy podle rodu (malá písmena
    bez diakritiky, pomlčky: `novakovi`, `novakovi-holice`, `rod-novaku`), ověř je
    `cd web && node scripts/nasadit_cloudflare.mjs --volno novakovi novakovi-holice rod-novaku` (ptá se DNS Cloudflare,
    adresu tím „nevyplašíš“) a uživateli nabídni jen volné. Vybraný zapiš do `data/web.json` jako
@@ -60,17 +66,18 @@ Nasazování i přenos jsou zdarma bez limitu; brána běží před každým sou
    změnit jde jen v administraci); kdyby byl přece obsazený, nasazení zkusí variantu s číslem a řekne ji.
    **Má-li uživatel účet Cloudflare už dřív**, použije se jeho stávající subdoména a název z `web.json` se nepoužije –
    adresu pak řekne až nasazení.
-3. **Nasazení:** `cd web && npm run nasadit-cloudflare` (spusť sám). Vypíše adresu a sám spustí kontrolu
+4. **Nasazení:** `cd web && npm run nasadit-cloudflare` (spusť sám). Vypíše adresu a sám spustí kontrolu
    `scripts/overit.mjs`. U nové adresy kontrola počká, až se rozšíří (pár minut); když ji počítač ještě nezná, řekne to
    a skončí bez chyby – pak ověř později `npm run overit`. Do té doby adresu v prohlížeči neotvírej: počítač nebo
    router by si zapamatoval, že neexistuje, a až 30 minut by ji neviděl (jinde, třeba v telefonu na mobilních datech,
    web už jede). Řekni to uživateli, ať se nelekne.
-4. Ověř i sám v anonymním okně: rodinná otázka, po správné odpovědi web.
+5. Ověř i sám v anonymním okně: rodinná otázka, po správné odpovědi web.
    Bránu (`web/cloudflare/worker.js`) a `web/wrangler.jsonc` vyrábí export – ručně neupravovat. Brána musí běžet
    před každým souborem (`run_worker_first`), jinak by šly stránky a fotky stáhnout bez přihlášení.
 Další aktualizace = jen `npm run nasadit-cloudflare`.
 
-**Pasti:** Safari s blokátorem obsahu ukáže místo ověřovací stránky Cloudflare prázdnou stránku 403 – zkus jiný prohlížeč
+**Pasti:** „You need to verify your email address to use Workers“ (403) u nového účtu = Cloudflare chce ověřený e-mail –
+ověření v dashboardu (pruh nahoře / My Profile), potvrdit odkaz v poště, nasadit znovu (subdoména už zůstane založená). Safari s blokátorem obsahu ukáže místo ověřovací stránky Cloudflare prázdnou stránku 403 – zkus jiný prohlížeč
 (kontrola to pozná). Nepoužívej `wrangler pages project create/deploy` ani „Import a repository“ v administraci –
 založí jiný typ projektu, případně sám přepíše `astro.config`/`package.json`; nasazuj jen přes `npm run nasadit-cloudflare`.
 V cloudovém prostředí (claude.ai), kde se přihlášení přes prohlížeč nevrátí do terminálu, použij Netlify (`login --request`).

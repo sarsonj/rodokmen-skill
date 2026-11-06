@@ -204,6 +204,8 @@ def cloudflare_files(cfg, digest):
         "name": "rodokmen",
         "main": "cloudflare/worker.js",
         "compatibility_date": "2026-10-01",
+        "workers_dev": True,      # adresa https://rodokmen.<subdoména>.workers.dev
+        "preview_urls": False,    # bez zvláštních adres pro jednotlivé verze
         "assets": {"directory": "./dist", "binding": "ASSETS", "run_worker_first": True,
                    "not_found_handling": "404-page"},
     }

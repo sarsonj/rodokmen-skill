@@ -94,6 +94,7 @@ try:
     check("wrangler.jsonc: soubory z dist/ přes ASSETS", a.get("directory") == "./dist" and a.get("binding") == "ASSETS", a)
     check("wrangler.jsonc: brána běží před každým souborem (run_worker_first)", a.get("run_worker_first") is True, a)
     check("wrangler.jsonc: chybějící stránka = 404.html", a.get("not_found_handling") == "404-page", a)
+    check("wrangler.jsonc: workers.dev ano, preview URL ne", cfg.get("workers_dev") is True and cfg.get("preview_urls") is False, cfg)
     check("wrangler.jsonc: compatibility_date", re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(cfg.get("compatibility_date", ""))), cfg)
 
     c = f"rodokmen={otisk}"

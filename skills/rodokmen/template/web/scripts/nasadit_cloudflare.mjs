@@ -77,7 +77,11 @@ for (const subdomena of navrhy) {
 }
 
 if (vystup.kod !== 0) {
-  if (/not (logged in|authenticated)|wrangler login/i.test(vystup.text)) {
+  if (/verify your email/i.test(vystup.text)) {
+    console.error("\nCloudflare chce před prvním nasazením ověřený e-mail účtu. Ať uživatel otevře dash.cloudflare.com,",
+      "v pruhu nahoře nebo v Profilu (My Profile) klikne na ověření e-mailu a potvrdí odkaz v poště.",
+      "Pak spusť nasazení znovu – subdoména už zůstane.");
+  } else if (/not (logged in|authenticated)|wrangler login/i.test(vystup.text)) {
     console.error("\nNejsi přihlášený ke Cloudflare: `npx -y wrangler@4 login` (souhlas v prohlížeči do 2 minut), pak znovu.");
   } else if (/workers\/onboarding/.test(vystup.text)) {
     console.error("\nSubdoménu workers.dev se nepodařilo založit. Zvol ji jednou ručně na odkazu výše (Workers → onboarding)",
