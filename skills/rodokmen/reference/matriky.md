@@ -159,7 +159,12 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
   opravit (přeškrtnuté Jan → František) a do rejstříku se opsalo to původní.
 - Sňatek pár měsíců před porodem nebo po něm – není chyba, jen „svatba na poslední chvíli“; zajímavost pro web.
 - Nemanželské dítě nese příjmení matky; otec chybí nebo je dopsán později (legitimace na okraji).
-- Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`.
+- Stejný předek dvakrát v rodokmenu (vzdálení příbuzní se vzali) – v datech `SAME`. Najde ho `tools/graf.py`
+  (ve stromu z GEDCOMu i v `osoby.py`). Ověří ho dispens pro pokrevní příbuzenství v oddacím zápisu
+  („Dispens … Blutsverwandtschaft III. Grades“, „in 3o et 4o gradu“). Stupeň podle církevního počítání je počet
+  generací od snoubence ke společnému předkovi, u nestejně vzdálených ten delší: sestřenice z 2. kolene
+  (společný pradědeček) = 3. stupeň, o generaci dál = „3. a 4. stupeň“. Do roku 1917 platila překážka do 4. stupně;
+  když spočítaný stupeň a dispens nesedí, nebo dispens chybí, prověř vazbu.
 - Index nenašel ≠ zápis neexistuje. Zapiš, co přesně jsi prošel.
 - Oddací zápis uvádí „narozen dle mat. IV f. 149“ – podle folia najdeš křest jedním stažením (folio ≈ snímek − posun knihy).
 - Pomocníci (subagenti) a OCR/AI čtou historické písmo chybně – vždy ověř sám (viz `playbook.md` §1 bod 10).

@@ -100,6 +100,10 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - **Rodinný strom jako soubor GEDCOM** (`.ged`, export z MyHeritage/Geni/FamilySearch): `python3 -I tools/ged_import.py
   dokumenty/strom.ged "Jméno Příjmení"` vypíše předky s čísly, všechny události a poznámky a **frontu zápisů**
   (nejmladší známá událost u každého předka, a jestli už je v archivu). `--osoby` dá kostru pro `osoby.py`.
+  Předtím spusť `python3 -I tools/graf.py strom dokumenty/strom.ged "Jméno Příjmení"`. Cizí stromy mívají
+  dvojníky (táž osoba dvakrát, třeba u obou manželek otce) a chronologicky nemožné vazby (matce by bylo 6 let).
+  Nástroj je vypíše, u dítěte ve dvou rodinách ukáže, kterou bere `ged_import.py` a která je podle dat možná,
+  a u předka, který je v rodokmenu víckrát, navrhne `SAME`. Všechno ověř v matrice.
   Poznámky ve stromu bývají plné rodinných historek. Přečti je a vytěž do `udaje_od_rodiny.md`.
   Starší strom z **Brother's Keeper** (kódování ANSI a česká data „SRPEN 1945“ nástroj převede sám): místa tam bývají
   v 6. pádě („Táboře“) – do `osoby.py` je přepiš do 1. pádu. Kořenem takového stromu často nejsou uživatel, ale jeho děti
@@ -309,6 +313,7 @@ Nedělej to pořád. Postup:
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko…), URL se bere z prohlížeče |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské; `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `ged_import.py strom.ged "Jméno"` | předci z rodinného stromu (GEDCOM) + fronta zápisů |
+| `graf.py strom strom.ged ["Jméno"]`, `graf.py predci` | rodina jako graf: dvojníci, dítě ve dvou rodinách, cykly, věk rodičů, předek víckrát (návrh `SAME`); `predci` hlásí i `kontrola.py` |
 | `ftb_export.py strom.ftb out.ged ["Jméno" rok linie.md [Photos/]]` | záloha z MyHeritage (.ftb) → GEDCOM + přímá linie s původem údajů |
 | `mapa_knihy.py aron/pf/ahmp <kniha> <od> <do> [krok]`, `--vedle --ostre --vyrez …`, `soubory …` | mapa knihy (horní pruhy snímků pod sebou) a montáž sloupce se jmény vedle sebe – orientace v knihách po vsích (`matriky.md`) |
 | `overit.py <snímek> x0,y0,x1,y1 <prefix> [--kontrast]` | zápis na dvě čitelné poloviny – ověření čtení (souřadnice = zlomky 0–1) |
