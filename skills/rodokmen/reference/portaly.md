@@ -418,7 +418,10 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
     hledej podle sousední obce. Přibližuj kolečkem na bod, tažení myší mapu posouvá nevyzpytatelně.
   - **Morava:** odkaz vede do prohlížeče MZA (fond D 9, často dva listy: původní z 30. let a reambulace ze 70. let 19. stol.).
     MZA stahovací skripty zakazuje – jen přiblížit a snímek obrazovky (jako u matrik MZA). Listy Moravy nejsou georeferencované.
-  - **Čtení:** černá čísla v budovách = čísla domů, červená = parcely; „N° 35 Příjmení“ u pozemku = patří k domu čp. 35.
+  - **Čtení:** v budově je **červeně číslo popisné** a **černě číslo stavební parcely** (pozemkové parcely mají čísla
+    červená); záměna přečte celou ves obráceně. Při pochybnosti ověř na pár domech: vrstva pozemkového katastru
+    (archiv_spojene_pk) s adresními body RÚIAN ukáže, na které parcele stojí dnešní čp. „N° 35 Příjmení“ u pozemku
+    = patří k domu čp. 35.
     Žlutá stavba dřevěná, růžová zděná. Popisky bývají vzhůru nohama (výřez otoč o 180°). U měst bývá intravilán prázdný.
     Ulož jen snímkem obrazovky (stahování je placené) a na web dej výřez se zakroužkovaným domem.
 - **Dnešní adresa domu** podle čísla popisného: RÚIAN (ČÚZK, vrstva AdresniMisto). Pozor, staré centrum mívá od 19. století
