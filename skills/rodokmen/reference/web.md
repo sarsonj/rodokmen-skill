@@ -58,8 +58,9 @@ Nasazování i přenos jsou zdarma bez limitu; brána běží před každým sou
    nasazení samo zkusí variantu s číslem. Má-li účet už subdoménu, použije se ta.
 3. **Nasazení:** `cd web && npm run nasadit-cloudflare` (spusť sám). Vypíše adresu a sám spustí kontrolu
    `scripts/overit.mjs`. U nové adresy kontrola počká, až se rozšíří (pár minut); když ji počítač ještě nezná, řekne to
-   a skončí bez chyby – pak ověř později `npm run overit`. Do té doby adresu v prohlížeči neotvírej (počítač by si
-   zapamatoval, že neexistuje, a pár minut by ji neviděl).
+   a skončí bez chyby – pak ověř později `npm run overit`. Do té doby adresu v prohlížeči neotvírej: počítač nebo
+   router by si zapamatoval, že neexistuje, a až 30 minut by ji neviděl (jinde, třeba v telefonu na mobilních datech,
+   web už jede). Řekni to uživateli, ať se nelekne.
 4. Ověř i sám v anonymním okně: rodinná otázka, po správné odpovědi web.
    Bránu (`web/cloudflare/worker.js`) a `web/wrangler.jsonc` vyrábí export – ručně neupravovat. Brána musí běžet
    před každým souborem (`run_worker_first`), jinak by šly stránky a fotky stáhnout bez přihlášení.

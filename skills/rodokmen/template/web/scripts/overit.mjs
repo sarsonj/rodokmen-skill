@@ -84,7 +84,8 @@ for (let pokus = 0; pokus < 3; pokus++) {   // hned po nasazení může web pár
   } catch (e) {
     if (pokus === 2 && e.cause?.code === "ENOTFOUND" && host.endsWith(".workers.dev")) {
       konec(0, `Web je nahraný, ale tento počítač adresu ${url} ještě nezná (nová adresa se šíří).`,
-        "Za pár minut ji otevři v anonymním okně nebo spusť: npm run overit");
+        "Počítač nebo router si „neexistuje“ může pamatovat až 30 minut. Pak ji otevři v anonymním okně",
+        "nebo spusť: npm run overit (hned to jde třeba v telefonu přes mobilní data).");
     }
     if (pokus === 2) konec(1, `CHYBA: web ${url} nejde otevřít (${e.cause?.code || e.message}).`);
   }
