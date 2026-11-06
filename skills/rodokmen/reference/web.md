@@ -83,6 +83,16 @@ zkus v `launch.json` `"runtimeExecutable": "node"` a `"runtimeArgs": ["web/node_
 
 ## Vlastní server (pokročilé)
 - Docker: `web/Dockerfile` (build Astro → nginx s `nginx.conf` z `nginx.sablona.conf`). Před buildem image vždy `npm run data`.
+  Bez Node.js na počítači: `python3 -I tools/export_web.py --nasazeni`, pak `docker build` ve `web/` (Astro se sestaví v image).
+- Přestavba nechává na disku starý image bez tagu (stovky MB). Po `docker build` smaž jen starý image tohoto webu:
+  ```
+  OLD=$(docker images -q rodokmen-web:latest); docker build -t rodokmen-web .
+  docker rm -f rodokmen-web; docker run -d --name rodokmen-web --restart unless-stopped -p 8080:80 rodokmen-web
+  [ -n "$OLD" ] && [ "$OLD" != "$(docker images -q rodokmen-web:latest)" ] && docker image rm "$OLD"
+  ```
+  `docker system/image/builder prune` nepoužívej – platí pro celý server a smaže i věci jiných projektů.
+- **Jen přes https** (reverse proxy s Let's Encrypt, DSM, CapRover to umí): přihlašovací stránka počítá otisk odpovědi
+  v prohlížeči a ten to přes obyčejné http (mimo localhost) nedovolí – přihlášení by nefungovalo.
 - CapRover: `npm run deploy-caprover` (vyžaduje nainstalovaný a přihlášený `caprover` CLI).
 
 ## Úpravy vzhledu

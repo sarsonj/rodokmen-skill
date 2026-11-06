@@ -178,7 +178,10 @@ def login_files(cfg):
         nginx_map = "  default 1;"
         if os.path.exists(edge):
             os.remove(edge)
-    nginx = open(os.path.join(WEB, "nginx.sablona.conf"), encoding="utf-8").read().replace("{{ODPOVED}}", nginx_map)
+    nginx = open(os.path.join(WEB, "nginx.sablona.conf"), encoding="utf-8").read()
+    if not answer:   # otevřený web: default 0 v mapě přihlášení nahradí default 1 (dva default nginx odmítne)
+        nginx = re.sub(r"(map \$cookie_rodokmen \$rodokmen_ok \{.*?)\n *default 0;", r"\1", nginx, count=1, flags=re.S)
+    nginx = nginx.replace("{{ODPOVED}}", nginx_map)
     write(os.path.join(WEB, "nginx.conf"), nginx)
     return bool(answer)
 
