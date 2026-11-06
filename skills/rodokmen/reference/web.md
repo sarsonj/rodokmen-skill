@@ -52,10 +52,14 @@ Nasazování i přenos jsou zdarma bez limitu; brána běží před každým sou
 1. **Účet a přihlášení:** spusť sám na pozadí `cd web && npx -y wrangler@4 login` – otevře prohlížeč. Řekni uživateli
    předem: „Otevře se stránka Cloudflare – přihlas se (nebo si tam zdarma založ účet, stačí e-mail) a klikni na **Allow**,
    máš na to asi 2 minuty.“ Vyprší-li to, spusť login znovu. Ověření: `npx -y wrangler@4 whoami`.
-2. **Adresa webu:** web poběží na `https://rodokmen.<název>.workers.dev`. Navrhni uživateli název podle rodu (malá
-   písmena bez diakritiky, pomlčky, např. `novakovi`) a zapiš ho do `data/web.json` jako `"cloudflare": {"nazev": "novakovi"}`.
-   Název platí pro celý účet Cloudflare (založí se při prvním nasazení, změnit jde jen v administraci); je-li obsazený,
-   nasazení samo zkusí variantu s číslem. Má-li účet už subdoménu, použije se ta.
+2. **Adresa webu:** web poběží na `https://rodokmen.<název>.workers.dev`. Vymysli 2–3 názvy podle rodu (malá písmena
+   bez diakritiky, pomlčky: `novakovi`, `novakovi-holice`, `rod-novaku`), ověř je
+   `cd web && node scripts/nasadit_cloudflare.mjs --volno novakovi novakovi-holice rod-novaku` (ptá se DNS Cloudflare,
+   adresu tím „nevyplašíš“) a uživateli nabídni jen volné. Vybraný zapiš do `data/web.json` jako
+   `"cloudflare": {"nazev": "novakovi"}`. Název je subdoména celého účtu Cloudflare (založí se při prvním nasazení,
+   změnit jde jen v administraci); kdyby byl přece obsazený, nasazení zkusí variantu s číslem a řekne ji.
+   **Má-li uživatel účet Cloudflare už dřív**, použije se jeho stávající subdoména a název z `web.json` se nepoužije –
+   adresu pak řekne až nasazení.
 3. **Nasazení:** `cd web && npm run nasadit-cloudflare` (spusť sám). Vypíše adresu a sám spustí kontrolu
    `scripts/overit.mjs`. U nové adresy kontrola počká, až se rozšíří (pár minut); když ji počítač ještě nezná, řekne to
    a skončí bez chyby – pak ověř později `npm run overit`. Do té doby adresu v prohlížeči neotvírej: počítač nebo

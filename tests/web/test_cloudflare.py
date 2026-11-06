@@ -128,6 +128,48 @@ try:
     v = zkus(worker, [["bez", "/", None], ["obrazek", "/img/x.jpg", None]])
     check("otevřený web: bez cookie stránka i obrázek", v.get("bez", {}).get("status") == 200 and v.get("obrazek", {}).get("text") == "obsah /img/x.jpg", v)
 
+    # --- kontrola volného názvu (--volno): DNS Cloudflare přes DoH, tady napodobené lokálním serverem ---
+    import threading
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+    from urllib.parse import urlparse, parse_qs
+    DOTAZY = []
+
+    class Doh(BaseHTTPRequestHandler):
+        def do_GET(self):
+            jmeno = parse_qs(urlparse(self.path).query).get("name", [""])[0]
+            DOTAZY.append(jmeno)
+            obsazene = jmeno.endswith(".novakovi.workers.dev")
+            b = json.dumps({"Status": 0, "Answer": [{"data": "104.21.12.93"}]} if obsazene else {"Status": 3}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/dns-json")
+            self.end_headers()
+            self.wfile.write(b)
+
+        def log_message(self, *a):
+            pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), Doh)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    env = dict(os.environ, RODOKMEN_DOH=f"http://127.0.0.1:{srv.server_address[1]}/dns-query")
+
+    def volno(*jmena):
+        r = subprocess.run(["node", "scripts/nasadit_cloudflare.mjs", "--volno", *jmena], cwd=web, env=env,
+                           capture_output=True, text=True, timeout=60)
+        return r.returncode, r.stdout + r.stderr
+
+    kod, out = volno("novakovi")
+    check("--volno: obsazený název pozná (kód 1)", kod == 1 and "obsazen" in out, out)
+    check("--volno: ptá se na *.název.workers.dev", any(d.endswith(".novakovi.workers.dev") for d in DOTAZY), DOTAZY)
+    kod, out = volno("novakovi-holice")
+    check("--volno: volný název (kód 0)", kod == 0 and "voln" in out, out)
+    kod, out = volno("novakovi", "rod-novaku")
+    check("--volno: víc názvů – vypíše každý", "novakovi" in out and "rod-novaku" in out and kod == 0, out)
+    kod, out = volno("Rod.Nováků")
+    check("--volno: neplatný název odmítne", kod == 2 and "nejde" in out, out)
+    srv.shutdown()
+    r = subprocess.run(["node", "scripts/nasadit_cloudflare.mjs", "--zkouska"], cwd=web, capture_output=True, text=True, timeout=60)
+    check("neznámý přepínač: skončí hned (kód 2), nic nenasazuje", r.returncode == 2 and "wrangler" not in r.stdout.lower(), r.stdout + r.stderr)
+
     # --- skripty a git ---
     pkg = json.load(open(os.path.join(web, "package.json"), encoding="utf-8"))
     s = pkg["scripts"].get("nasadit-cloudflare", "")
