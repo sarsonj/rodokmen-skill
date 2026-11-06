@@ -67,6 +67,12 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
    Přihlášení zajišťuje Netlify Edge Function `web/netlify/edge-functions/brana.js` (generuje ji export).
 Další aktualizace = jen `npm run nasadit`. Vlastní doménu lze nastavit v administraci Netlify.
 
+**Kredity Netlify (bezplatný účet):** 300 kreditů měsíčně, nepřevádějí se. Každé nasazení stojí 15 (nepovedené nic),
+1 GB přenosu 20 → asi 20 nasazení měsíčně, nebo méně, když rodina stahuje velké výřezy ze `zdroje/`. Po vyčerpání
+Netlify nasazování pozastaví a `npm run nasadit` skončí „Forbidden“ – to jsou vyčerpané kredity, ne chyba webu
+(stav kreditů je v administraci Netlify). Proto nasazuj na pokyn uživatele nebo jednou na konci sezení, mezitím jen
+náhled. Řekni to uživateli hned při prvním zveřejnění.
+
 **Pozor:** „Netlify Drop“ (přetažení složky v prohlížeči) neumí Edge Functions → web by byl bez přihlášení. Nepoužívat.
 
 ## Náhled v Claude desktop

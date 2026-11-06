@@ -248,6 +248,9 @@ Podrobně `reference/web.md`. Ve zkratce:
 Výchozí cesta je **Netlify** (zdarma): `npm run nasadit`. Přihlášení k Netlify a první propojení webu jsou interaktivní –
 dej je uživateli jako `! npx netlify-cli login` atd. (postup v `reference/web.md`). Pokročilá varianta: vlastní server (Docker/CapRover).
 Nic nezveřejňuj bez výslovného souhlasu uživatele.
+Po zveřejnění **nenasazuj po každém kole**: Netlify zdarma vystačí jen na zhruba 20 nasazení měsíčně (kredity, viz
+`reference/web.md`). Mezi tím obnovuj jen náhled (`npm run data && npm run build`) a nasazuj na pokyn uživatele nebo
+jednou na konci sezení.
 
 ## Poznámky pro správce skillu
 Skill se zlepšuje podle zkušeností lidí, kteří ho používají. Proto **průběžně zapisuj do `poznamky_pro_skill.md`**
