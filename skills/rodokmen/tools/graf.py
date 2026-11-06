@@ -57,27 +57,37 @@ def klic_jmena(givn, surn):
 
 # ---- strom z GEDCOMu --------------------------------------------------------------------------------------------
 
+def _rok(datum):
+    """Rok z data GEDCOMu; rozmezí a meze (BEF, AFT, BET … AND …, FROM, TO) nejsou přesný rok → None."""
+    if re.match(r"\s*(BEF|AFT|BET|FROM|TO)\b", datum or "", re.I):
+        return None
+    return gi.year(datum)
+
+
 def nacti_strom(path):
-    """{'osoby': {id: …}, 'rodiny': {id: {h, w, deti}}, 'puvod': {id: [rodiny v pořadí FAMC]}} z GEDCOMu."""
+    """{'osoby': {id: …}, 'rodiny': {id: {h, w, deti}}, 'famc': {id: [rodiny z FAMC, jak je čte ged_import.py]},
+    'puvod': {id: [rodiny z FAMC i z CHIL]}} z GEDCOMu."""
     recs = gi.read(path)
     osoby, rodiny, puvod = {}, {}, defaultdict(list)
     for i, r in recs.items():
         if r["_type"] == "INDI":
             raw = gi.first(r, "NAME")
             m = re.match(r"^([^/]*)/([^/]*)/", raw)
-            ev = {n["tag"]: gi.year(gi.first(n, "DATE")) for n in r["_sub"] if n["tag"] in ("BIRT", "CHR", "DEAT", "BURI")}
+            ev = {n["tag"]: _rok(gi.first(n, "DATE")) for n in r["_sub"] if n["tag"] in ("BIRT", "CHR", "DEAT", "BURI")}
             osoby[i] = dict(jmeno=gi.name(r), givn=(m.group(1) if m else raw).strip(), surn=(m.group(2) if m else "").strip(),
                             sex=gi.first(r, "SEX"), nar=ev.get("BIRT") or ev.get("CHR"), zem=ev.get("DEAT") or ev.get("BURI"))
             for n in gi.sub(r, "FAMC"):
-                puvod[i].append(n["val"].strip())
+                if n["val"].strip() not in puvod[i]:
+                    puvod[i].append(n["val"].strip())
         elif r["_type"] == "FAM":
             rodiny[i] = dict(h=gi.first(r, "HUSB"), w=gi.first(r, "WIFE"), deti=[n["val"].strip() for n in gi.sub(r, "CHIL")])
-    for f, r in rodiny.items():               # dítě uvedené jen v CHIL rodiny se počítá taky
+    famc = {i: [f for f in fs if f in rodiny] for i, fs in puvod.items()}
+    for f, r in rodiny.items():               # dítě uvedené jen v CHIL rodiny se počítá do kontrol taky
         for c in r["deti"]:
             if c in osoby and f not in puvod[c]:
                 puvod[c].append(f)
     puvod = {i: [f for f in fs if f in rodiny] for i, fs in puvod.items()}
-    return dict(osoby=osoby, rodiny=rodiny, puvod=puvod)
+    return dict(osoby=osoby, rodiny=rodiny, puvod=puvod, famc=famc)
 
 
 def rodice(t, i, rodina=None):
@@ -90,12 +100,20 @@ def rodice(t, i, rodina=None):
     return out
 
 
+def _zena(t, rodic, dite):
+    """Matka, nebo otec: podle SEX, a když chybí, podle role WIFE v rodině dítěte."""
+    sex = t["osoby"][rodic]["sex"]
+    if sex in ("F", "M"):
+        return sex == "F"
+    return any(t["rodiny"][f]["w"] == rodic for f in t["puvod"].get(dite, []))
+
+
 def _chybi_vek(t, rodic, dite):
     """Důvod, proč `rodic` nemohl být rodičem `dite` (nebo None)."""
     r, d = t["osoby"][rodic], t["osoby"][dite]
     if not d["nar"]:
         return None
-    zena = r["sex"] == "F"
+    zena = _zena(t, rodic, dite)
     lo, hi = MATKA if zena else OTEC
     if r["nar"] and not lo <= d["nar"] - r["nar"] <= hi:
         return ("věk matky" if zena else "věk otce"), d["nar"] - r["nar"]
@@ -127,15 +145,9 @@ def vic_rodin(t):
         if len(fs) < 2:
             continue
         mozne = [f for f in fs if not any(_chybi_vek(t, p, i) for p in rodice(t, i, f))]
-        out.append(dict(osoba=i, rodiny=fs, prvni=fs[0], mozne=mozne))
+        prvni = (t["famc"].get(i) or [None])[0]   # ged_import.py bere první rodinu z FAMC, CHIL nečte
+        out.append(dict(osoba=i, rodiny=fs, prvni=prvni, mozne=mozne))
     return out
-
-
-def _rodina(t, i):
-    """Rodina původu pro Kekulého čísla: první chronologicky možná, jinak první."""
-    fs = t["puvod"].get(i, [])
-    ok = [f for f in fs if not any(_chybi_vek(t, p, i) for p in rodice(t, i, f))]
-    return (ok or fs or [None])[0]
 
 
 def cykly(t):
@@ -175,14 +187,17 @@ def dvojnici(t):
     """[(skóre, a, b)] – možná tatáž osoba zapsaná dvakrát; vyšší skóre = víc shodných údajů."""
     bloky = defaultdict(list)
     for i, o in t["osoby"].items():
-        if o["nar"]:
-            bloky[klic_jmena(o["givn"], o["surn"])].append(i)
+        klic = klic_jmena(o["givn"], o["surn"])
+        if o["nar"] and all(klic):            # bez křestního jména nebo příjmení (přivdané ženy) nejde porovnat
+            bloky[klic].append(i)
     out = []
     for ids in bloky.values():
         for n, a in enumerate(ids):
             for b in ids[n + 1:]:
                 oa, ob = t["osoby"][a], t["osoby"][b]
-                if abs(oa["nar"] - ob["nar"]) > 2 or set(rodice(t, a)) & set(rodice(t, b)):
+                if abs(oa["nar"] - ob["nar"]) > 2:
+                    continue
+                if oa["nar"] != ob["nar"] and set(t["puvod"].get(a, [])) & set(t["puvod"].get(b, [])):
                     continue                  # sourozenci stejného jména: dítě pojmenované po zemřelém
                 if a in predkove(t, b) or b in predkove(t, a):
                     continue
@@ -195,14 +210,15 @@ def dvojnici(t):
 
 
 def kekule(t, koren, hloubka=16):
-    """{osoba: {všechna Kekulého čísla}} – předek v rodokmenu víckrát má víc čísel."""
+    """{osoba: {všechna Kekulého čísla}} – předek v rodokmenu víckrát má víc čísel. Čísluje jako ged_import.py
+    (první rodina z FAMC), aby návrh SAME seděl na čísla v data/osoby.py."""
     kek, stack = defaultdict(set), [(koren, 1)]
     while stack:
         i, k = stack.pop()
         if k >= 2 ** hloubka:
             continue
         kek[i].add(k)
-        f = _rodina(t, i)
+        f = (t["famc"].get(i) or [None])[0]
         if f:
             r = t["rodiny"][f]
             for p, kk in ((r["h"], 2 * k), (r["w"], 2 * k + 1)):
@@ -225,7 +241,7 @@ def _roky(p):
     if y.strip().startswith("†"):
         zem = gi.year(y)
     else:
-        casti = re.split(r"\s*–\s*", y.lstrip("* "), maxsplit=1)
+        casti = re.split(r"\s*[–—-]\s*", y.lstrip("* "), maxsplit=1)
         if casti and not re.search(r"před|po\b", casti[0]):
             nar = gi.year(casti[0])
         if len(casti) > 1 and not re.search(r"před|po\b", casti[1]):
@@ -308,8 +324,9 @@ def main(argv):
         print("CHYBA: osoba svým vlastním předkem:", " → ".join(_popis(t, x) for x in c))
     for v in vic_rodin(t):
         mozne = ", ".join(_rodina_popis(t, f) for f in v["mozne"]) or "žádná"
+        bere = _rodina_popis(t, v["prvni"]) if v["prvni"] else "žádnou (dítě je jen v CHIL, chybí FAMC)"
         print(f"upozornění: {_popis(t, v['osoba'])} je dítětem ve {len(v['rodiny'])} rodinách; ged_import.py bere "
-              f"{_rodina_popis(t, v['prvni'])}, podle dat možná: {mozne}")
+              f"{bere}, podle dat možná: {mozne}")
     for druh, h, p, c in chronologie(t):
         print(f"upozornění: {druh} ({h}): " + (_popis(t, p) if p == c else f"{_popis(t, p)} → {_popis(t, c)}"))
     for s, a, b in dvojnici(t):

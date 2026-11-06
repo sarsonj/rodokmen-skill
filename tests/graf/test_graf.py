@@ -142,11 +142,48 @@ def test_strom():
                ("@I4@", "@I11@") in dvoj or ("@I11@", "@I4@") in dvoj, str(dvoj))
         pripad("sourozenci se jako dvojníci nehlásí", not any({"@I4@", "@I6@"} == {a, b} for a, b in dvoj))
         kek = graf.kekule(t, "@I1@")
+        # čísla jako ged_import.py (první FAMC): Jan je u Matěje a Evy (F5), Karel u Matěje a Kateřiny (F4)
         pripad("Matěj je předkem dvakrát (8 a 12)", kek.get("@I8@") == {8, 12}, str(kek.get("@I8@")))
-        pripad("návrh SAME", graf.navrh_same(kek) == {12: 8, 13: 9}, str(graf.navrh_same(kek)))
+        pripad("Eva je na 9 jako u ged_import.py", kek.get("@I10@") == {9} and kek.get("@I9@") == {13}, str(kek))
+        pripad("návrh SAME", graf.navrh_same(kek) == {12: 8}, str(graf.navrh_same(kek)))
         r = subprocess.run(PY + [GRAF, "strom", ged, "Pavel Novák"], capture_output=True, text=True, encoding="utf-8")
-        pripad("výpis strom: SAME a dvě rodiny", r.returncode == 0 and "SAME = {12: 8, 13: 9}" in r.stdout
+        pripad("výpis strom: SAME a dvě rodiny", r.returncode == 0 and "SAME = {12: 8}" in r.stdout
                and "@F5@" in r.stdout, r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def osoba(i, jmeno, sex, *radky):
+    return f"0 {i} INDI\n1 NAME {jmeno}\n" + (f"1 SEX {sex}\n" if sex else "") + "".join(f"{r}\n" for r in radky)
+
+
+def test_okrajove():
+    text = ("0 HEAD\n"
+            + osoba("@A@", "Josef /Malý/", "M", "1 BIRT", "2 DATE 1770")
+            + osoba("@B@", "Anna /Malá/", "F", "1 BIRT", "2 DATE BET 1700 AND 1750", "1 DEAT", "2 DATE AFT 1800")
+            + osoba("@C@", "Marie /Bílá/", "", "1 BIRT", "2 DATE 1760")             # manželka bez SEX
+            + osoba("@D@", "Jan /Malý/", "M", "1 BIRT", "2 DATE 1803", "1 FAMC @F1@", "1 FAMC @F1@")
+            + osoba("@E@", "Jan /Malý/", "M", "1 BIRT", "2 DATE 1803", "1 FAMC @F2@")   # dvojník u druhé ženy
+            + osoba("@G@", "Marie //", "F", "1 BIRT", "2 DATE 1801")
+            + osoba("@H@", "Marie //", "F", "1 BIRT", "2 DATE 1802")
+            + osoba("@K@", "Petr /Malý/", "M", "1 BIRT", "2 DATE 1820")                 # jen v CHIL, bez FAMC
+            + "0 @F1@ FAM\n1 HUSB @A@\n1 WIFE @B@\n1 CHIL @D@\n"
+            + "0 @F2@ FAM\n1 HUSB @A@\n1 WIFE @C@\n1 CHIL @E@\n1 CHIL @K@\n0 TRLR\n")
+    tmp, ged = strom(text)
+    try:
+        t = graf.nacti_strom(ged)
+        chrono = graf.chronologie(t)
+        pripad("AFT u úmrtí a BET u narození nejsou přesné roky", not any(p == "@B@" for _d, _h, p, _c in chrono),
+               str(chrono))
+        pripad("manželka bez SEX se kontroluje jako matka (60 let)",
+               any(d == "věk matky" and p == "@C@" for d, _h, p, _c in chrono), str(chrono))
+        pripad("dvakrát stejná FAMC není dvojí rodina", graf.vic_rodin(t) == [], str(graf.vic_rodin(t)))
+        dvoj = [{a, b} for _s, a, b in graf.dvojnici(t)]
+        pripad("dvojník u druhé manželky otce", {"@D@", "@E@"} in dvoj, str(dvoj))
+        pripad("ženy bez příjmení nejsou dvojníci", {"@G@", "@H@"} not in dvoj, str(dvoj))
+        kek = graf.kekule(t, "@K@")
+        pripad("vazba jen přes CHIL se do čísel nepočítá (ged_import ji nevidí)", kek == {"@K@": {1}}, str(kek))
+        pripad("rok s pomlčkou i spojovníkem", graf._roky({"y": "1850-1910"}) == (1850, 1910))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -212,7 +249,7 @@ def test_kontrola():
 
 
 if __name__ == "__main__":
-    for t in (test_strom, test_cyklus, test_predci, test_kontrola):
+    for t in (test_strom, test_okrajove, test_cyklus, test_predci, test_kontrola):
         try:
             t()
         except Exception as e:  # noqa: BLE001 – spadlý případ se vypíše a test neprojde
