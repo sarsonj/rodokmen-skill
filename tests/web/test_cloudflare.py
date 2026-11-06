@@ -123,6 +123,11 @@ try:
     r = export(projekt, {"otazka": "Řemeslo?", "odpoved": "kovář"}, {"nazev": "Rod.Nováků"})
     check("neplatný název: export skončí srozumitelnou chybou", r.returncode != 0 and "cloudflare" in (r.stdout + r.stderr).lower(), (r.returncode, r.stdout[-300:], r.stderr[-300:]))
 
+    # --- odpověď bez písmen a číslic z latinky (azbuka, symboly) ---
+    r = export(projekt, {"otazka": "Kde?", "odpoved": "Москва"}, None, "--nasazeni")
+    out = r.stdout + r.stderr
+    check("odpověď v azbuce: nasazení odmítne a vysvětlí proč (latinka)", r.returncode != 0 and "latink" in out, out[-300:])
+
     # --- otevřený web ---
     r = export(projekt, {"otevreny": True})
     check("otevřený web: export proběhl", r.returncode == 0, r.stderr)
