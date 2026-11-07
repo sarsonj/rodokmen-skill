@@ -32,7 +32,7 @@ img { max-width: 100%; height: auto; }
 .site-header nav a:hover, .site-header nav a[aria-current='page'] { color: #fff; border-bottom-color: #efb45f; }
 
 main { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-main.wide { max-width: 1600px; }
+main.wide { max-width: 1400px; }
 main.wider { max-width: none; }   /* mapa: přes celou šířku okna (Česko a Slovensko jsou široké); text drží .lead/.prose */
 .site-footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 2rem 1rem; border-top: 1px solid var(--line); }
 
