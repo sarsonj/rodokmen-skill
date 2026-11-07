@@ -27,6 +27,10 @@ LINES = {
 
 # Příbuzní mimo přímou linii (sourozenci, strýcové…): k = číslo předka, ke kterému patří.
 # dict(k=16, n="Josef Novák (1865–1920)", t="Bratr Jana. Kovář v …", r=["klic_zapisu"])
+# Pro stránku Strom navíc id (jen záznamy s id se kreslí), v="manz"/"dite" (bez v = sourozenec), koho="<id jiného>",
+# rodice="otec"/"matka" (nevlastní sourozenec; u dítěte: jen rodič koho), sex, f=[fakta], foto, fotky – viz reference/data.md:
+# dict(k=16, id="josef_1865", n="Josef Novák (1865–1920)", t="Bratr Jana.")
+# dict(k=16, id="anna_josef", v="manz", koho="josef_1865", n="Anna Malá (1870–1931)", t="Manželka Josefa.")
 SIDE = [
 ]
 

@@ -67,6 +67,20 @@ def main():
         for r in s.get("r", []):
             if r not in keys:
                 err.append(f"boční příbuzný '{s.get('n')}' cituje neexistující zápis '{r}'")
+    # vztahy pro stránku Strom (id / v / koho / rodice, viz reference/data.md)
+    side_ids = [s["id"] for s in SIDE if s.get("id")]
+    for i in sorted({i for i in side_ids if side_ids.count(i) > 1}):
+        err.append(f"boční příbuzní: id '{i}' je víckrát – musí být jedinečné (Strom by je slil)")
+    for s in SIDE:
+        n = s.get("n")
+        if s.get("v") not in (None, "sour", "manz", "dite"):
+            warn.append(f"boční příbuzný '{n}': neznámý vztah v='{s.get('v')}' – Strom zná sour (výchozí), manz, dite")
+        if s.get("koho") and s["koho"] not in side_ids:
+            err.append(f"boční příbuzný '{n}': koho='{s['koho']}' – takové id v SIDE není")
+        if s.get("rodice") not in (None, "otec", "matka"):
+            warn.append(f"boční příbuzný '{n}': rodice='{s.get('rodice')}' – jen 'otec' nebo 'matka'")
+        if not s.get("id") and any(s.get(x) for x in ("v", "koho", "rodice")):
+            warn.append(f"boční příbuzný '{n}' má vztah pro Strom, ale chybí mu id – do Stromu se nenakreslí")
     for a, c in SAME.items():
         if c not in P:
             err.append(f"SAME: {a} -> {c}, ale osoba {c} neexistuje")

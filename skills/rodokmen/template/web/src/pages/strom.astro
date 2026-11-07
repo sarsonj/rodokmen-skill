@@ -1,0 +1,701 @@
+---
+// Strom: the whole family graph (ancestors and side relatives from SIDE) as cards with zoom and pan,
+// a panel on the left with everything we know about the selected person. Selection lives in the URL hash.
+// Data from scripts/strom.py, layout of the precomputed views (Graphviz dot, at build time) from
+// scripts/strom-layout.mjs, the "around the person" view is laid out here in the browser; drawing with d3.
+import Base from '../layouts/Base.astro';
+import strom from '../generated/strom.json';
+import layout from '../generated/strom_layout.json';
+const json = JSON.stringify({ ...strom, layout }).replace(/</g, '\\u003c');
+// family lines (branches of the great-grandparents 8–15) for the filter, in the order of their founders
+const rody = new Map<string, { color: string; k: number }>();
+for (const n of Object.values(strom.nodes) as any[]) {
+  if (!n.line) continue;
+  const r = rody.get(n.line);
+  if (!r || n.k < r.k) rody.set(n.line, { color: n.color, k: n.k });
+}
+const rodyList = [...rody.entries()].sort((a, b) => a[1].k - b[1].k);
+---
+<Base title="Rodinný strom" description="Celý rodinný strom: předci i boční příbuzní, u každého vše, co o něm víme" full>
+  <!-- toolbar: left = what to show (view + its option), right = find a person and move around -->
+  <div class="st2-bar">
+    <div class="st2-bar-l">
+      <strong>Rodinný strom</strong>
+      <span class="st2-seg st2-modes" role="group" aria-label="Co zobrazit">
+        <button type="button" data-mode="core" title="Přímí předci dětí">Předci</button>
+        <button type="button" data-mode="focus" title="Vybraná osoba uprostřed: předci nad ní, sourozenci a partneři vedle, potomci pod ní">Kolem osoby</button>
+        <button type="button" data-mode="full" title="Celý strom: předci i boční větve">Zobrazit vše</button>
+      </span>
+      <label class="st2-opt st2-rod">Rod
+        <select id="st2-rod" aria-label="Zobrazit jen jeden rod">
+          <option value="">všechny</option>
+          {rodyList.map(([name]) => <option value={name}>{name}</option>)}
+        </select>
+      </label>
+      <span class="st2-opt st2-depth" hidden>Generací
+        <label title="Generací nahoru (předci)">↑ <select id="st2-up" aria-label="Generací nahoru">{[1, 2, 3, 4, 5, 6, 8, 10].map((v) => <option value={v} selected={v === 3}>{v}</option>)}</select></label>
+        <label title="Generací dolů (potomci)">↓ <select id="st2-down" aria-label="Generací dolů">{[0, 1, 2, 3, 4].map((v) => <option value={v} selected={v === 2}>{v}</option>)}</select></label>
+      </span>
+    </div>
+    <div class="st2-bar-r">
+      <form class="strom-search" autocomplete="off" role="search">
+        <input type="search" placeholder="Najít osobu…" aria-label="Najít osobu" aria-controls="st2-hits" />
+        <button type="submit" aria-label="Najít">
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.6 12.6 17 17"/></svg>
+        </button>
+        <div id="st2-hits" class="st2-hits" role="listbox" aria-label="Nalezené osoby" hidden></div>
+      </form>
+      <span class="st2-seg fan-btns" role="group" aria-label="Pohyb ve stromu">
+        <button type="button" data-act="home" title="Zpět na výchozí osobu rodokmenu">Na začátek</button>
+        <button type="button" data-act="fit" title="Oddálit tak, aby bylo vidět celé zobrazení">Celý pohled</button>
+        <button type="button" data-act="out" aria-label="Oddálit" title="Oddálit">−</button>
+        <button type="button" data-act="in" aria-label="Přiblížit" title="Přiblížit">+</button>
+      </span>
+    </div>
+  </div>
+
+  <div class="st2">
+    <svg id="st2-svg" aria-label="Rodinný strom"></svg>
+    <aside class="st2-panel" aria-live="polite"></aside>
+    <p class="st2-hint small"><span id="st2-count"></span><span class="tip"> · táhnutím posunete, kolečkem přiblížíte, klepnutím vyberete</span></p>
+    <div class="st2-mini" aria-hidden="true" title="Přehled celého stromu – klepnutím nebo tažením se přesunete"><svg></svg></div>
+    <div class="st2-legend small">
+      <span><i class="m"></i> muž</span><span><i class="f"></i> žena</span><span><i class="side"></i> boční příbuzný</span>
+      <span><i class="dot"></i> barva rodu</span><span><b class="ok">✓</b> doloženo matrikou</span>
+      <span><i class="path"></i> rodina vybrané osoby</span>
+    </div>
+  </div>
+
+  <script type="application/json" id="strom-data" is:inline set:html={json} />
+
+  <script>
+    import { select } from 'd3-selection';
+    import { zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
+    import 'd3-transition';
+
+    type Rec = { key: string; title: string; date: string };
+    type Doc = { img: string; caption: string };
+    type N = { id: string; name: string; years: string; sex: string; page: string | null; rel: string; status: string;
+      st: string; color: string | null; facts: string[]; text: string; parents: string[]; spouses: string[];
+      children: string[]; k: number | null; gen: number | null; line: string | null; photo: string | null; records: Rec[]; docs: Doc[] };
+    type Fam = { id: string; parents: string[]; children: string[]; x: number | null; y: number | null };
+    type L = { width: number; height: number; pos: Record<string, { x: number; y: number }>; fams: Fam[] };
+    type LS = { card: { w: number; h: number }; root: string; full: L; core: L };
+    const data = JSON.parse(document.getElementById('strom-data')!.textContent!) as { root: string; nodes: Record<string, N>; layout: LS };
+    const { nodes, layout: LAY } = data;
+    const W = LAY.card.w, H = LAY.card.h, SVGNS = 'http://www.w3.org/2000/svg';
+    // three views (remembered per browser): "core" = direct line (precomputed), "full" = whole graph with side branches
+    // (precomputed overview), "focus" = around the selected person, computed here and re-laid out on every selection
+    type Mode = 'core' | 'full' | 'focus';
+    let mode: Mode = 'core';
+    let depthUp = 3, depthDown = 2;
+    try {
+      const m = localStorage.getItem('strom-mode');
+      if (m === 'full' || m === 'focus') mode = m;
+      depthUp = Number(localStorage.getItem('strom-up')) || 3;
+      depthDown = Number(localStorage.getItem('strom-down') ?? 2);
+      if (!Number.isFinite(depthDown)) depthDown = 2;
+    } catch { /* storage blocked */ }
+    let L: L = mode === 'focus' ? LAY.core : LAY[mode];   // focus layout is computed once the selection is known
+    const esc = (s: string) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const label = (n: N) => (n.years ? `${n.name} (${n.years})` : n.name);
+    const P = (id: string) => L.pos[id];
+    // the starting person and their siblings are one family: drawn the same, not as side relatives
+    const own = new Set([data.root, ...(nodes[data.root]?.parents ?? []).flatMap((p) => nodes[p]?.children ?? [])]);
+
+    // --- text helpers -----------------------------------------------------------------------------------------------
+    const fit = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s);
+    function nameLines(name: string): string[] {
+      if (name.length <= 21) return [name];
+      const parts = name.split(' ');
+      const last = parts.pop()!;
+      return [fit(parts.join(' '), 23), fit(last, 23)];
+    }
+    function birthPlace(n: N): string {
+      const f = n.facts.find((x) => x.startsWith('*'));
+      if (!f) return '';
+      return f.replace(/^\*\s*/, '').replace(/^(asi\s+)?[\d.\s–-]+/, '').split(/[(,;]/)[0].trim();
+    }
+
+    // --- drawing ----------------------------------------------------------------------------------------------------
+    const svg = select<SVGSVGElement, unknown>('#st2-svg');
+    const root = svg.append('g');
+    const gLinks = root.append('g').attr('class', 'links');
+    const gCards = root.append('g').attr('class', 'cards');
+    const defs = svg.append('defs');
+    defs.append('clipPath').attr('id', 'st2-av').append('circle').attr('cx', 34).attr('cy', H / 2).attr('r', 24);
+
+    // silhouettes (public/siluety/) drawn as <image>
+    const sil = (sex: string) => `/siluety/${sex === 'F' ? 'zena' : 'muz'}.svg`;
+    const siblingsOf = (n: N) => [...new Set(n.parents.flatMap((p) => nodes[p]?.children ?? []))].filter((c) => c !== n.id);
+
+    // --- "Kolem osoby": the selected person in the middle, ancestors above (father's side left, mother's right),
+    // siblings to the left, partners to the right, descendants below. Tidy layout: every subtree gets its own width.
+    const GAP = 26, CGAP = 18, ROW = H + 84;
+    function focusLayout(fid: string, up: number, down: number): L {
+      const pos: Record<string, { x: number; y: number }> = {};
+      const fams: Fam[] = [];
+      const at = (id: string, x: number, row: number) => { pos[id] = { x, y: row * ROW }; };
+      // ancestors: returns the x of `id` and the right edge of its ancestor subtree
+      function upTree(id: string, depth: number, left: number, row: number): { x: number; right: number } {
+        const ps = depth > 0 ? nodes[id].parents.filter((p) => nodes[p] && !pos[p]) : [];
+        if (!ps.length) return { x: left + W / 2, right: left + W + GAP };
+        let r = left;
+        const xs = ps.map((p) => { const t = upTree(p, depth - 1, r, row - 1); at(p, t.x, row - 1); r = t.right; return t.x; });
+        fams.push({ id: `fu-${id}`, parents: ps, children: [id], x: ps.length === 2 ? (xs[0] + xs[1]) / 2 : null,
+          y: ps.length === 2 ? (row - 1) * ROW : null });
+        return { x: xs.length === 2 ? (xs[0] + xs[1]) / 2 : xs[0], right: Math.max(r, left + W + GAP) };
+      }
+      // descendants: a person with partners is one unit, children are laid out under it
+      const partners = (id: string) => nodes[id].spouses.filter((s) => nodes[s]);
+      const kidsOf = (id: string, depth: number) => (depth > 0 ? nodes[id].children.filter((c) => nodes[c]) : []);
+      const unitW = (id: string) => (1 + partners(id).length) * W + partners(id).length * CGAP + GAP;
+      const widthMemo = new Map<string, number>();
+      function measure(id: string, depth: number): number {
+        const k = `${id}|${depth}`;
+        if (!widthMemo.has(k)) widthMemo.set(k, Math.max(unitW(id), kidsOf(id, depth).reduce((s, c) => s + measure(c, depth - 1), 0)));
+        return widthMemo.get(k)!;
+      }
+      function downTree(id: string, depth: number, left: number, row: number) {
+        const w = measure(id, depth), uw = unitW(id), sp = partners(id);
+        let x = left + (w - uw) / 2 + W / 2;
+        at(id, x, row);
+        const sx = sp.map((s) => { x += W + CGAP; if (!pos[s]) at(s, x, row); return pos[s].x; });
+        const kids = kidsOf(id, depth);
+        let cl = left + (w - kids.reduce((s, c) => s + measure(c, depth - 1), 0)) / 2;
+        for (const c of kids) { downTree(c, depth - 1, cl, row + 1); cl += measure(c, depth - 1); }
+        // one family per partner (children who have that partner as the other parent), the rest with this parent only
+        const rest = new Set(kids);
+        sp.forEach((s, i) => {
+          const ch = kids.filter((c) => nodes[c].parents.includes(s));
+          ch.forEach((c) => rest.delete(c));
+          fams.push({ id: `fd-${id}-${s}`, parents: [id, s], children: ch, x: (pos[id].x + sx[i]) / 2, y: row * ROW });
+        });
+        if (rest.size) fams.push({ id: `fd-${id}`, parents: [id], children: [...rest], x: null, y: null });
+      }
+      const top = upTree(fid, up, 0, 0);
+      // descendants start so that fid lands exactly under the ancestors computed above
+      downTree(fid, down, top.x - ((measure(fid, down) - unitW(fid)) / 2 + W / 2), 0);
+      // siblings on the same row, to the left; they belong to the parents' family
+      const sibs = siblingsOf(nodes[fid]).filter((s) => !pos[s]);
+      const leftmost = Math.min(...Object.values(pos).filter((p) => p.y === 0).map((p) => p.x));
+      sibs.forEach((s, i) => at(s, leftmost - (i + 1) * (W + GAP), 0));
+      const pf = fams.find((f) => f.id === `fu-${fid}`);
+      if (pf) pf.children.push(...sibs.filter((s) => nodes[s].parents.some((p) => pf.parents.includes(p))));
+      // normalise to a 0-based drawing like the precomputed layouts (fitAll relies on it)
+      const xs = Object.values(pos).map((p) => p.x), ys = Object.values(pos).map((p) => p.y);
+      const ox = Math.min(...xs) - W / 2 - 40, oy = Math.min(...ys) - H / 2 - 40;
+      for (const p of Object.values(pos)) { p.x -= ox; p.y -= oy; }
+      for (const f of fams) if (f.x != null && f.y != null) { f.x -= ox; f.y -= oy; }
+      return { width: Math.max(...xs) - ox + W / 2 + 40, height: Math.max(...ys) - oy + H / 2 + 40, pos, fams };
+    }
+
+    // relatives that the current view does not show (parents, partners, children, siblings) – the little tree icon
+    const hiddenOf = (n: N) => [...new Set([...n.parents, ...n.spouses, ...n.children, ...siblingsOf(n)])]
+      .filter((r) => nodes[r] && !P(r));
+
+    // --- filter by family line ("rod" = branch of one of the great-grandparents 8–15, see LINES in osoby.py) ----------
+    // members: the ancestors of that line, the direct line from them down to the starting person, and side relatives
+    // reachable from the line's ancestors through other side relatives (siblings, their spouses and children…)
+    let rod = '';
+    const kOf: Record<number, string> = {};
+    for (const n of Object.values(nodes)) if (n.page && n.k) kOf[n.k] = n.id;
+    function rodMembers(line: string): Set<string> {
+      const m = new Set<string>();
+      const anc = Object.values(nodes).filter((n) => n.page && n.line === line);
+      for (const a of anc) {
+        m.add(a.id);
+        for (let k = a.k ?? 1; k >= 1; k = Math.floor(k / 2)) if (kOf[k]) m.add(kOf[k]);   // down to the children
+      }
+      own.forEach((o) => m.add(o));
+      const queue = anc.map((a) => a.id);
+      while (queue.length) {
+        const n = nodes[queue.shift()!];
+        for (const r of [...n.parents, ...n.spouses, ...n.children, ...siblingsOf(n)]) {
+          if (m.has(r) || !nodes[r] || nodes[r].page || own.has(r)) continue;
+          m.add(r);
+          queue.push(r);
+        }
+      }
+      return m;
+    }
+    let inRod: Set<string> | null = null;
+    const offRod = (id: string) => mode !== 'focus' && !!inRod && !inRod.has(id);
+
+    let linkOf: Record<string, string[]> = {};                    // person id -> link ids touching it
+    const addLink = (fid: string, d: string, people: string[]) => {
+      const path = gLinks.append('path').attr('d', d).attr('data-f', fid);
+      if (people.some(offRod)) path.classed('off', true);
+      for (const p of people) (linkOf[p] ??= []).push(fid);
+    };
+    const cardEl = new Map<string, SVGGElement>();               // drawn cards, kept between redraws for the animation
+    const tr = (p: { x: number; y: number }) => `translate(${p.x - W / 2},${p.y - H / 2})`;
+    function draw(animate = false, origin?: { x: number; y: number }) {
+    gLinks.selectAll('*').remove();
+    linkOf = {};
+    for (const f of L.fams) {
+      const ps = f.parents.filter((p) => P(p));
+      if (ps.length === 2 && f.x != null && f.y != null) {
+        const [a, b] = ps.map(P).sort((u, v) => u.x - v.x);
+        addLink(f.id, `M${a.x + W / 2},${a.y}H${b.x - W / 2}`, ps);
+      }
+      for (const c of f.children) {
+        const cp = P(c);
+        if (!cp) continue;
+        const top = cp.y - H / 2, mid = top - 28;
+        const d = ps.length === 2 && f.x != null
+          ? `M${f.x},${f.y}V${mid}H${cp.x}V${top}`
+          : `M${P(ps[0]).x},${P(ps[0]).y + H / 2}V${mid}H${cp.x}V${top}`;
+        addLink(f.id, d, [...ps, c]);
+      }
+    }
+
+    if (animate) gLinks.attr('opacity', 0).transition().delay(380).duration(300).attr('opacity', 1);
+    else gLinks.attr('opacity', 1);
+
+    const shown = new Set(Object.keys(L.pos));
+    for (const [id, g] of cardEl) {                               // cards the new view does not have
+      if (shown.has(id)) continue;
+      cardEl.delete(id);
+      if (animate) select(g).transition().duration(300).attr('opacity', 0).remove(); else g.remove();
+    }
+    for (const id of shown) {
+      const n = nodes[id], p = P(id);
+      if (!n) continue;
+      let g = cardEl.get(id);
+      const isNew = !g;
+      if (!g) {
+        g = document.createElementNS(SVGNS, 'g') as SVGGElement;
+        g.setAttribute('data-id', id);
+        g.setAttribute('tabindex', '0');
+        gCards.node()!.appendChild(g);
+        cardEl.set(id, g);
+      }
+      g.setAttribute('class', `card ${n.sex === 'F' ? 'f' : 'm'}${n.page || own.has(id) ? '' : ' side'}${offRod(id) ? ' off' : ''}`);
+      g.innerHTML = cardInner(n);
+      if (animate) {
+        const s = select(g);
+        if (isNew) s.attr('transform', tr(origin ?? p)).attr('opacity', 0);
+        s.transition().duration(600).attr('transform', tr(p)).attr('opacity', 1);
+      } else g.setAttribute('transform', tr(p)), g.setAttribute('opacity', '1');
+    }
+    const inView = inRod ? [...shown].filter((id) => inRod!.has(id)).length : shown.size;
+    (document.getElementById('st2-count') as HTMLElement).textContent =
+      `${inView} z ${Object.keys(nodes).length} osob${inRod ? ` · rod ${rod}` : ''}`;
+    drawMini();
+    }
+
+    const silhouette = (sex: string) => `<circle cx="34" cy="${H / 2}" r="24" class="av-bg"/>
+      <image href="${sil(sex)}" x="10" y="${H / 2 - 24}" width="48" height="48" clip-path="url(#st2-av)"/>`;
+    // a tiny tree: three boxes joined like a family (the icon of "relatives not shown here")
+    const treeIcon = `<path d="M-3.5 -4.5h7v3h-7z M-7 2.5h5v3h-5z M2 2.5h5v3h-5z M0 -1.5v2.5 M-4.5 1h9 M-4.5 1v1.5 M4.5 1v1.5"/>`;
+    function cardInner(n: N): string {
+      const hid = hiddenOf(n).length;
+      const lines = nameLines(n.name);
+      const place = lines.length === 1 ? birthPlace(n) : '';
+      const ys = lines.length === 2 ? [19, 34, 51] : place ? [21, 38, 54] : [27, 45];
+      const av = n.photo
+        ? `<circle cx="34" cy="${H / 2}" r="24" class="av-bg"/><image href="/img/${encodeURIComponent(n.photo)}.jpg" x="10" y="${H / 2 - 24}" width="48" height="48" preserveAspectRatio="xMidYMin slice" clip-path="url(#st2-av)"/>`
+        : silhouette(n.sex);
+      return `<title>${esc(label(n))}${n.rel ? ' – ' + esc(n.rel) : ''}</title>
+        <rect width="${W}" height="${H}" rx="10" class="bx"/>${av}
+        ${n.color ? `<circle cx="${W - 11}" cy="11" r="4.5" fill="${esc(n.color)}"/>` : ''}
+        ${n.st === 'doc' ? `<text x="${W - 11}" y="${H - 8}" class="ok" text-anchor="middle">✓</text>` : ''}
+        ${hid ? `<g class="more" transform="translate(52,${H - 12})" role="button" aria-label="Další příbuzní (${hid}) – zobrazit kolem této osoby">
+          <title>Další příbuzní, kteří tu nejsou vidět: ${hid} – klepněte pro zobrazení kolem této osoby</title>
+          <circle r="9.5"/>${treeIcon}</g>` : ''}
+        ${lines.map((l, i) => `<text x="66" y="${ys[i]}" class="nm">${esc(l)}</text>`).join('')}
+        <text x="66" y="${ys[lines.length]}" class="yr">${esc(fit(n.years || ' ', 26))}</text>
+        ${place ? `<text x="66" y="${ys[2]}" class="pl">${esc(fit(place, 24))}</text>` : ''}`;
+    }
+
+    // --- zoom -------------------------------------------------------------------------------------------------------
+    const z: ZoomBehavior<SVGSVGElement, unknown> = zoom<SVGSVGElement, unknown>().scaleExtent([0.06, 2.2])
+      .on('zoom', (e) => root.attr('transform', e.transform.toString()));
+    svg.call(z).on('dblclick.zoom', null);
+    const panelW = () => (window.innerWidth > 900 ? (document.querySelector('.st2-panel') as HTMLElement).offsetWidth + 16 : 0);
+    const box = () => (svg.node() as SVGSVGElement).getBoundingClientRect();
+    function centerOn(id: string, animate = true) {
+      // the tree is for both children: "home" centres on the starting person together with the siblings
+      const ps = (id === data.root ? [...own] : [id]).map(P).filter(Boolean);
+      if (!ps.length) return;
+      const x0 = Math.min(...ps.map((p) => p.x)), x1 = Math.max(...ps.map((p) => p.x)), y = ps[0].y;
+      const r = box(), avail = r.width - panelW();
+      const k = Math.min(Math.max(0.75, Math.min(1.1, currentK())), (avail - 24) / (x1 - x0 + W));   // all fit on narrow screens
+      const t = zoomIdentity.translate(panelW() + avail / 2 - ((x0 + x1) / 2) * k, r.height / 2 - y * k).scale(k);
+      (animate ? svg.transition().duration(650) : svg).call(z.transform as any, t);
+    }
+    let kNow = 1;
+    const currentK = () => kNow;
+    z.on('zoom.k', (e) => { kNow = e.transform.k; });
+    // fit a part of the drawing (default the whole view, or the chosen family line) into the free area
+    function fitAll() {
+      // the line itself (not the bridge down to the children, which may sit far away in the overview)
+      const ids = inRod && mode !== 'focus' ? [...inRod].filter((id) => P(id) && !own.has(id) && !((nodes[id].k ?? 99) < 8)) : [];
+      const ps = ids.map(P);
+      const [x0, y0, x1, y1] = ps.length
+        ? [Math.min(...ps.map((p) => p.x)) - W / 2 - 30, Math.min(...ps.map((p) => p.y)) - H / 2 - 30,
+           Math.max(...ps.map((p) => p.x)) + W / 2 + 30, Math.max(...ps.map((p) => p.y)) + H / 2 + 30]
+        : [0, 0, L.width, L.height];
+      const r = box(), pw = panelW(), bw = x1 - x0, bh = y1 - y0;
+      const k = Math.min((r.width - pw - 40) / bw, (r.height - 40) / bh, 1);
+      svg.transition().duration(650).call(z.transform as any,
+        zoomIdentity.translate(pw + (r.width - pw - bw * k) / 2 - x0 * k, (r.height - bh * k) / 2 - y0 * k).scale(k));
+    }
+
+    // --- minimap (overview of the big views): all cards as dots, the visible part as a frame; click or drag to move --
+    const miniBox = document.querySelector('.st2-mini') as HTMLElement;
+    const miniSvg = miniBox.querySelector('svg') as SVGSVGElement;
+    let tNow = zoomIdentity;
+    z.on('zoom.mini', (e) => { tNow = e.transform; updateMini(); });
+    function drawMini() {
+      miniBox.hidden = mode === 'focus' || window.innerWidth <= 900;
+      if (miniBox.hidden) return;
+      const MW = Math.min(520, Math.max(300, window.innerWidth * 0.3));
+      miniSvg.setAttribute('viewBox', `0 0 ${L.width} ${L.height}`);
+      miniSvg.setAttribute('width', String(MW));
+      miniSvg.setAttribute('height', String(Math.min(260, Math.max(60, (L.height * MW) / L.width))));
+      miniSvg.innerHTML = Object.entries(L.pos).map(([id, p]) => {
+        const n = nodes[id];
+        return `<rect x="${p.x - W / 2}" y="${p.y - H / 2}" width="${W}" height="${H}" rx="14" fill="${esc(n?.color || '#cfc8be')}"${offRod(id) ? ' opacity="0.18"' : ''}/>`;
+      }).join('') + `<rect class="vp" vector-effect="non-scaling-stroke"/>`;
+      updateMini();
+    }
+    function updateMini() {
+      if (miniBox.hidden) return;
+      const r = box(), pw = panelW(), vp = miniSvg.querySelector('.vp');
+      if (!vp) return;
+      vp.setAttribute('x', String((pw - tNow.x) / tNow.k));
+      vp.setAttribute('y', String(-tNow.y / tNow.k));
+      vp.setAttribute('width', String((r.width - pw) / tNow.k));
+      vp.setAttribute('height', String(r.height / tNow.k));
+    }
+    function miniGo(ev: PointerEvent) {
+      const m = miniSvg.getBoundingClientRect(), r = box(), pw = panelW();
+      const tx = ((ev.clientX - m.left) / m.width) * L.width, ty = ((ev.clientY - m.top) / m.height) * L.height;
+      svg.call(z.transform as any, zoomIdentity.translate(pw + (r.width - pw) / 2 - tx * tNow.k, r.height / 2 - ty * tNow.k).scale(tNow.k));
+    }
+    miniSvg.addEventListener('pointerdown', (ev) => { miniSvg.setPointerCapture(ev.pointerId); miniGo(ev); ev.stopPropagation(); });
+    miniSvg.addEventListener('pointermove', (ev) => { if (miniSvg.hasPointerCapture(ev.pointerId)) miniGo(ev); });
+    miniBox.addEventListener('click', (ev) => ev.stopPropagation());
+
+    // --- selection and panel ----------------------------------------------------------------------------------------
+    const mini = (id: string) => {
+      const m = nodes[id];
+      if (!m) return '';
+      return `<button type="button" class="mini ${m.sex === 'F' ? 'f' : 'm'}" data-go="${esc(id)}">
+        <b>${esc(m.name)}</b><span>${esc(m.years || '')}</span></button>`;
+    };
+    const section = (title: string, body: string) => (body ? `<section><h3>${title}</h3>${body}</section>` : '');
+
+    function panel(n: N) {
+      const sibs = siblingsOf(n);
+      const fam = [
+        n.parents.length ? `<p class="lbl">Rodiče</p>${n.parents.map(mini).join('')}` : '',
+        n.spouses.length ? `<p class="lbl">${n.spouses.length > 1 ? 'Manželé / partneři' : n.sex === 'F' ? 'Manžel' : 'Manželka'}</p>${n.spouses.map(mini).join('')}` : '',
+        sibs.length ? `<p class="lbl">Sourozenci</p>${sibs.map(mini).join('')}` : '',
+        n.children.length ? `<p class="lbl">Děti</p>${n.children.map(mini).join('')}` : '',
+      ].join('');
+      const av = n.photo ? `<img src="/img/${encodeURIComponent(n.photo)}.jpg" alt="">` : `<img class="ph ${n.sex === 'F' ? 'f' : 'm'}" src="${sil(n.sex)}" alt="">`;
+      (document.querySelector('.st2-panel') as HTMLElement).innerHTML = `
+        <div class="hd">${av}<div><h2>${esc(n.name)}</h2><p class="small muted">${esc(n.years || '')}</p>
+          ${n.rel ? `<p class="small">${esc(n.rel)}</p>` : ''}</div></div>
+        <p class="chips">${n.status ? `<span class="chip st-${esc(n.st)}">${esc(n.status)}</span>` : n.page || own.has(n.id) ? '' : '<span class="chip st-unk">boční příbuzný</span>'}
+          ${n.line ? `<button type="button" class="chip" data-rod="${esc(n.line)}" title="Zobrazit jen rod ${esc(n.line)}"><i style="background:${esc(n.color || '#ccc')}"></i>${esc(n.line)}</button>` : ''}</p>
+        ${n.page ? `<p><a class="btn" href="/osoba/${encodeURIComponent(n.page)}/">Stránka osoby →</a></p>` : ''}
+        ${section('Události', n.facts.length ? `<ul class="facts small">${n.facts.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : '')}
+        ${section('Životopis', n.text ? `<p class="small">${esc(n.text)}</p>` : '')}
+        ${section('Nejbližší rodina', fam)}
+        ${section('Zápisy z matrik a pramenů', n.records.length ? `<ul class="small recs">${n.records.map((r) =>
+          `<li><a href="/zdroj/${encodeURIComponent(r.key)}/">${esc(r.title)}</a>${r.date ? ` <span class="muted">${esc(r.date)}</span>` : ''}</li>`).join('')}</ul>` : '')}
+        ${section('Fotografie a dokumenty', n.docs.length ? `<div class="docs">${n.docs.map((d) =>
+          `<a href="/img/${encodeURIComponent(d.img)}.jpg" target="_blank" title="${esc(d.caption)}"><img src="/img/${encodeURIComponent(d.img)}.jpg" alt="${esc(d.caption)}" loading="lazy"></a>`).join('')}</div>` : '')}`;
+    }
+
+    const depthBox = document.querySelector('.st2-depth') as HTMLElement;
+    function showMode() {
+      document.querySelectorAll<HTMLButtonElement>('.st2-modes button').forEach((b) => {
+        b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+      });
+      depthBox.hidden = mode !== 'focus';
+      rodBox.hidden = mode === 'focus';
+    }
+    // family line filter (only in the big views)
+    const rodBox = document.querySelector('.st2-rod') as HTMLElement;
+    const rodSel = document.getElementById('st2-rod') as HTMLSelectElement;
+    function setRod(line: string, fit = true) {
+      rod = line;
+      inRod = line ? rodMembers(line) : null;
+      rodSel.value = line;
+      if (mode === 'focus' && line) setMode('full'); else draw();
+      // keep the selection when it belongs to the line, otherwise go back to the children (without a hash event)
+      const cur = inRod && !inRod.has(current()) ? data.root : current();
+      if (cur !== current()) history.replaceState(null, '', '#' + encodeURIComponent(cur));
+      choose(cur, false);
+      if (fit) fitAll();
+    }
+    rodSel.addEventListener('change', () => setRod(rodSel.value));
+    // switch the view; the focus view is laid out around `id` (the current selection)
+    function setMode(m: Mode, id = current(), animate = false) {
+      const from = P(id);
+      mode = m;
+      L = m === 'focus' ? focusLayout(nodes[id] ? id : data.root, depthUp, depthDown) : LAY[m];
+      try { localStorage.setItem('strom-mode', m); } catch { /* storage blocked */ }
+      showMode();
+      draw(animate, from);
+    }
+    function choose(id: string, animate = true) {
+      const n = nodes[id] ?? nodes[data.root];
+      id = n.id;
+      if (mode === 'focus') {                       // re-lay out around the new person; cards glide to new places
+        const from = P(id);
+        L = focusLayout(id, depthUp, depthDown);
+        draw(animate, from);
+      } else if (!P(id)) setMode(mode === 'core' ? 'full' : 'focus', id), animate = false;
+      if (offRod(id)) { rod = ''; inRod = null; rodSel.value = ''; draw(); }   // chosen outside the filter: show all again
+      const near = new Set([...n.parents, ...n.spouses, ...n.children]);
+      gCards.selectAll<SVGGElement, unknown>('g.card').each(function () {
+        const cid = this.getAttribute('data-id')!;
+        this.classList.toggle('sel', cid === id);
+        this.classList.toggle('near', near.has(cid));
+      });
+      const fl = new Set(linkOf[id] ?? []);
+      gLinks.selectAll<SVGPathElement, unknown>('path').each(function () { this.classList.toggle('hl', fl.has(this.getAttribute('data-f')!)); });
+      panel(n);
+      centerOn(id, animate);
+      document.title = `${n.name} · Rodinný strom`;
+    }
+
+    const go = (id: string) => { if (nodes[id]) location.hash = encodeURIComponent(id); };
+    const current = () => decodeURIComponent(location.hash.slice(1)) || data.root;
+    window.addEventListener('hashchange', () => choose(current()));
+    // the drawing area fills the rest of the window, whatever the height of the (wrapping) toolbar above it
+    const area = document.querySelector('.st2') as HTMLElement;
+    const sizeArea = () => {
+      area.style.height = window.innerWidth > 900 ? `${Math.max(520, window.innerHeight - area.getBoundingClientRect().top - window.scrollY)}px` : '';
+    };
+    sizeArea();
+    let rt = 0;
+    window.addEventListener('resize', () => { clearTimeout(rt); rt = window.setTimeout(() => { sizeArea(); centerOn(current(), false); drawMini(); }, 150); });
+    document.querySelector('.st2')!.addEventListener('click', (e) => {
+      const t = e.target as Element;
+      const c = t.closest('g.card') as SVGGElement | null;
+      const m = t.closest('[data-go]') as HTMLElement | null;
+      const rb = t.closest('[data-rod]') as HTMLElement | null;
+      if (rb) { setRod(rb.dataset.rod!); return; }          // line chip in the panel: show only that family line
+      const id = c?.getAttribute('data-id') ?? m?.dataset.go;
+      if (!id) return;
+      // the little tree icon: show the family around this person
+      if (t.closest('.more') && mode !== 'focus') setMode('focus', id, true);
+      id === current() ? choose(id) : go(id);
+    });
+    document.querySelector('.st2')!.addEventListener('keydown', (e) => {
+      const c = (e.target as Element).closest?.('g.card');
+      if (c && ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ')) { e.preventDefault(); go(c.getAttribute('data-id')!); }
+    });
+    document.querySelector('.fan-btns')!.addEventListener('click', (e) => {
+      const act = (e.target as HTMLElement).dataset.act;
+      if (act === 'home') go(data.root);
+      if (act === 'fit') fitAll();
+      if (act === 'in') svg.transition().duration(300).call(z.scaleBy as any, 1.3);
+      if (act === 'out') svg.transition().duration(300).call(z.scaleBy as any, 1 / 1.3);
+    });
+    document.querySelector('.st2-modes')!.addEventListener('click', (e) => {
+      const m = (e.target as HTMLElement).closest<HTMLElement>('[data-mode]')?.dataset.mode as Mode | undefined;
+      if (!m || m === mode) return;
+      const id = current();
+      setMode(m, id, true);
+      if (!P(id)) { go(data.root); return; }
+      choose(id, true);
+    });
+    const upSel = document.getElementById('st2-up') as HTMLSelectElement, downSel = document.getElementById('st2-down') as HTMLSelectElement;
+    upSel.value = String(depthUp);
+    downSel.value = String(depthDown);
+    const onDepth = () => {
+      depthUp = Number(upSel.value); depthDown = Number(downSel.value);
+      try { localStorage.setItem('strom-up', String(depthUp)); localStorage.setItem('strom-down', String(depthDown)); } catch { /* blocked */ }
+      choose(current(), true);
+    };
+    upSel.addEventListener('change', onDepth);
+    downSel.addEventListener('change', onDepth);
+    // --- search: list of matches (name and years, without diacritics); ancestors first ------------------------------
+    const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const people = Object.values(nodes).map((n) => ({ n, key: norm(`${n.name} ${n.years || ''}`) }));
+    const form = document.querySelector<HTMLFormElement>('.strom-search')!;
+    const input = form.querySelector('input')!;
+    const hits = document.getElementById('st2-hits') as HTMLElement;
+    function matches(q: string) {
+      const words = norm(q).split(/\s+/).filter(Boolean);
+      if (!words.length) return [];
+      return people.filter((p) => words.every((w) => p.key.includes(w)))
+        .sort((a, b) => Number(!a.n.page) - Number(!b.n.page) || a.n.name.localeCompare(b.n.name, 'cs'))
+        .map((p) => p.n);
+    }
+    function showHits(list: N[]) {
+      if (!list.length) { hits.innerHTML = '<p class="muted small">Nikoho takového ve stromu nemáme.</p>'; hits.hidden = false; return; }
+      hits.innerHTML = list.slice(0, 15).map((n) => `<button type="button" role="option" data-hit="${esc(n.id)}" class="${n.sex === 'F' ? 'f' : 'm'}">
+        <b>${esc(n.name)}</b> <span>${esc(n.years || '')}</span>
+        <small>${esc(n.rel || (n.page || own.has(n.id) ? '' : 'boční příbuzný'))}</small></button>`).join('')
+        + (list.length > 15 ? `<p class="muted small">a dalších ${list.length - 15} – upřesněte hledání (např. i rok)</p>` : '');
+      hits.hidden = false;
+    }
+    const hideHits = () => { hits.hidden = true; };
+    const pick = (id: string) => { hideHits(); input.value = ''; go(id); };
+    input.addEventListener('input', () => (input.value.trim().length >= 2 ? showHits(matches(input.value)) : hideHits()));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const list = matches(input.value);
+      if (list.length === 1) pick(list[0].id);
+      else if (input.value.trim()) { showHits(list); (hits.querySelector('button') as HTMLElement | null)?.focus(); }
+    });
+    hits.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest('[data-hit]') as HTMLElement | null;
+      if (b) pick(b.dataset.hit!);
+    });
+    form.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key;
+      if (k === 'Escape') { hideHits(); input.focus(); return; }
+      if (k !== 'ArrowDown' && k !== 'ArrowUp') return;
+      const bs = [...hits.querySelectorAll<HTMLElement>('button')];
+      if (hits.hidden || !bs.length) return;
+      e.preventDefault();
+      const i = bs.indexOf(document.activeElement as HTMLElement);
+      if (k === 'ArrowDown') bs[Math.min(i + 1, bs.length - 1)].focus();
+      else if (i <= 0) input.focus(); else bs[i - 1].focus();
+    });
+    document.addEventListener('click', (e) => { if (!form.contains(e.target as Node)) hideHits(); });
+    showMode();
+    if (mode !== 'focus') draw();                   // the focus view is drawn by choose() around the selection
+    choose(current(), false);
+    // the final size of the drawing area is known only after the first paint (narrow screens, late CSS)
+    requestAnimationFrame(() => requestAnimationFrame(() => centerOn(current(), false)));
+    window.addEventListener('load', () => centerOn(current(), false));
+  </script>
+
+  <style is:global>
+    /* toolbar */
+    .st2-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1.2rem;
+      padding: 0.5rem 1rem; border-bottom: 1px solid var(--line); background: var(--paper); }
+    .st2-bar-l, .st2-bar-r { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+    .st2-bar strong { font: 1.15rem var(--serif); color: #3b2e22; margin-right: 0.2rem; }
+    .st2-seg { display: inline-flex; border: 1px solid #d8cfc2; border-radius: 8px; overflow: hidden; background: #fff; }
+    .st2-seg button { font: inherit; font-size: 0.9rem; line-height: 1.2; padding: 0.38rem 0.8rem; border: 0; background: none;
+      cursor: pointer; color: var(--ink); }
+    .st2-seg button + button { border-left: 1px solid #e6dfd4; }
+    .st2-seg button:hover { background: #f6f1ea; }
+    .st2-seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+    .fan-btns.st2-seg button[data-act="in"], .fan-btns.st2-seg button[data-act="out"] { min-width: 2.2rem; font-weight: 600; }
+    .st2-opt { display: inline-flex; gap: 0.35rem; align-items: center; font-size: 0.88rem; color: var(--muted); }
+    .st2-opt[hidden] { display: none; }
+    .st2-opt label { display: inline-flex; gap: 0.15rem; align-items: center; }
+    .st2-opt select { font: inherit; color: var(--ink); padding: 0.25rem 0.3rem; border: 1px solid #d8cfc2; border-radius: 6px; background: #fff; }
+    .strom-search { display: flex; position: relative; }
+    .strom-search input { font: inherit; font-size: 0.92rem; padding: 0.36rem 0.7rem; width: 15rem; max-width: 60vw;
+      border: 1px solid #d8cfc2; border-right: 0; border-radius: 8px 0 0 8px; background: #fff; }
+    .strom-search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    .strom-search > button { display: grid; place-items: center; padding: 0 0.7rem; border: 1px solid #d8cfc2;
+      border-radius: 0 8px 8px 0; background: #fff; cursor: pointer; }
+    .strom-search > button:hover { background: #f6f1ea; }
+    .strom-search > button svg { fill: none; stroke: #5e5245; stroke-width: 2; stroke-linecap: round; }
+    .st2-hint { position: absolute; left: 24rem; bottom: 0.6rem; margin: 0; padding: 0.2rem 0.7rem; border-radius: 999px;
+      background: rgba(255,255,255,.85); color: var(--muted);
+      max-width: calc(100% - 24rem - 45rem); }
+    @media (max-width: 1350px) { .st2-hint .tip { display: none; } .st2-hint { max-width: none; } }
+    @media (max-width: 760px) {
+      .st2-bar { padding: 0.5rem 0.75rem; }
+      .st2-bar-r { width: 100%; }
+      .strom-search { flex: 1; }
+      .strom-search input { width: 100%; max-width: none; }
+      .st2-hint .tip { display: none; }
+    }
+    .st2-hits { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; width: min(26rem, 92vw); max-height: 60vh;
+      overflow-y: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: 0 6px 22px rgba(0,0,0,.14); padding: 0.3rem; }
+    .st2-hits button { display: grid; grid-template-columns: 1fr auto; gap: 0 0.6rem; width: 100%; text-align: left; font: inherit;
+      padding: 0.35rem 0.55rem; margin: 0 0 0.2rem; background: #fff; border: 1px solid var(--line); border-left: 4px solid #5fb3d9;
+      border-radius: 6px; cursor: pointer; color: var(--ink); }
+    .st2-hits button.f { border-left-color: #ef8f8f; }
+    .st2-hits button:hover, .st2-hits button:focus { border-color: var(--accent); outline: none; }
+    .st2-hits b { font-size: 0.9rem; font-weight: 600; }
+    .st2-hits span { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+    .st2-hits small { grid-column: 1 / -1; font-size: 0.74rem; color: var(--muted); }
+    .st2-hits small:empty { display: none; }
+    .st2-hits p { margin: 0.3rem 0.4rem; }
+    .st2 .card.off { opacity: 0.12; pointer-events: none; }
+    .st2 .links path.off { opacity: 0.12; }
+    .st2-panel button.chip { font: inherit; cursor: pointer; }
+    .st2-panel button.chip:hover { border-color: var(--accent); }
+    .st2-mini { position: absolute; right: 0.75rem; bottom: 2.9rem; padding: 4px; background: rgba(255,255,255,.92);
+      border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.08); line-height: 0; }
+    .st2-mini[hidden] { display: none; }
+    .st2-mini svg { display: block; cursor: pointer; touch-action: none; }
+    .st2-mini .vp { fill: rgba(146, 96, 52, .12); stroke: var(--accent); stroke-width: 2; }
+    .st2 .card .more { cursor: pointer; }
+    .st2 .card .more circle { fill: #fff; stroke: #c9c3ba; stroke-width: 1.2; }
+    .st2 .card .more path { fill: none; stroke: #8f877c; stroke-width: 1.3; }
+    .st2 .card .more:hover circle { fill: var(--accent); stroke: var(--accent); }
+    .st2 .card .more:hover path { stroke: #fff; }
+    .st2 { position: relative; height: calc(100vh - 7.5rem); min-height: 520px; background: #f3f1ee; overflow: hidden; }
+    #st2-svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+    #st2-svg:active { cursor: grabbing; }
+    .st2 .links path { fill: none; stroke: #b9b2a8; stroke-width: 1.6; }
+    .st2 .links path.hl { stroke: var(--accent); stroke-width: 2.6; }
+    .st2 .card { cursor: pointer; }
+    .st2 .card .bx { fill: #fff; stroke: #5fb3d9; stroke-width: 2; }
+    .st2 .card.f .bx { stroke: #ef8f8f; }
+    .st2 .card.side .bx { stroke-dasharray: 5 3; }
+    .st2 .card:hover .bx, .st2 .card:focus .bx { stroke-width: 3; }
+    .st2 .card:focus { outline: none; }
+    .st2 .card.near .bx { stroke-width: 3; }
+    .st2 .card.sel .bx { stroke-width: 4.5; filter: drop-shadow(0 3px 8px rgba(0,0,0,.22)); }
+    .st2 .av-bg { fill: #eef0f2; stroke: #d5d9de; }
+    .st2 .av-fig { fill: #b9c0c8; }
+    .st2 .card .nm { font: 600 13px var(--sans); fill: #222; }
+    .st2 .card .yr { font: 12px var(--sans); fill: #666; }
+    .st2 .card .pl { font: 11px var(--sans); fill: #8a8a8a; }
+    .st2 .card .ok { font: 700 11px var(--sans); fill: #3f8a4a; }
+    .st2-panel { position: absolute; top: 0.75rem; left: 0.75rem; bottom: 0.75rem; width: 22rem; overflow-y: auto;
+      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem;
+      box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+    .st2-panel .hd { display: flex; gap: 0.8rem; align-items: center; }
+    .st2-panel .hd img, .st2-panel .ph { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; object-position: top;
+      flex: none; background: #eef0f2; border: 2px solid #5fb3d9; }
+    .st2-panel .ph.f, .st2-panel .hd img.f { border-color: #ef8f8f; }
+    .st2-panel h2 { margin: 0; font-size: 1.15rem; line-height: 1.2; }
+    .st2-panel .hd p { margin: 0.1rem 0 0; }
+    .st2-panel .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.6rem 0; }
+    .st2-panel .chip i { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; margin-right: 0.3rem; }
+    .st2-panel .btn { display: inline-block; padding: 0.3rem 0.7rem; border: 1px solid var(--accent); border-radius: 999px;
+      color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    .st2-panel section { border-top: 1px solid var(--line); margin-top: 0.8rem; padding-top: 0.6rem; }
+    .st2-panel h3 { font: 600 0.72rem var(--sans); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.4rem; }
+    .st2-panel .facts { padding-left: 1.1rem; margin: 0; }
+    .st2-panel .recs { padding-left: 1.1rem; margin: 0; }
+    .st2-panel .lbl { margin: 0.5rem 0 0.25rem; font-size: 0.78rem; color: var(--muted); }
+    .st2-panel .mini { display: flex; width: 100%; justify-content: space-between; gap: 0.5rem; text-align: left; font: inherit;
+      padding: 0.3rem 0.55rem; margin: 0 0 0.25rem; background: #fff; border: 1px solid var(--line); border-left: 4px solid #5fb3d9;
+      border-radius: 6px; cursor: pointer; color: var(--ink); }
+    .st2-panel .mini.f { border-left-color: #ef8f8f; }
+    .st2-panel .mini:hover { border-color: var(--accent); }
+    .st2-panel .mini b { font-size: 0.86rem; font-weight: 600; }
+    .st2-panel .mini span { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+    .st2-panel .docs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
+    .st2-panel .docs img { width: 100%; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+    .st2-legend { position: absolute; right: 0.75rem; bottom: 0.6rem; background: rgba(255,255,255,.92); padding: 0.25rem 0.7rem;
+      border-radius: 999px; border: 1px solid var(--line); color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.15rem 0.8rem; }
+    .st2-legend span { white-space: nowrap; }
+    .st2-legend i { display: inline-block; width: 0.8rem; height: 0.55rem; border-radius: 3px; border: 2px solid #5fb3d9; margin-right: 0.2rem; vertical-align: -1px; }
+    .st2-legend i.f { border-color: #ef8f8f; }
+    .st2-legend i.side { border-style: dashed; border-color: #9a9a9a; }
+    .st2-legend i.dot { width: 0.55rem; border-radius: 50%; border: 0; background: #e0a050; }
+    .st2-legend i.path { width: 1rem; height: 0; border: 0; border-top: 3px solid var(--accent); border-radius: 0; vertical-align: 3px; }
+    .st2-legend .ok { color: #3f8a4a; margin-right: 0.15rem; }
+    @media (max-width: 900px) {
+      .st2 { height: auto; min-height: 0; overflow: visible; }
+      #st2-svg { height: 62vh; }
+      .st2-panel { position: static; width: auto; margin: 0.75rem; max-height: none; }
+      .st2-legend { position: static; margin: 0.5rem 0.75rem 0; border-radius: 12px; }
+      .st2-hint { position: static; display: inline-block; margin: 0.5rem 0.75rem 0; }
+    }
+  </style>
+</Base>

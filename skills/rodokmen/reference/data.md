@@ -38,6 +38,20 @@ P = {
   `fam` od rodiny (i strom, který si rodina vede sama, např. GEDCOM z jejího MyHeritage), `mh` cizí strom z internetu, `unk`.
 - `LINES = {8: ("Novákové", "Kováři z Holic…"), …}` – jen čísla 8–15; název rodu = příjmení v množném čísle. Vyplň hned, jak znáš pradědečka nebo prababičku – bez LINES web neukáže rody a nepřijde rada k příběhu.
 - `SIDE` – sourozenci a další příbuzní: `dict(k=<číslo předka>, n="Josef Novák (1865–1920)", t="text", r=[klíče])`.
+  Do stránky **Strom** (`/strom/`) se kreslí jen záznamy s klíčem `id`; bez něj zůstanou jen v textu u předka
+  (starší projekty fungují beze změny, strom pak ukáže jen předky). Volitelné klíče pro strom:
+  - `id` – krátký jedinečný název (`"marie_novakova_1892"`), na který mohou odkazovat jiní boční příbuzní;
+  - `v` – vztah: bez něj (nebo `"sour"`) sourozenec předka `k`; `"manz"` manžel/manželka; `"dite"` dítě;
+  - `koho` – `id` jiného bočního příbuzného, ke kterému se `v` vztahuje (manžel sestry, děti sestry); bez něj předek `k`;
+  - `rodice` – `"otec"` / `"matka"` u nevlastního sourozence (společný jen tento rodič); u dítěte (`v="dite"`) znamená,
+    že je dítětem jen osoby `koho`, ne jejích manželů v datech (např. dítě z druhého manželství, jehož matka v datech není);
+  - `sex` – `"M"` / `"F"`, když pohlaví nejde odhadnout z koncovky příjmení;
+  - `f` – fakta jako u předků (`"* 1892 Holice"`, `"× 1913 Ostřetín Karel Zeman"`); `foto` – obrázek z `dokumenty.json`
+    jako portrét na kartičce, `fotky=[…]` další obrázky v panelu.
+  Žijící boční příbuzní stejně jako předci: jen jméno a rok narození, žádné adresy.
+  Příklad: `dict(k=8, id="marie", n="Marie Nováková (1892–1970)", t="Sestra Jana.")`,
+  `dict(k=8, id="karel_zeman", v="manz", koho="marie", n="Karel Zeman (1888–1960)", t="Manžel Marie.")`,
+  `dict(k=8, id="ludmila", v="dite", koho="marie", n="Ludmila Zemanová (1921–2004)", t="Dcera Marie a Karla.")`.
 - `ISSUES` – dvojice `("Otázka", "Vyřešeno: … / Hypotéza: … / Otevřené: …")` → stránka „Co hledáme“ (vyřešené se skryjí).
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.
