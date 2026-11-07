@@ -260,6 +260,13 @@ def main():
             warn.append(f"rod {jmeno} má už {n} generací – je čas napsat příběh rodu "
                         f"(data/pribeh.md, reference/pribehy.md); koncept nejdřív ukaž uživateli v chatu")
 
+    try:   # rodina jako graf (tools/graf.py): věk rodičů 2k a 2k+1, stejná osoba na dvou číslech bez SAME
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import graf
+        warn += graf.predci(P, SAME)
+    except ImportError:
+        pass
+
     log = os.path.join(DATA, "research_log.md")
     rows = sum(1 for l in open(log, encoding="utf-8") if re.match(r"^\| \d+ \|", l)) if os.path.exists(log) else 0
     print(f"{len(P)} osob, {len(zaz)} zápisů, {len(svazky)} svazků, {rows} řádků deníku")

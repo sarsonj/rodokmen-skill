@@ -42,6 +42,8 @@ P = {
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.
 - `SAME = {350: 140}` – předek, který je v rodokmenu dvakrát (alias → hlavní číslo; alias v `P` může mít `f=["TÁŽ OSOBA jako 140"]`).
+  `kontrola.py` (přes `tools/graf.py`) upozorní na stejné jméno a rok narození na dvou číslech bez `SAME` a na věk
+  rodičů 2k a 2k+1 při narození dítěte k mimo 15–50 let u matky a 16–75 let u otce.
 
 ## `zaznamy.json` – zápisy
 ```json
