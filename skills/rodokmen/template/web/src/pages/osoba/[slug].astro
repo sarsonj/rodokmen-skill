@@ -31,6 +31,9 @@ const path = [...p.path].reverse().filter(Boolean);
       Podruhé jako {p.also.map((a) => a.rel).join(', ')}.</p>
   )}
   {p.facts.length > 0 && <ul class="facts">{p.facts.map((f) => <li>{f}</li>)}</ul>}
+  {p.places?.length > 0 && (
+    <p class="small">Místa: {p.places.map((m, i) => <>{i > 0 && ', '}<a href={href.place(m.slug)}>{m.name}</a></>)}</p>
+  )}
   {p.note && <p class="note">{p.note}</p>}
 
   <h2>Rodina</h2>
