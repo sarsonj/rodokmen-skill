@@ -22,9 +22,12 @@ def year_of(text):
 
 
 def split_name(n):
-    """'Josef Novák (* 1865)' -> ('Josef Novák', '* 1865')."""
-    m = re.match(r"^(.*?)\s*\((.*)\)\s*$", n)
-    return (m.group(1).strip(), m.group(2).strip()) if m else (n.strip(), "")
+    """'Josef Novák (* 1865)' -> ('Josef Novák', '* 1865'). Only the last parenthesis holds the years, and only when it
+    contains a digit: 'Péter (Peter) Marko (* 1901)' -> ('Péter (Peter) Marko', '* 1901'), 'Anna (?)' -> ('Anna (?)', '')."""
+    m = re.match(r"^(.*?)\s*\(([^()]*)\)\s*$", n)
+    if m and re.search(r"\d", m.group(2)):
+        return m.group(1).strip(), m.group(2).strip()
+    return n.strip(), ""
 
 
 def guess_sex(name):
@@ -128,6 +131,8 @@ def main():
                 link_spouse(i, t)
             else:
                 link_parent(i, t)
+                if s.get("rodice") in ("otec", "matka"):   # child of this parent only (other parent not in the data)
+                    continue
                 for sp in node(t)["spouses"]:
                     link_parent(i, sp)
 

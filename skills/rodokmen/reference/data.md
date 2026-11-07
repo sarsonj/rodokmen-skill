@@ -43,7 +43,8 @@ P = {
   - `id` – krátký jedinečný název (`"marie_novakova_1892"`), na který mohou odkazovat jiní boční příbuzní;
   - `v` – vztah: bez něj (nebo `"sour"`) sourozenec předka `k`; `"manz"` manžel/manželka; `"dite"` dítě;
   - `koho` – `id` jiného bočního příbuzného, ke kterému se `v` vztahuje (manžel sestry, děti sestry); bez něj předek `k`;
-  - `rodice` – `"otec"` / `"matka"` u nevlastního sourozence (společný jen tento rodič);
+  - `rodice` – `"otec"` / `"matka"` u nevlastního sourozence (společný jen tento rodič); u dítěte (`v="dite"`) znamená,
+    že je dítětem jen osoby `koho`, ne jejích manželů v datech (např. dítě z druhého manželství, jehož matka v datech není);
   - `sex` – `"M"` / `"F"`, když pohlaví nejde odhadnout z koncovky příjmení;
   - `f` – fakta jako u předků (`"* 1892 Holice"`, `"× 1913 Ostřetín Karel Zeman"`); `foto` – obrázek z `dokumenty.json`
     jako portrét na kartičce, `fotky=[…]` další obrázky v panelu.
