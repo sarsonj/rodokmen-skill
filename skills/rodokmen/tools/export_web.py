@@ -98,6 +98,33 @@ def years(y):
     return f"{approx}{ys[0]}–{second}"
 
 
+# Na mapu jen obce, kde osoba sama žila. Údaje zmiňují i cizí obce: faru („fara Prčice“), okres, přívlastek
+# („Chlum u Hořic“), rodnou obec matky („roz. Nováková z Bašnic“, „a Juliany z Hovězí“, „a Rosiny, dcery sedláka
+# z Hovězí“) a u muže obec nevěsty („× 1758 Hořice Kateřina z Bašnic“). U ženy obec muže zůstává – po svatbě
+# obvykle žila u něj. Nejisté jméno „(?)“ vzor nepřeruší („a Marie Josífkové (?) z Humpolce“).
+MISTO_CIZI = re.compile(r"(?:\bu|\bfara|\bokres|\boddíl|\bsňatků|\brodu z)\s+$")
+_Q = r"(?:\s*\(\?\))?"
+RODINA = re.compile(r"\b(?:roz\.|rozen[áéý]|rodem)\s+[^,;()]*(?:\(\?\)[^,;()]*)?"
+                    rf"|\ba\s+[A-ZČŘŠŽÚ]\w+(?:\s+[A-ZČŘŠŽÚ]\w+)?{_Q}(?:\s+roz\.\s+\w+{_Q})?\s+ze?\s+[^,;()]+"
+                    rf"|\ba\s+[A-ZČŘŠŽÚ]\w+{_Q},\s+dcery\b[^;]*?\bze?\s+[^,;()]+")
+
+
+def vlastni_text(fakty, muz):
+    """Údaje osoby bez rodných obcí matky (a u muže bez obce nevěsty) – z toho se hledají obce na mapu."""
+    out = []
+    for f in fakty:
+        f = RODINA.sub("", f)
+        if muz:
+            f = re.sub(r"×.*", lambda m: re.sub(r"\bze?\s+[^,;()]+", "", m.group()), f)
+        out.append(f)
+    return " ".join(out)
+
+
+def zil_v(text, rx):
+    """Obec `rx` je ve vlastním textu osoby jinde než za „fara“, „okres“, „u“ (Chlum u Hořic)…"""
+    return any(not MISTO_CIZI.search(text[:m.start()]) for m in rx.finditer(text))
+
+
 def gen(k):
     return k.bit_length() - 1
 
@@ -341,7 +368,7 @@ def main():
         if "lat" not in e:
             continue
         rx = re.compile(e.get("re") or re.escape(name))
-        hits = [p for p in people.values() if rx.search(" ".join(p["facts"]))]
+        hits = [p for p in people.values() if zil_v(vlastni_text(p["facts"], p["sex"] == "M"), rx)]
         byline = {}
         for p in sorted(hits, key=lambda p: p["k"]):
             byline.setdefault(p["line"] or 0, []).append(p["slug"])
