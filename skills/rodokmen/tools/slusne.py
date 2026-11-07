@@ -251,6 +251,11 @@ def pockej(url_nebo_host, obrazek=None):
         _uloz(path, st)
     if slot > ted:
         time.sleep(slot - ted)
+        with _Zamek(path + ".lock"):   # během čekání mohl web zastavit jiný proces nebo vlákno
+            st = _nacti(path)
+        if st.get("stop", 0) > time.time():
+            _ohlas(skupina, st)
+            raise Zastaveno(KOD)
 
 
 def zastav(host, duvod):
