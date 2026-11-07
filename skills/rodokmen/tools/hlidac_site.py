@@ -82,7 +82,7 @@ def posoudit(tool, cmd, cwd):
             obsah = cist(args[0].strip("\"'"), cwd)
             if "import slusne" in obsah:          # nástroje v tools/ se brzdí samy
                 continue
-            if SIT_PY.search(obsah):
+            if SIT_PY.search(obsah) and not jen_volne(obsah):   # síť jen na povolené weby (verze.py → GitHub) projde
                 return f"Python skript {args[0]} používá síť"
         if (SIT_PY_RADEK if HEREDOC.search(cmd) and " -c" not in cmd else SIT_PY).search(cmd):   # heredoc / python -c "…"
             return "Python se síťovým importem přímo v příkazu"

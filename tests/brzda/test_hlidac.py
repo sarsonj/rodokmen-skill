@@ -37,6 +37,12 @@ with open(DAVKA, "w", encoding="utf-8") as f:
             "    subprocess.run([sys.executable, '-I', 'tools/aron_img.py', '123', str(n), '1', f'pracovni/x{n}.jpg'])\n")
 with open(VLASTNI, "w", encoding="utf-8") as f:
     f.write("import json, urllib.request\nprint(1)\n")
+GITHUB = os.path.join(POM, "jen_github.py").replace("\\", "/")    # síť jen na povolený web (jako tools/verze.py) → pustit
+with open(GITHUB, "w", encoding="utf-8") as f:
+    f.write("import json, urllib.request\nURL = 'https://api.github.com/repos/x/y/releases/latest'\n")
+SMISENY = os.path.join(POM, "github_a_archiv.py").replace("\\", "/")  # povolený web i archiv → zamítnout
+with open(SMISENY, "w", encoding="utf-8") as f:
+    f.write("import urllib.request\nA = 'https://api.github.com/x'\nB = 'https://aron.vychodoceskearchivy.cz/'\n")
 
 Z, P = "zamítnout", "pustit"
 PRIPADY = [
@@ -50,6 +56,9 @@ PRIPADY = [
     ("Bash", "wget https://example.com/a.jpg", Z),
     ("Bash", 'bash -c "curl -s https://example.com"', Z),
     ("Bash", f"python -I -X utf8 {VLASTNI}", Z),
+    ("Bash", f"python -I -X utf8 {SMISENY}", Z),
+    ("Bash", f"python3 -I {GITHUB} .", P),
+    ("Bash", f"python3 -I {os.path.join(SKILL, 'tools', 'verze.py')} .", P),
     ("Bash", 'curl -s "https://www.portafontium.eu/register/soap-pn?q=Plaňany"', Z),
     ("Bash", "curl -s https://rodokmen.svamberk.net/", Z),
     ("Monitor", "while true; do curl -s https://example.com/stav; sleep 1; done", Z),

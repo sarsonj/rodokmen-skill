@@ -39,8 +39,9 @@ cache = os.path.join(tmp, "cache")
 ENV = dict(os.environ, RODOKMEN_VERZE_URL=f"http://127.0.0.1:{srv.server_address[1]}/latest", RODOKMEN_CACHE=cache)
 
 
-def falesny_skill(verze):
-    s = os.path.join(tmp, f"skill_{verze}")
+def falesny_skill(verze, plugin=False):
+    s = os.path.join(tmp, "plugins", "cache", "rodokmen-skill", "rodokmen", verze, "skills", "rodokmen") if plugin \
+        else os.path.join(tmp, "skills", f"rodokmen_{verze}")
     os.makedirs(os.path.join(s, "tools"), exist_ok=True)
     shutil.copy(os.path.join(SKILL, "tools", "verze.py"), os.path.join(s, "tools", "verze.py"))
     open(os.path.join(s, "VERZE"), "w").write(verze + "\n")
@@ -66,9 +67,12 @@ try:
         raise SystemExit
 
     # 1) GitHub novější než nainstalovaný skill
-    kod, out = verze(falesny_skill("0.8.2"), projekt("0.8.2"))
+    kod, out = verze(falesny_skill("0.8.2", plugin=True), projekt("0.8.2"))
     check("GitHub novější: kód 0", kod == 0, out)
-    check("GitHub novější: řekne verzi a jak aktualizovat skill", "0.9.0" in out and "plugin update" in out and "NOVA_VERZE_SKILLU" in out, out)
+    check("GitHub novější, plugin: řekne verzi a poradí claude plugin update", "0.9.0" in out and "plugin update" in out and "NOVA_VERZE_SKILLU" in out, out)
+    kod, out = verze(falesny_skill("0.8.2"), projekt("0.8.2"))
+    check("GitHub novější, ručně nakopírovaný skill: neradí claude plugin, ale novou složku z GitHubu",
+          "NOVA_VERZE_SKILLU" in out and "claude plugin" not in out and "github.com/sarsonj/rodokmen-skill" in out, out)
     check("GitHub novější: projekt z GitHubu neaktualizuje (žádný git clone)", "clone" not in out, out)
     check("mezipaměť zapsaná", os.path.exists(os.path.join(cache, "rodokmen_verze.json")), os.listdir(tmp))
 
@@ -121,7 +125,48 @@ try:
     kod, out = verze(falesny_skill("0.9.0"))
     check("bez projektu: jen skill a GitHub", kod == 0 and "AKTUALNI" in out, out)
 
-    # 10) novy_projekt.py: starší skill projekt neaktualizuje
+    # 10) kopie verze.py v tools/ projektu: najde nainstalovaný skill (registr pluginů / ~/.claude/skills), jinak nehlásí AKTUALNI
+    shutil.rmtree(cache, ignore_errors=True)
+    cfg = os.path.join(tmp, "claude_cfg")
+    pr = projekt("0.9.0")
+    os.makedirs(os.path.join(pr, "tools"), exist_ok=True)
+    shutil.copy(os.path.join(SKILL, "tools", "verze.py"), os.path.join(pr, "tools", "verze.py"))
+    env = dict(ENV, CLAUDE_CONFIG_DIR=cfg)
+    kopie = os.path.join(pr, "tools", "verze.py")
+
+    def z_projektu():
+        r = subprocess.run([sys.executable, "-I", kopie, pr], capture_output=True, text=True, env=env, timeout=60)
+        return r.stdout + r.stderr
+
+    os.makedirs(cfg, exist_ok=True)
+    out = z_projektu()
+    check("kopie v projektu, skill nenalezen: nehlásí AKTUALNI", "AKTUALNI" not in out and "SKILL_NEZJISTEN" in out, out)
+    def plugin(verze, scope, projekt_path=None):
+        ip = os.path.join(cfg, "plugins", "cache", "rodokmen-skill", "rodokmen", verze)
+        os.makedirs(os.path.join(ip, "skills", "rodokmen"), exist_ok=True)
+        open(os.path.join(ip, "skills", "rodokmen", "VERZE"), "w").write(verze + "\n")
+        z = {"scope": scope, "installPath": ip, "version": verze}
+        if projekt_path:
+            z["projectPath"] = projekt_path
+        return z
+    reg = {"version": 2, "plugins": {"rodokmen@rodokmen-skill": [plugin("0.5.0", "local", "/jiny/projekt"),
+                                                                plugin("0.8.2", "user")]}}
+    json.dump(reg, open(os.path.join(cfg, "plugins", "installed_plugins.json"), "w"))
+    out = z_projektu()
+    check("kopie v projektu: najde plugin (rozsah user, ne cizí projekt) → 0.8.2 < GitHub",
+          "0.8.2" in out and "NOVA_VERZE_SKILLU" in out and "claude plugin" in out, out)
+    reg["plugins"]["rodokmen@rodokmen-skill"].append(plugin("0.9.0", "project", pr))
+    json.dump(reg, open(os.path.join(cfg, "plugins", "installed_plugins.json"), "w"))
+    out = z_projektu()
+    check("kopie v projektu: plugin pro tento projekt má přednost", "Skill (nainstalovaný): 0.9.0" in out and "AKTUALNI" in out, out)
+    os.remove(os.path.join(cfg, "plugins", "installed_plugins.json"))
+    os.makedirs(os.path.join(cfg, "skills", "rodokmen"), exist_ok=True)
+    open(os.path.join(cfg, "skills", "rodokmen", "VERZE"), "w").write("0.8.2\n")
+    out = z_projektu()
+    check("kopie v projektu: najde ručně nakopírovaný ~/.claude/skills/rodokmen", "0.8.2" in out and "NOVA_VERZE_SKILLU" in out
+          and "claude plugin" not in out, out)
+
+    # 11) novy_projekt.py: starší skill projekt neaktualizuje
     proj = os.path.join(tmp, "skutecny")
     r = subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(SKILL, "tools", "novy_projekt.py"), proj],
                        capture_output=True, text=True)

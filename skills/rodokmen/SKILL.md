@@ -35,7 +35,8 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
    a nejnovější vydání na GitHubu; GitHubu se ptá nejvýš jednou denně). Podle posledního řádku:
    `NOVA_VERZE_SKILLU` → řekni jednou větou, že vyšla nová verze, a poraď, jak aktualizovat skill (vypíše jak); projekt
    aktualizuj až z nového skillu (po restartu), nikdy ne z klonu GitHubu. `PROJEKT_NOVEJSI` → projekt neaktualizuj,
-   jen poraď aktualizovat skill. `AKTUALIZUJ_PROJEKT` → nabídni aktualizaci projektu:
+   jen poraď aktualizovat skill. `SKILL_NEZJISTEN` (kopie nástroje v projektu nenašla nainstalovaný skill) → spusť
+   kontrolu znovu ze `SKILL_DIR`. `AKTUALIZUJ_PROJEKT` → nabídni aktualizaci projektu:
    `python3 -I SKILL_DIR/tools/novy_projekt.py <složka projektu>`
    (data zůstanou, vlastní úpravy webu a `tools/` se sloučí s novou šablonou), pak ve `web/` `npm install`. Po souhlasu
    ji udělej a výpis projdi s uživatelem: u souborů ke kontrole a zálohovaných úprav porovnej, co změnila šablona

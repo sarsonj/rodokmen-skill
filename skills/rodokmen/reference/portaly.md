@@ -236,9 +236,11 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 - Portál `https://www.mza.cz/actapublica/`, bez přihlášení. **Od 2. 11. 2026 MZA blokuje stahovací skripty** (ověření
   Altcha, adresy dlaždic s tokenem) a výjimky nedělá. Skriptem jen hledání knih (níže, brzda 1 dotaz za 4 s, jiné
   adresy MZA brzda zastaví). Snímky jen v jejich prohlížeči: přiblížit zápis a uložit snímek obrazovky. Žádné
-  stahování, `fetch` ani skládání dlaždic, žádní pomocníci. Nejlépe Playwright (uloží
-  snímek do souboru); jinak ať uživatel pošle snímky obrazovky sám (celá dvoustrana na orientaci, pak přiblížený zápis
-  – kolečko myši, macOS Cmd+Shift+4, Windows Win+Shift+S) a ulož je do `pracovni/`.
+  stahování, `fetch` ani skládání dlaždic, žádní pomocníci. **Prohlížeč: Playwright** (uloží snímek do souboru).
+  **Vestavěný prohlížeč Claude desktop pro MZA nepoužívej** – podle hlášení uživatelů dostává na snímky 403 i po dni
+  pauzy, zatímco běžný prohlížeč projde. Bez Playwrightu ať uživatel otevře snímek ve svém prohlížeči a pošle snímky
+  obrazovky sám (celá dvoustrana na orientaci, pak přiblížený zápis – kolečko myši, macOS Cmd+Shift+4,
+  Windows Win+Shift+S) a ulož je do `pracovni/`.
 - Kniha: `python3 -I tools/slusne.py curl -s "https://www.mza.cz/actapublica/matrika/hledani?typ=obec&search_by_obec=<obec>&page=<n>"`
   → HTML tabulka (číslo knihy, původce, roky N/O/Z, počet snímků, odkaz `matrika/detail/<id>`; číslo knihy ≠ id).
   Výsledky po 20 – projdi i další stránky, než řekneš, že tam obec není. U velkých far jsou samostatné svazky rejstříků (N/O/Z) – začni jimi. Fary založené
@@ -266,6 +268,11 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   ```
 - Nezobrazuj celou stránku v plném rozlišení (velké okno) – stovky dlaždic naráz a MZA vrací 503. Tempo 5–10 s mezi
   stránkami (SKILL.md, Šetrně k archivům), jen stránky, které opravdu čteš. Když ověření nepustí nebo MZA hlásí chybu, skonči a řekni to uživateli.
+- **Blokace snímků (403):** MZA po zhruba 45–60 snímcích za den (počítá se každé přiblížení – stahuje nové dlaždice)
+  přestane vydávat obraz: stránka i ověření projdou, ale snímek zůstane bílý a dlaždice vrací 403. **Není to pomalé
+  načítání – okamžitě přestaň**, nezkoušej znovu a řekni to uživateli. Blokace trvala i druhý den; další den zkus nejvýš
+  jeden snímek.
+- Dlaždice vracející **410** není blokace – vypršel token v adrese; stačí znovu otevřít stejnou adresu snímku (`?image=…jp2`).
 - Trvalý odkaz = adresa v prohlížeči `…/matrika/detail/<id>?image=<soubor>.jp2` (soubor končí číslem snímku × 10:
   snímek 16 → `…-00160.jp2`). Svazek do `svazky.json` ručně (Ostatní portály, krok 4).
 - Doména actapublica.eu MZA nepatří (MZA to potvrdila) – nepoužívej ji, jen www.mza.cz/actapublica. Když MZA nejde

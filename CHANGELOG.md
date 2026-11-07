@@ -6,6 +6,22 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.9.2 – 7. 11. 2026
+
+**Opravy**
+- Kontrola nové verze z 0.9.1 u některých lidí neproběhla: hlídač sítě ji zablokoval (teď pustí skript, který se ptá
+  jen GitHubu) a kopie nástroje v projektu nenašla nainstalovaný skill (teď ho najde, a když ne, netvrdí „aktuální“).
+  U ručně nakopírovaného skillu radí stáhnout novou verzi z GitHubu místo příkazů pro plugin (#136).
+- Windows: hlídač sítě se po aktualizaci projektu nemusel spustit – v nastavení byl jen příkaz `python`, který
+  v prostředí Claude Code může vést na nefunkční zástupce z Microsoft Store. Teď je tam vždy plná cesta k Pythonu.
+- `npm install` ve `web/` už nehlásí závažnou zranitelnost (knihovna `undici`, používá ji jen sestavení webu).
+
+**Návody**
+- MZA Brno: snímky přes Playwright, ne vestavěný prohlížeč Claude desktop (dostává 403 i po pauze). Bílý snímek
+  s chybou 403 je blokace, ne pomalé načítání – Claude přestane a řekne to (#147).
+
+Děkuji všem za rychlá hlášení e-mailem i na GitHubu.
+
 ## 0.9.1 – 6. 11. 2026
 
 **Nové**

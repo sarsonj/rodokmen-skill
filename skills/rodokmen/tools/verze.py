@@ -8,7 +8,9 @@ bez sítě nebo při chybě se ho prostě nezeptá. Poslední řádek začíná 
                       (projekt se pak aktualizuje z nového skillu, ne z GitHubu)
   AKTUALIZUJ_PROJEKT  nainstalovaný skill je novější než projekt – nabídni novy_projekt.py
   PROJEKT_NOVEJSI     projekt vznikl novějším skillem než ten nainstalovaný (stará kopie skillu) – projekt neměnit
+  SKILL_NEZJISTEN     spuštěno z kopie v projektu a nainstalovaný skill se nenašel – verze skillu neověřena
   AKTUALNI            vše sedí
+Kopie v tools/ projektu najde nainstalovaný skill sama (registr pluginů Claude Code, ~/.claude/skills/rodokmen).
 Kód je vždy 0 (kontrola nesmí zastavit práci).
 """
 import json, os, re, sys, time, urllib.request
@@ -64,8 +66,40 @@ def github():
     return verze
 
 
+def nainstalovany(projekt_dir):
+    """Kopie v tools/ projektu nemá vedle sebe VERZE – najde nainstalovaný skill: plugin z registru Claude Code
+    (pro tento projekt, jinak pro uživatele), nebo ručně nakopírovaný ~/.claude/skills/rodokmen. Vrátí (verze, cesta)."""
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+    projekt = os.path.realpath(projekt_dir) if projekt_dir else None
+    try:
+        with open(os.path.join(cfg, "plugins", "installed_plugins.json"), encoding="utf-8") as f:
+            zaznamy = json.load(f).get("plugins", {}).get("rodokmen@rodokmen-skill", [])
+    except (OSError, ValueError, AttributeError):
+        zaznamy = []
+    poradi = []
+    for z in zaznamy if isinstance(zaznamy, list) else []:
+        pp = z.get("projectPath")
+        if pp and projekt and os.path.realpath(pp) == projekt:
+            poradi.insert(0, z)                      # instalace pro tento projekt má přednost
+        elif z.get("scope") == "user":
+            poradi.append(z)
+    for z in poradi:
+        cesta = os.path.join(z.get("installPath", ""), "skills", "rodokmen")
+        verze = cti(os.path.join(cesta, "VERZE")) or z.get("version")
+        if cislo(verze):
+            return verze, cesta
+    rucne = os.path.join(cfg, "skills", "rodokmen")
+    verze = cti(os.path.join(rucne, "VERZE"))
+    return (verze, rucne) if cislo(verze) else (None, None)
+
+
 def main():
+    global SKILL
     skill = cti(os.path.join(SKILL, "VERZE"))
+    if skill is None:   # spuštěno z kopie v tools/ projektu
+        skill, nalezeny = nainstalovany(sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(SKILL))
+        if nalezeny:
+            SKILL = nalezeny
     projekt_dir = sys.argv[1] if len(sys.argv) > 1 else None
     projekt = cti(os.path.join(projekt_dir, ".skill_verze")) if projekt_dir else None
     gh = github()
@@ -77,16 +111,24 @@ def main():
 
     s, p, g = cislo(skill), cislo(projekt), cislo(gh)
     if g and s and g > s:
+        if os.sep + "plugins" + os.sep in SKILL:   # nainstalovaný jako plugin (…/.claude/plugins/…)
+            jak = ("jako plugin: `claude plugin marketplace update rodokmen-skill` a `claude plugin update\n"
+                   "  rodokmen@rodokmen-skill`, pak restart Claude Code (natrvalo: v /plugin zapnout automatické aktualizace;\n"
+                   "  když příkaz `claude` nejde spustit, stejné příkazy jdou v Claude Code přes /plugin)")
+        else:                                       # nakopírovaný ručně (~/.claude/skills/rodokmen …)
+            jak = (f"ručně nakopírovaný skill ({SKILL}): stáhnout novou verzi z https://github.com/sarsonj/rodokmen-skill\n"
+                   "  (Code → Download ZIP), složkou skills/rodokmen nahradit tu stávající a restartovat Claude")
         print(f"→ NOVA_VERZE_SKILLU: vyšla verze {gh}, nainstalovaný skill je {skill}. Řekni to uživateli jednou větou a poraď,\n"
-              "  jak skill aktualizovat: Claude Code (plugin) – `claude plugin marketplace update rodokmen-skill` a\n"
-              "  `claude plugin update rodokmen@rodokmen-skill`, pak restart Claude Code (natrvalo: v /plugin zapnout\n"
-              "  automatické aktualizace); jinak podle README (část Instalace). Projekt aktualizuj až z nového skillu.")
+              f"  jak skill aktualizovat – {jak}. Projekt aktualizuj až z nového skillu.")
     elif projekt_dir and p and s and p > s:
         print(f"→ PROJEKT_NOVEJSI: projekt je z verze {projekt}, nainstalovaný skill je starší ({skill}). Projekt neaktualizuj\n"
               "  (vrátil bys ho ke starší verzi); ať uživatel aktualizuje skill (viz README, část Instalace).")
     elif projekt_dir and s and (not p or s > p):
         print(f"→ AKTUALIZUJ_PROJEKT: skill {skill} je novější než projekt. Nabídni aktualizaci projektu:\n"
               f"  python3 -I {os.path.join(SKILL, 'tools', 'novy_projekt.py')} <složka projektu>")
+    elif not s:
+        print("→ SKILL_NEZJISTEN: nainstalovaný skill jsem nenašel, verzi skillu neporovnávám. Spusť kontrolu ze složky\n"
+              "  skillu: python3 -I SKILL_DIR/tools/verze.py <složka projektu>")
     else:
         print("→ AKTUALNI")
 

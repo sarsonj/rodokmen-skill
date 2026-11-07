@@ -322,10 +322,10 @@ MATCHER = "Bash|PowerShell|Monitor"   # Monitor spouští příkaz v bashi stejn
 
 
 def _python_windows():
-    """Python pro hook na Windows: z PATH (projde i projekt sdílený přes OneDrive na dvou počítačích), jinak plná cesta.
-    Zástupce z Microsoft Store (WindowsApps) se nepočítá – bez nainstalovaného Pythonu jen otevře obchod."""
-    p = shutil.which("python")
-    return "python" if p and "windowsapps" not in p.lower() else sys.executable
+    """Python pro hook na Windows: vždy plná cesta k Pythonu, kterým běží aktualizace. Hooky Claude Code mají jiný PATH
+    a „python“ tam může vést na nefunkční zástupce z Microsoft Store – hlídač by se tiše nespustil. Projekt sdílený
+    přes OneDrive na dvou počítačích opraví aktualizace spuštěná na druhém počítači (hook se pokaždé přepíše)."""
+    return sys.executable
 
 
 def hook_hlidace():
