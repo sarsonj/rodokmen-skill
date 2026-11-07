@@ -324,5 +324,6 @@ Nedělej to pořád. Postup:
 | `zapis.py <soubor> <klíč> <vstup.json> [--sloucit]` | přidá / změní položku v `zaznamy`, `svazky`, `prepisy`… beze změny formátu |
 | `slusne.py <skript.py> / curl … / bash x.sh / stav` | brzda proti zablokování archivem – vlastní skripty a curl spouštěj přes ni |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
+| `smoke_test.py [nástroj]` | když nástroj selže: jedním dotazem ověří síťové nástroje (OK / CHYBA = portál se změnil / NEDOSTUPNÉ / ZASTAVENO brzdou) |
 | `export_web.py` | data → web (volá ho `npm run data`) |
 | `fan_chart.py vystupy/` | vějíř předků jako plakát k tisku |
