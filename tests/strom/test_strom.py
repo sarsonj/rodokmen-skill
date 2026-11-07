@@ -83,7 +83,7 @@ side = [
     dict(k=1, id="ema", v="dite", koho="jana", n="Ema Malá (* 2010)", t="Dcera Jany a Tomáše."),
     dict(k=2, n="Karel Novák (1950–2001)", t="Bratr Josefa – bez id, do stromu se nekreslí."),
     dict(k=1, id="petr_pav", v="dite", koho="pavel", rodice="otec", n="Petr (Peter) Novák (* 2005)", t="Syn Pavla z jiného vztahu."),
-    dict(k=1, id="olga", v="manz", koho="pavel", n="Olga (?)", t="Manželka Pavla, rodné příjmení neznámé."),
+    dict(k=1, id="olga", v="manz", koho="pavel", n="Olga (?) (* 12. 10.)", t="Manželka Pavla, rodné příjmení ani rok narození neznámé."),
     dict(k=1, id="lida", v="dite", koho="pavel", n="Lída Nováková (* 2012)", t="Dcera Pavla a Olgy."),
 ]
 n = strom(side)
@@ -102,8 +102,8 @@ if "_error" not in n:
     case("jméno se závorkou: roky jen z poslední závorky",
          n["s-petr_pav"]["name"] == "Petr (Peter) Novák" and n["s-petr_pav"]["years"] == "* 2005",
          (n["s-petr_pav"]["name"], n["s-petr_pav"]["years"]))
-    case("závorka bez čísla patří ke jménu", n["s-olga"]["name"] == "Olga (?)" and n["s-olga"]["years"] == "",
-         (n["s-olga"]["name"], n["s-olga"]["years"]))
+    case("závorka bez čísla patří ke jménu, narozeniny bez roku zůstanou",
+         n["s-olga"]["name"] == "Olga (?)" and n["s-olga"]["years"] == "* 12. 10.", (n["s-olga"]["name"], n["s-olga"]["years"]))
     case("v='dite' s rodice = dítě jen osoby koho", n["s-petr_pav"]["parents"] == ["s-pavel"], n["s-petr_pav"]["parents"])
     case("v='dite' bez rodice = dítě obou manželů", sorted(n["s-lida"]["parents"]) == ["s-olga", "s-pavel"],
          n["s-lida"]["parents"])
