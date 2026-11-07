@@ -277,9 +277,14 @@ LINES = {
 }
 
 SIDE = [
- dict(k=8, n="Marie Nováková (1892–1970)", t="Sestra Jana, provdaná do Ostřetína.", r=[]),
- dict(k=8, n="Václav Novák (1896–1916)", t="Bratr Jana, padl v 1. světové válce u Doberdò.", r=[]),
- dict(k=26, n="Antonín Kučera (1869–1941)", t="Bratr Josefa, převzal mlýn v Třemošnici.", r=[]),
+ dict(k=1, id="jana_novakova", n="Jana Nováková (* 1983)", t="Sestra Petra. Žijící – údaje jen základní."),
+ dict(k=8, id="marie_novakova_1892", n="Marie Nováková (1892–1970)", t="Sestra Jana, provdaná do Ostřetína.", r=[]),
+ dict(k=8, id="karel_zeman", v="manz", koho="marie_novakova_1892", n="Karel Zeman (1888–1960)",
+      f=["× 1913 Ostřetín Marie Nováková", "rolník v Ostřetíně"], t="Manžel Marie, rolník v Ostřetíně."),
+ dict(k=8, id="ludmila_zemanova", v="dite", koho="marie_novakova_1892", n="Ludmila Zemanová (1914–2001)",
+      t="Dcera Marie a Karla, učitelka v Holicích."),
+ dict(k=8, id="vaclav_novak_1896", n="Václav Novák (1896–1916)", t="Bratr Jana, padl v 1. světové válce u Doberdò.", r=[]),
+ dict(k=26, id="antonin_kucera_1869", n="Antonín Kučera (1869–1941)", t="Bratr Josefa, převzal mlýn v Třemošnici.", r=[]),
 ]
 
 ISSUES = [
