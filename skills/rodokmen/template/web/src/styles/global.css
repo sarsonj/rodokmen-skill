@@ -90,7 +90,7 @@ th { font-weight: 600; color: #5a4632; background: #f6f0e6; }
 .fan-inner { width: 100%; margin: 0 auto; transition: width 0.2s; }
 .fan-inner svg { display: block; width: 100%; height: auto; }
 .fan-links a path, .fan-links a circle { fill: transparent; cursor: pointer; }
-.fan-links a:hover path, .fan-links a:hover circle { fill: rgba(255, 255, 255, 0.35); stroke: #3b2e22; stroke-width: 3; }
+.fan-links a:hover path, .fan-links a:hover circle { fill: rgba(255, 255, 255, 0.35); stroke: #3b2e22; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .fan-tools { position: sticky; top: 0.5rem; left: 0.5rem; z-index: 2; display: inline-flex; gap: 0.3rem; margin: 0.5rem; }
 .fan-tools button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 0.2rem 0.65rem; cursor: pointer; }
 
@@ -146,9 +146,15 @@ main.full { max-width: none; padding: 0; }
 .fan-search { display: flex; gap: 0.3rem; }
 .fan-search input { font: inherit; padding: 0.3rem 0.6rem; border: 1px solid #cfc5b6; border-radius: 6px; width: 15rem; max-width: 52vw; }
 .fan-bar button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 0.25rem 0.7rem; cursor: pointer; }
-.fan-stage { height: calc(100vh - 110px); overflow: hidden; touch-action: none; cursor: grab; background: var(--bg); }
+.fan-stage { position: relative; height: calc(100vh - 110px); overflow: hidden; touch-action: none; cursor: grab; background: var(--bg); }
 .fan-stage:active { cursor: grabbing; }
-.fan-stage svg { width: 100%; height: 100%; display: block; }
+.fan-stage, .fan-stage * { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+/* plátna vějíře – podklad a ostrá dlaždice (src/lib/fanview.ts) */
+.fan-bitmap { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; pointer-events: none; }
+.fan-stage svg { position: relative; width: 100%; height: 100%; display: block; }
+/* akcelerovaný vějíř (src/lib/fanview.ts): kresbu ukazuje plátno, z živého SVG jen odkazové plochy (najetí, klepnutí, popisky,
+   zvýraznění); display: none, ne visibility – skrytá kresba by se jinak při každé změně výřezu dál přepočítávala */
+.fan-stage svg.fan-lite > :not(.fan-links, defs) { display: none; }
 .fan-links a.hit path, .fan-links a.hit circle { fill: rgba(255, 214, 0, 0.5); stroke: #d7302a; stroke-width: 3; vector-effect: non-scaling-stroke; }
 @media (max-width: 760px) { .fan-hint { display: none; } .fan-stage { height: calc(100vh - 150px); } }
 

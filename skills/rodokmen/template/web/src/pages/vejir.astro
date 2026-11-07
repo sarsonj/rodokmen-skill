@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import fan from '../generated/fan.svg?raw';
-import { people } from '../lib/data.js';
+import { people, config } from '../lib/data.js';
 const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) => p.name))].sort((a, b) => a.localeCompare(b, 'cs'));
 ---
 <Base title="Vějíř předků" full>
@@ -19,35 +19,29 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
     </span>
     <span class="small muted fan-hint">Kolečkem myši přibližujte, tažením posouvejte, klepnutím na jméno otevřete stránku.</span>
   </div>
-  <div class="fan-stage" set:html={fan} />
+  <div class="fan-stage" data-akcelerace={String(config.vejir?.akcelerace ?? 'auto')} set:html={fan} />
 
   <script>
+    import { FanView } from '../lib/fanview';
+    import { accelerationEnabled, wheelFactor } from '../lib/fanmath';
     const stage = document.querySelector<HTMLElement>('.fan-stage')!;
     const svg = stage.querySelector('svg')!;
-    const full = svg.viewBox.baseVal;
-    const home = { x: full.x, y: full.y, w: full.width, h: full.height };
-    let vb = { ...home };
-    const apply = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-    const toSvg = (cx: number, cy: number) => {
-      const r = svg.getBoundingClientRect();
-      const s = Math.max(vb.w / r.width, vb.h / r.height);
-      const ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
-      return { x: vb.x - ox + (cx - r.left) * s, y: vb.y - oy + (cy - r.top) * s, s };
-    };
-    const zoomAt = (f: number, cx?: number, cy?: number) => {
-      const r = svg.getBoundingClientRect();
-      const p = toSvg(cx ?? r.left + r.width / 2, cy ?? r.top + r.height / 2);
-      const w = Math.min(home.w * 1.2, Math.max(home.w / 40, vb.w / f));
-      const k = w / vb.w;
-      vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w, h: vb.h * k };
-      apply();
-    };
-    stage.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); }, { passive: false });
+    const fan = new FanView(stage, svg, accelerationEnabled(location.search, stage.dataset.akcelerace, svg.querySelectorAll('text').length));
 
-    // drag to pan (mouse + one finger), pinch to zoom (two fingers)
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      fan.zoomAt(wheelFactor(e.deltaY, e.deltaMode), e.clientX, e.clientY);
+    }, { passive: false });
+
+    // tažení = posun (myš i jeden prst), dva prsty = přiblížení
     const pts = new Map<number, { x: number; y: number }>();
     let moved = 0, pinch = 0;
-    stage.addEventListener('pointerdown', (e) => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = 0; });
+    stage.addEventListener('pointerdown', (e) => {
+      // jinak prohlížeč začne přetahovat odkaz (jméno předka) a posun se přeruší; klepnutí na jméno funguje dál
+      if (e.pointerType === 'mouse') e.preventDefault();
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      moved = 0;
+    });
     stage.addEventListener('pointermove', (e) => {
       const prev = pts.get(e.pointerId);
       if (!prev) return;
@@ -55,22 +49,25 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinch) zoomAt(d / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        if (pinch) fan.zoomAt(d / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2);
         pinch = d; moved += 10;
         return;
       }
-      const { s } = toSvg(e.clientX, e.clientY);
       const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
       moved += Math.abs(dx) + Math.abs(dy);
-      if (moved > 4) { stage.setPointerCapture(e.pointerId); vb.x -= dx * s; vb.y -= dy * s; apply(); }
+      if (moved > 4) {
+        try { stage.setPointerCapture(e.pointerId); } catch { /* ukazatel mezitím zmizel – posunout i tak */ }
+        fan.panBy(dx, dy);
+      }
     });
     const up = (e: PointerEvent) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; };
     stage.addEventListener('pointerup', up);
     stage.addEventListener('pointercancel', up);
+    stage.addEventListener('dragstart', (e) => e.preventDefault());
     stage.addEventListener('click', (e) => { if (moved > 4) { e.preventDefault(); e.stopPropagation(); } }, true);
 
     document.querySelectorAll<HTMLButtonElement>('.fan-btns button').forEach((b) =>
-      b.addEventListener('click', () => { const z = Number(b.dataset.z); if (z) zoomAt(z); else { vb = { ...home }; apply(); } })
+      b.addEventListener('click', () => { const f = Number(b.dataset.z); if (f) fan.zoomAt(f); else fan.reset(); })
     );
 
     // search: zoom to the ancestor's segment and highlight it
@@ -85,8 +82,7 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       hits.forEach((a) => a.classList.add('hit'));
       const bb = (hits[0].lastElementChild as SVGGraphicsElement).getBBox();
       const w = Math.max(bb.width, bb.height) * 7;
-      vb = { x: bb.x + bb.width / 2 - w / 2, y: bb.y + bb.height / 2 - w / 2, w, h: w };
-      apply();
+      fan.show({ x: bb.x + bb.width / 2 - w / 2, y: bb.y + bb.height / 2 - w / 2, w, h: w });
     });
   </script>
 </Base>
