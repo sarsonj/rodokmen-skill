@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-# Ověření čtení (např. po pomocníkovi): výřez zápisu rozdělený na dvě poloviny 1900 px. Použití: overit.py <snímek.jpg> x0,y0,x1,y1 <prefix> [v] [--kontrast]  (v = dělit vodorovně; --kontrast = vybledlý zápis)
+"""Ověření čtení (např. po pomocníkovi): výřez zápisu rozdělený na dvě poloviny 1900 px.
+Použití: overit.py <snímek.jpg> x0,y0,x1,y1 <prefix> [v] [--kontrast]  (v = dělit vodorovně; --kontrast = vybledlý zápis)
+"""
 import glob,os,shutil,sys,subprocess
+if len(sys.argv) < 4 or sys.argv[1] in ("-h", "--help"):   # nápověda místo pádu
+    sys.exit(__doc__.strip())
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")

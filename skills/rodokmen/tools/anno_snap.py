@@ -3,6 +3,8 @@
 Usage: anno_snap.py DOCID "QUERY" OUTFILE [page] [mode=full|ctx] [width]
 mode ctx = hit area expanded (+/-600px vertically, whole column width)"""
 import sys,json,re,urllib.request,urllib.parse
+if len(sys.argv) < 4 or sys.argv[1] in ("-h", "--help"):   # nápověda místo pádu
+    sys.exit(__doc__.strip())
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):

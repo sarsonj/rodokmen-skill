@@ -42,7 +42,15 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w, h: vb.h * k };
       apply();
     };
-    stage.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); }, { passive: false });
+    // Zoom úměrný velikosti posunu: kolečko myši (deltaY ~100) dá krok ~1,25×, touchpad (spousta malých událostí)
+    // jemný plynulý zoom; štípnutí na touchpadu (ctrlKey) je citlivější. (#165)
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      let d = e.deltaY;
+      if (e.deltaMode === 1) d *= 33; else if (e.deltaMode === 2) d *= 300;   // řádky / stránky → px
+      d = Math.max(-120, Math.min(120, d));
+      zoomAt(Math.exp(-d * (e.ctrlKey ? 0.012 : 0.0022)), e.clientX, e.clientY);
+    }, { passive: false });
 
     // drag to pan (mouse + one finger), pinch to zoom (two fingers)
     const pts = new Map<number, { x: number; y: number }>();
