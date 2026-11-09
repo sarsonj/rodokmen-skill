@@ -1,6 +1,11 @@
 // Nahrání hotového webu (dist/) na Cloudflare – spouští ho `npm run nasadit-cloudflare` po exportu a buildu.
 // wrangler.jsonc a bránu cloudflare/worker.js vyrábí tools/export_web.py. Po nahrání spustí kontrolu
-// scripts/overit.mjs na adrese, kterou wrangler vypíše (https://rodokmen.<subdoména>.workers.dev).
+// scripts/overit.mjs na adrese, kterou wrangler vypíše (https://<web>.<subdoména>.workers.dev; web = cloudflare.web
+// z data/web.json, výchozí „rodokmen“).
+//
+// Dva projekty na jednom účtu: se stejným názvem webu by druhý přepsal první. Proto před prvním nasazením z této
+// složky (bez .wrangler/adresa.txt pro tento web) zjistíme, jestli web s tím názvem na účtu už není; když ano,
+// skončíme s radou. Vědomé přepsání (stejný projekt z jiného počítače): `node scripts/nasadit_cloudflare.mjs --prepsat`.
 //
 // Subdoména workers.dev: nový účet ji nemá. Wrangler spuštěný z Claude ji zaregistruje sám, název ale bere
 // z package.json (u všech „rodokmen-web“ – obsazené). Proto ho spouštíme ze složky .wrangler/subdomena,
@@ -9,8 +14,18 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const argv = process.argv.slice(2);
+const argv = process.argv.slice(2).filter((a) => a !== "--prepsat");
+const prepsat = process.argv.includes("--prepsat");
 const PLATNY = /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/;
+
+// Název webu (worker) z wrangler.jsonc, které vyrábí export (první řádek je komentář).
+function nazevWebu() {
+  try {
+    return JSON.parse(readFileSync("wrangler.jsonc", "utf8").replace(/^\s*\/\/.*$/gm, "")).name || "rodokmen";
+  } catch {
+    return "rodokmen";
+  }
+}
 
 // --volno <název> […]: je subdoména <název>.workers.dev volná? Ptá se DNS Cloudflare (DoH), ne počítače –
 // ten by si „neexistuje“ zapamatoval a novou adresu pak až 30 minut neviděl. Obsazená subdoména má záznam
@@ -23,15 +38,15 @@ if (argv[0] === "--volno") {
       console.log(`${nazev}: nejde použít – jen malá písmena bez diakritiky, číslice a pomlčky (nejvýš 50 znaků)`);
       process.exit(2);
     }
-    const r = await fetch(`${doh}?name=rodokmen.${nazev}.workers.dev&type=A`, { headers: { accept: "application/dns-json" } });
+    const r = await fetch(`${doh}?name=${nazevWebu()}.${nazev}.workers.dev&type=A`, { headers: { accept: "application/dns-json" } });
     const ma = ((await r.json()).Answer || []).length > 0;
     obsazeno ||= ma;
-    console.log(`${nazev}: ${ma ? "obsazené" : "volné (nejspíš)"}  →  https://rodokmen.${nazev}.workers.dev`);
+    console.log(`${nazev}: ${ma ? "obsazené" : "volné (nejspíš)"}  →  https://${nazevWebu()}.${nazev}.workers.dev`);
   }
   process.exit(obsazeno && argv.length === 2 ? 1 : 0);
 }
 if (argv.length) {
-  console.error(`CHYBA: neznámý přepínač ${argv[0]} (umím jen --volno <název>).`);
+  console.error(`CHYBA: neznámý přepínač ${argv[0]} (umím --volno <název> a --prepsat).`);
   process.exit(2);
 }
 
@@ -67,6 +82,25 @@ function nasad(subdomena) {
     p.stderr.on("data", (d) => { process.stderr.write(d); text += d; });
     p.on("close", (kod) => hotovo({ kod, text }));
   });
+}
+
+// Není na účtu už web se stejným názvem z jiného projektu?
+const webNazev = nazevWebu();
+let minule = "";
+try {
+  minule = readFileSync(resolve(".wrangler", "adresa.txt"), "utf8").trim();
+} catch {}
+if (!prepsat && !minule.startsWith(`https://${webNazev}.`)) {
+  const r = spawnSync("npx", ["-y", "wrangler@4", "deployments", "list", "--name", webNazev, "--json"],
+    { shell: win, encoding: "utf8" });
+  if (r.status === 0) {
+    console.error(`\nNa účtu Cloudflare už web „${webNazev}“ je – nejspíš z jiného projektu rodokmenu. Nahráním bych ho přepsal.`,
+      `\nDej tomuto projektu jiný název webu: v data/web.json "cloudflare": {"web": "${webNazev}-…"} (malá písmena,`,
+      "pomlčky) a spusť nasazení znovu. Je-li to opravdu tentýž projekt (třeba z jiného počítače):",
+      "`node scripts/nasadit_cloudflare.mjs --prepsat`.");
+    process.exit(1);
+  }
+  // 10007 = takový web na účtu není; jiná chyba (nepřihlášen, nový účet) – nasazení ji ohlásí samo
 }
 
 let vystup;

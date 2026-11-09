@@ -421,8 +421,16 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
   - **Postup (jen v prohlížeči, služby jsou za tokenem – ten si stránka bere sama, nevypisuj ho):** na ags.cuzk.gov.cz/archiv
     najdi katastrální území, klikni do mapy na obec → „Indikační skici“ (nebo „Císařské povinné otisky“) → ID rastru
     (např. `HRA235018400`). Skica pak jde otevřít přímo: `https://ags.cuzk.gov.cz/archiv/openmap.html?typ=skicic&idrastru=<ID>`
-    (list otisku `typ=cioc`); načítá se asi 20 s. Osada často nemá vlastní katastr (Polom → k. ú. Lhota u Dobrušky) –
-    hledej podle sousední obce. Přibližuj kolečkem na bod, tažení myší mapu posouvá nevyzpytatelně.
+    (list otisku `typ=cioc`); načítá se asi 20 s. ID rastru dá i tlačítko `#btn_skicic` v okně obce. Osada často nemá
+    vlastní katastr (Polom → k. ú. Lhota u Dobrušky) – hledej podle sousední obce.
+  - **Ostrý výřez vsi (lepší než snímek obrazovky):** stránka si skicu kreslí voláním `…/archiv_nespojene_skici/ImageServer/exportImage`
+    (u otisku obdobná služba) s `bbox` v S-JTSK a `size` v pixelech. V prohlížeči (javascript) vezmi poslední takovou adresu
+    z `performance.getEntriesByType('resource')`, přepočítej `bbox` na výřez vsi (bod obrázku px, py → x = x0 + (x1−x0)·px/W,
+    y = y1 − (y1−y0)·py/H podle původního `bbox` a `size`), `size` nastav na šířku 2000–4000 px ve stejném poměru stran
+    (server pustí nejvýš 15000 × 4100) a obrázek stáhni přes `fetch` ve stránce. Token v adrese nech být a nevypisuj ho.
+    Uložení: `URL.createObjectURL(blob)` → odkaz `<a download="skica_obec.jpg">` a klik (prohlížeč ho uloží do stažených
+    souborů, Playwright do své výstupní složky), pak přesuň do `dokumenty/`. Kolem 1,4 m na pixel jsou čitelná jména
+    držitelů i čísla parcel. Jen výřezy vsí pro rodinu, žádné hromadné stahování listů.
   - **Morava:** odkaz vede do prohlížeče MZA (fond D 9, často dva listy: původní z 30. let a reambulace ze 70. let 19. stol.).
     MZA stahovací skripty zakazuje – jen přiblížit a snímek obrazovky (jako u matrik MZA). Listy Moravy nejsou georeferencované.
   - **Čtení:** v budově je **červeně číslo popisné** a **černě číslo stavební parcely** (pozemkové parcely mají čísla
@@ -430,7 +438,7 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
     (archiv_spojene_pk) s adresními body RÚIAN ukáže, na které parcele stojí dnešní čp. „N° 35 Příjmení“ u pozemku
     = patří k domu čp. 35.
     Žlutá stavba dřevěná, růžová zděná. Popisky bývají vzhůru nohama (výřez otoč o 180°). U měst bývá intravilán prázdný.
-    Ulož jen snímkem obrazovky (stahování je placené) a na web dej výřez se zakroužkovaným domem.
+    Na web dej výřez se zakroužkovaným domem (u rodiny mívají staré mapy velký úspěch).
 - **Dnešní adresa domu** podle čísla popisného: RÚIAN (ČÚZK, vrstva AdresniMisto). Pozor, staré centrum mívá od 19. století
   stejná čp., ale předměstí a vesnice čísla přečíslovávaly. Hodí se na „procházku po stopách předků“.
   Stavbu podle obce a čísla popisného najde i nahlizenidokn.cuzk.gov.cz (ověření adresy z dokladu); vlastník je za

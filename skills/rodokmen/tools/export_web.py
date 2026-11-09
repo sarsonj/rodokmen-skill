@@ -192,19 +192,24 @@ def cloudflare_files(cfg, digest):
     tpl = os.path.join(WEB, "cloudflare", "worker.sablona.js")
     if not os.path.exists(tpl):
         return
-    # cloudflare.nazev = subdoména účtu (adresa https://rodokmen.<nazev>.workers.dev), zakládá ji nasadit_cloudflare.mjs
-    name = ((cfg.get("cloudflare") or {}).get("nazev") or "").strip()
-    if name and not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?", name):
-        sys.exit(f"CHYBA: cloudflare.nazev v data/web.json „{name}“ nejde použít – jen malá písmena bez diakritiky, "
-                 "číslice a pomlčky (nejvýš 50 znaků), např. „novakovi“.")
+    # Adresa https://<web>.<nazev>.workers.dev: cloudflare.nazev = subdoména účtu (jedna na účet, zakládá ji
+    # nasadit_cloudflare.mjs), cloudflare.web = název webu na účtu (výchozí „rodokmen“; druhý projekt na stejném
+    # účtu musí mít jiný, jinak by první web přepsal).
+    cf = cfg.get("cloudflare") or {}
+    for pole, priklad in (("nazev", "novakovi"), ("web", "rodokmen-dvorakovi")):
+        hodnota = (cf.get(pole) or "").strip()
+        if hodnota and not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?", hodnota):
+            sys.exit(f"CHYBA: cloudflare.{pole} v data/web.json „{hodnota}“ nejde použít – jen malá písmena bez diakritiky, "
+                     f"číslice a pomlčky (nejvýš 50 znaků), např. „{priklad}“.")
+    web_nazev = (cf.get("web") or "").strip() or "rodokmen"
     worker = (open(tpl, encoding="utf-8").read().replace("{{HASH}}", digest)
               .replace("{{OTEVRENY}}", "false" if digest else "true"))
     write(os.path.join(WEB, "cloudflare", "worker.js"), worker)
     wrangler = {
-        "name": "rodokmen",
+        "name": web_nazev,
         "main": "cloudflare/worker.js",
         "compatibility_date": "2026-10-01",
-        "workers_dev": True,      # adresa https://rodokmen.<subdoména>.workers.dev
+        "workers_dev": True,      # adresa https://<web>.<subdoména>.workers.dev
         "preview_urls": False,    # bez zvláštních adres pro jednotlivé verze
         "assets": {"directory": "./dist", "binding": "ASSETS", "run_worker_first": True,
                    "not_found_handling": "404-page"},

@@ -2,7 +2,6 @@
 import Base from '../layouts/Base.astro';
 import { stats, lines, href, config, linesTitle } from '../lib/data.js';
 import fan from '../generated/fan.svg?raw';
-import MobileTree from '../components/MobileTree.astro';
 import FamilyMap from '../components/FamilyMap.astro';
 import site from '../data/site.json';
 import { frontmatter as pribeh } from '../generated/pribeh.md';
@@ -78,9 +77,6 @@ const cards = config.zajimavosti_na_uvodu ?? [];
   )}
 
   <h2>Rodokmen</h2>
-  <div class="only-mobile">
-    <MobileTree k={1} />
-  </div>
-  <div class="fan-preview only-desktop"><a class="cover" href="/vejir/" aria-label="Otevřít vějíř předků přes celou obrazovku"></a><Fragment set:html={fan} /></div>
+  <div class="fan-preview"><a class="cover" href="/vejir/" aria-label="Otevřít vějíř předků přes celou obrazovku"></a><Fragment set:html={fan} /></div>
   <p><a class="btn" href="/vejir/">Otevřít vějíř předků přes celou obrazovku →</a> <a href="/predci/" style="margin-left:1rem">nebo seznam všech předků</a></p>
 </Base>
