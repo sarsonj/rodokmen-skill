@@ -28,7 +28,7 @@ EPIDEMIE = {1771: "hladomor", 1772: "hladomor a tyfus", 1805: "tyfus", 1831: "ch
 
 def load():
     ns = {}
-    exec(open(os.path.join(ROOT, "data", "osoby.py"), encoding="utf-8").read(), ns)
+    exec(open(os.path.join(ROOT, "data", "osoby.py"), encoding="utf-8-sig").read(), ns)
     return ns["P"], ns.get("LINES", {}), ns.get("SAME", {})
 
 

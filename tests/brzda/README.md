@@ -9,6 +9,7 @@ Z kořene repozitáře, přes obal (testy samy obsahují příkazy s curl):
     python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_brzda.py skills/rodokmen/tools/slusne.py
     python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_hlidac.py skills/rodokmen
     python3 -I skills/rodokmen/tools/slusne.py tests/brzda/test_mezipamet.py skills/rodokmen/tools   # mezipaměť: jen celé obrázky
+    python3 -I tests/brzda/test_curl.py skills/rodokmen/tools/slusne.py   # curl: adresa bez https://, víc adres, rozsahy, vlastní -w
     python3 -I tests/brzda/test_prohlizec.py skills/rodokmen/tools   # cache.py uloz/najdi: snímky z prohlížeče (eBadatelna, FamilySearch)
     python3 -I tests/brzda/test_hook_windows.py skills/rodokmen    # hook hlídače na Windows: plná cesta k Pythonu
 

@@ -10,7 +10,7 @@ Při jakékoli vlastní chybě příkaz pustí – rozbitý hlídač nesmí zabl
 """
 import json, os, re, sys
 
-CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s|\b(?:bash|sh|zsh)\s+-c\s+[\"'])\s*"
+CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s|\b(?:bash|sh|zsh)\s+-c\s+[\"']|\beval\s+[\"']?)\s*"
 CURL = re.compile(CMD + r"(curl|wget)(?:\.exe)?(?=\s|$)", re.I)
 PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python3?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)
 SHELL = re.compile(CMD + r"(?:(?:bash|sh|zsh)\s+|\./)(\S+\.sh)\b")
@@ -57,6 +57,30 @@ def cist(path, cwd):
         return ""
 
 
+RETEZEC = re.compile(r'"(?:[^"\\]|\\.)*"|\'[^\']*\'')
+SPUSTI_RETEZEC = re.compile(r"(?:-c|\beval)\s*$")
+HEREDOC_TELO = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n(.*?)^\s*\1\s*$", re.S | re.M)
+PY_C = re.compile(r"""^((?:\s+-[IuBEsSOqvbdx]+|\s+-X\s+\S+|\s+-W\s+\S+)*)\s+-c\s*("(?:[^"\\]|\\.)*"|'[^']*'|\S+)""")
+
+
+def bez_textu(cmd):
+    """Příkaz s vymazaným obsahem textů v uvozovkách („git commit -m "…; curl …"“ nic nespouští) – kromě textů,
+    které se opravdu spustí: za `-c` (bash/sh -c) či `eval` a s `$(…)` nebo `…` uvnitř uvozovek."""
+    def nahrad(m):
+        t = m.group(0)
+        if SPUSTI_RETEZEC.search(cmd[:m.start()]) or (t[0] == '"' and ("$(" in t or "`" in t)):
+            return t
+        return t[0] + " " * (len(t) - 2) + t[-1]
+    return RETEZEC.sub(nahrad, cmd)
+
+
+def python_kod(cmd, od):
+    """Kód, který Python spuštěný na pozici `od` opravdu vykoná: text za -c (jen přepínače Pythonu před ním)
+    a těla heredoců v příkazu (i heredoc, který skript teprve zapisuje – soubor ještě neexistuje)."""
+    m = PY_C.match(cmd[od:])
+    return ([m.group(2).strip("\"'")] if m else []), [t for _, t in HEREDOC_TELO.findall(cmd)]
+
+
 def posoudit(tool, cmd, cwd):
     """Vrátí důvod zamítnutí, nebo None (pustit)."""
     if tool == "Monitor":   # spouští příkaz v bashi stejně jako Bash
@@ -67,7 +91,8 @@ def posoudit(tool, cmd, cwd):
         tool = "Bash"   # python a curl.exe v PowerShellu posoudit stejně
     if tool != "Bash":
         return None
-    for m in CURL.finditer(cmd):
+    holy = bez_textu(cmd)   # curl/wget/skript jen tam, kde se opravdu spouští, ne v textu v uvozovkách
+    for m in CURL.finditer(holy):
         zbytek = re.split(r"[;&|\n]", cmd[m.end():], maxsplit=1)[0]
         if (URL.search(zbytek) or "$" in zbytek) and not jen_volne(zbytek):
             return f"{m.group(1)} přímo na web"
@@ -84,9 +109,13 @@ def posoudit(tool, cmd, cwd):
                 continue
             if SIT_PY.search(obsah) and not jen_volne(obsah):   # síť jen na povolené weby (verze.py → GitHub) projde
                 return f"Python skript {args[0]} používá síť"
-        if (SIT_PY_RADEK if HEREDOC.search(cmd) and " -c" not in cmd else SIT_PY).search(cmd):   # heredoc / python -c "…"
+        c_kod, heredocy = python_kod(cmd, m.end())   # jen kód, který Python opravdu spustí, ne zbytek příkazu
+        if args and args[0] == "-" and not heredocy:   # kód rourou („echo … | python -“): posoudit celý příkaz
+            c_kod.append(cmd)
+        if any(SIT_PY.search(k) and not jen_volne(k) for k in c_kod) or \
+                any(SIT_PY_RADEK.search(t) and not jen_volne(t) for t in heredocy):
             return "Python se síťovým importem přímo v příkazu"
-    for m in SHELL.finditer(cmd):
+    for m in SHELL.finditer(holy):
         obsah = cist(m.group(1), cwd)
         if "slusne.py" not in obsah and CURL.search(obsah) and not jen_volne(obsah):
             return f"shellový skript {m.group(1)} volá curl/wget"
@@ -95,6 +124,8 @@ def posoudit(tool, cmd, cwd):
 
 def main():
     try:
+        if hasattr(sys.stdin, "reconfigure"):   # Claude Code posílá UTF-8; na Windows by se četl v cp1250
+            sys.stdin.reconfigure(encoding="utf-8-sig")
         vstup = json.load(sys.stdin)
         tool = vstup.get("tool_name", "")
         cmd = (vstup.get("tool_input") or {}).get("command", "") or ""

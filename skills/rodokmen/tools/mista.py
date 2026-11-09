@@ -99,7 +99,7 @@ def nejblizsi(name, cache):
 
 
 def main():
-    cache = json.load(open(OUT, encoding="utf-8")) if os.path.exists(OUT) else {}
+    cache = json.load(open(OUT, encoding="utf-8-sig")) if os.path.exists(OUT) else {}
     if len(sys.argv) > 2 and sys.argv[1] == "pridej":
         name = sys.argv[2]
         stem = re.escape(name.split()[0][:5]) if len(name.split()) == 1 else re.escape(name)

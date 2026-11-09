@@ -35,7 +35,7 @@ from urllib.parse import urlsplit
 
 DOTAZ, OBRAZEK = 2.0, 0.1            # výchozí rozestup v sekundách
 LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
-    "archives.cz": (4.0, 0.1),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min
+    "archives.cz": (4.0, 0.3),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min, obrázky po ~6 snímcích 403
     "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
     "mza.cz": (4.0, 4.0),            # MZA Brno – skriptem jen hledání knih (ZAKAZ níže), blokuje i za rychlé dotazy na katalog
     "digi.nacr.cz": (4.0, 4.0),      # Národní archiv (policejní přihlášky) – po pár rychlých kartách přiškrcuje podle IP
@@ -523,16 +523,78 @@ def _bash_cesta():
     return "bash"
 
 
+# přepínače curlu, které berou hodnotu (ta pak není adresa); krátké se dají slučovat („-sSLo soubor“)
+_CURL_HODNOTA = {"--output", "--header", "--user-agent", "--data", "--data-raw", "--data-binary", "--data-urlencode",
+                 "--data-ascii", "--json", "--referer", "--user", "--proxy", "--write-out", "--cookie", "--cookie-jar",
+                 "--request", "--upload-file", "--form", "--form-string", "--max-time", "--range", "--config",
+                 "--connect-timeout", "--retry", "--retry-delay", "--retry-max-time", "--limit-rate", "--continue-at",
+                 "--output-dir", "--resolve", "--connect-to", "--cacert", "--capath", "--cert", "--key", "--dump-header",
+                 "--speed-limit", "--speed-time", "--max-filesize", "--max-redirs", "--time-cond", "--interface",
+                 "--proto", "--proto-redir", "--stderr", "--trace", "--trace-ascii", "--etag-save", "--etag-compare"}
+_CURL_KRATKE = set("oHAdeuxwbcXTFmrKCDEYyz")
+_HOLY_HOST = re.compile(r"(?i)^[a-z0-9-]+(\.[a-z0-9-]+)+\.?(:\d+)?([/?#].*)?$")   # www.mza.cz/… bez https://
+
+
+def _curl_adresy(args):
+    """Adresy v příkazu curl: [(index, adresa pro brzdu)]; adresa bez schématu dostane http:// (curl ji tak bere)."""
+    out, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a == "--url" and i + 1 < len(args):
+            u = args[i + 1]
+            out.append((i + 1, u if "://" in u else "http://" + u))
+            i += 2
+            continue
+        if a.startswith("--url="):
+            u = a[6:]
+            out.append((i, u if "://" in u else "http://" + u))
+        elif a.startswith("--"):
+            if a in _CURL_HODNOTA:
+                i += 1
+        elif a.startswith("-") and len(a) > 1:
+            k = a[1:]
+            for j, c in enumerate(k):
+                if c in _CURL_KRATKE:
+                    if j == len(k) - 1:
+                        i += 1   # hodnota je další argument
+                    break        # jinak je hodnota přilepená („-ofile“)
+        elif re.match(r"(?i)https?://", a):
+            out.append((i, a))
+        elif _HOLY_HOST.match(a):
+            out.append((i, "http://" + a))
+        i += 1
+    return out
+
+
 def _curl(args):
     real, umi_stderr = _najdi_curl()
     if not any(a in ("-A", "--user-agent") or a.startswith("--user-agent=") or re.match(r"(?i)\s*user-agent\s*:", a)
                for a in args):
         args = ["-A", UA, *args]   # představit se jako nástroje; výchozí „curl/…“ některé archivy odmítají (403)
-    urls = [a for a in args if re.match(r"https?://", a)]
+    urls = [u for _, u in _curl_adresy(args)]
+    if len(urls) > 1:   # curl by je poslal hned za sebou, brzda by nestihla čekat ani zastavit
+        print("slusne: jeden curl = jedna adresa. Víc snímků stahuj postupně (každý zvlášť přes brzdu).", file=sys.stderr)
+        return 2
+    globoff = any(a in ("-g", "--globoff") or (re.match(r"-[a-zA-Z]+$", a) and "g" in a) for a in args)
+    if urls and not globoff and re.search(r"[\[\]{}]", urls[0]):   # rozsah [1-200] / {a,b} = mnoho dotazů naráz
+        print("slusne: rozsahy [..] a {..} v adrese nejdou (curl by je stáhl všechny naráz). Stahuj snímky postupně, "
+              "nebo je-li závorka v adrese doslova, přidej -g.", file=sys.stderr)
+        return 2
     for u in urls:
         pockej(u)
-    vlastni_w = any(a in ("-w", "--write-out") or a.startswith("--write-out=") for a in args) or not umi_stderr
-    extra = [] if vlastni_w else ["-w", "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"]
+    # vlastní -w: brzda ho spojí se svou značkou (curl použije jen poslední -w); -w @soubor a starý curl beze značky
+    znacka = "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"
+    w_poz = [i for i, a in enumerate(args) if a in ("-w", "--write-out") or a.startswith("--write-out=")]
+    vlastni = None
+    if w_poz:
+        i = w_poz[-1]
+        vlastni = args[i][len("--write-out="):] if args[i].startswith("--write-out=") else (args[i + 1] if i + 1 < len(args) else "")
+        if not vlastni.startswith("@"):
+            args = [a for j, a in enumerate(args) if j not in w_poz and not (j - 1 in w_poz and not args[j - 1].startswith("--write-out="))]
+    if not umi_stderr or (vlastni or "").startswith("@"):
+        extra = []
+    else:
+        extra = ["-w", (vlastni or "") + znacka]
     p = _bez_prepisu(subprocess.run, [real, *args, *extra], stderr=subprocess.PIPE)
     err = p.stderr.decode("utf-8", "replace").replace("\r\n", "\n")   # curl na Windows píše do stderr \r\n
     kody = re.findall(r"^@@slusne (\d+) (\S*)$", err, re.M)
@@ -659,6 +721,8 @@ def main(argv):
     for s in (sys.stdout, sys.stderr):   # hlášky česky i na Windows bez -X utf8 (např. z curl() v ahmp_search.sh)
         if hasattr(s, "reconfigure"):
             s.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stdin, "reconfigure"):   # kód ze vstupu („slusne.py -“) je UTF-8, na Windows ne cp1250
+        sys.stdin.reconfigure(encoding="utf-8-sig")
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0

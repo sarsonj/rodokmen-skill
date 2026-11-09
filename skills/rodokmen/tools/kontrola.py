@@ -16,7 +16,7 @@ DATA = os.path.join(ROOT, "data")
 
 def jload(name, default):
     p = os.path.join(DATA, name)
-    return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else default
+    return json.load(open(p, encoding="utf-8-sig")) if os.path.exists(p) else default
 
 
 _SLOVO = "[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽÄÖÜ][a-záčďéěíňóřšťúůýžäöüß]+"
@@ -33,7 +33,7 @@ def main():
     err, warn = [], []
     ns = {}
     try:
-        exec(open(os.path.join(DATA, "osoby.py"), encoding="utf-8").read(), ns)
+        exec(open(os.path.join(DATA, "osoby.py"), encoding="utf-8-sig").read(), ns)
     except Exception as e:  # noqa: BLE001
         sys.exit(f"CHYBA: data/osoby.py nejde načíst: {e}")
     P, SIDE, LINES, SAME = ns.get("P", {}), ns.get("SIDE", []), ns.get("LINES", {}), ns.get("SAME", {})
@@ -70,6 +70,8 @@ def main():
     for a, c in SAME.items():
         if c not in P:
             err.append(f"SAME: {a} -> {c}, ale osoba {c} neexistuje")
+        elif not P[c].get("n") or P[c]["n"] in ("?",) or P[c]["n"].startswith(("otec neuveden", "matka neuvedena")):
+            err.append(f"SAME: {a} -> {c}, ale osoba {c} je zástupná (bez jména) – alias musí ukazovat na skutečnou osobu")
     for k in LINES:
         if k not in range(8, 16):
             err.append(f"LINES: rod {k} – rody mají čísla 8 až 15 (pradědečci a prababičky)")
@@ -238,7 +240,7 @@ def main():
     texty += [(f"boční příbuzný {s.get('n')}", s.get("n", "") + " " + s.get("t", "")) for s in SIDE]
     for f in ("zajimavosti.md", "pribeh.md"):
         if os.path.exists(os.path.join(DATA, f)):
-            obsah = open(os.path.join(DATA, f), encoding="utf-8").read()
+            obsah = open(os.path.join(DATA, f), encoding="utf-8-sig").read()
             texty += [(f, odst) for odst in re.split(r"\n\s*\n|\n(?=#)", obsah)]   # odstavce i oddíly „## …“
     for kde, text in texty:
         if not recent(text):
@@ -261,7 +263,7 @@ def main():
                         f"(data/pribeh.md, reference/pribehy.md); koncept nejdřív ukaž uživateli v chatu")
 
     log = os.path.join(DATA, "research_log.md")
-    rows = sum(1 for l in open(log, encoding="utf-8") if re.match(r"^\| \d+ \|", l)) if os.path.exists(log) else 0
+    rows = sum(1 for l in open(log, encoding="utf-8-sig") if re.match(r"^\| \d+ \|", l)) if os.path.exists(log) else 0
     print(f"{len(P)} osob, {len(zaz)} zápisů, {len(svazky)} svazků, {rows} řádků deníku")
     for e in err:
         print("CHYBA:", e)

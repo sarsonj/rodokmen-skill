@@ -23,7 +23,7 @@ pak konec `research_log.md` a sekci „Rozpracováno“.
 | `vyrezy/`, `zdroje/` | Výřezy zápisů pro web (1800 px) a v plném rozlišení. |
 | `dokumenty/` | Rodinné dokumenty a fotky od uživatele (originály). |
 | `pracovni/` | Pracovní soubory (stažené stránky, kontrolní obrázky) – nejdou na web. |
-| `web/` | Rodinný web. `cd web && npm run data && npm run build`, náhled `npm run preview`. |
+| `web/` | Rodinný web. `cd web && npm run nahled` (data + sestavení + náhled); po změně dat stačí `npm run data && npm run build`. |
 
 ## Pravidla
 1. Než něco ohlásím jako nové, prohledám `osoby.py`, `zaznamy.json` a `research_log.md` (jméno, místo, rok).

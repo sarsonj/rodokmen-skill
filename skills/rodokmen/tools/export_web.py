@@ -33,13 +33,13 @@ def jload(name, default):
     path = os.path.join(DATA, name)
     if not os.path.exists(path):
         return default
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         return json.load(f)
 
 
 def load_people():
     ns = {}
-    exec(open(os.path.join(DATA, "osoby.py"), encoding="utf-8").read(), ns)
+    exec(open(os.path.join(DATA, "osoby.py"), encoding="utf-8-sig").read(), ns)
     for name, default in (("P", {}), ("SIDE", []), ("LINES", {}), ("ISSUES", []), ("HYPOTEZY", []), ("SAME", {})):
         ns.setdefault(name, default)
     return ns
@@ -156,7 +156,7 @@ def login_files(cfg):
     """Přihlašovací brána: otázka na webu, na serveru (nginx i Netlify) jen otisk odpovědi (SHA-256).
     Stejný otisk spočítá přihlašovací stránka a uloží ho do cookie – samotná odpověď se nikam neukládá."""
     login = cfg.get("prihlaseni") or {}
-    answer = norm_answer(login.get("odpoved", ""))
+    answer = norm_answer(str(login.get("odpoved", "")))   # i číslo („1923“ bez uvozovek)
     tpl = open(os.path.join(WEB, "prihlaseni.sablona.html"), encoding="utf-8").read()
     if "rodokmen:" not in tpl:   # stará šablona (do 0.4.0) ukládá do cookie odpověď – s novou bránou by se nikdo nepřihlásil
         sys.exit("CHYBA: web/ má starou šablonu přihlášení. Aktualizujte projekt: python3 -I <skill>/tools/novy_projekt.py <složka projektu>")
@@ -229,8 +229,8 @@ def main():
     SAME = ns["SAME"]                       # alias Kekulé → kanonické Kekulé (předek v rodokmenu vícekrát)
     cfg = jload("web.json", {})
     login = cfg.get("prihlaseni") or {}
-    if "--nasazeni" in sys.argv and not norm_answer(login.get("odpoved", "")) and not login.get("otevreny"):
-        if login.get("odpoved", "").strip():
+    if "--nasazeni" in sys.argv and not norm_answer(str(login.get("odpoved", ""))) and not login.get("otevreny"):
+        if str(login.get("odpoved", "")).strip():
             sys.exit("CHYBA: odpověď na přihlašovací otázku musí obsahovat písmena nebo číslice z latinky "
                      "(azbuka a samotné symboly nejdou, diakritika nevadí). Zvolte s uživatelem jinou odpověď.")
         sys.exit("CHYBA: v data/web.json není odpověď na přihlašovací otázku – web by byl otevřený komukoli.\n"
@@ -250,7 +250,11 @@ def main():
             s = f"{s}-{k}"
         used.add(s)
         slugs[k] = s
-    for a, c in SAME.items():
+    for a, c in list(SAME.items()):
+        if c not in slugs:   # hlavní osoba je zástupná (bez jména) nebo chybí – alias nemá kam ukazovat
+            print(f"POZOR: SAME {a} -> {c} – osoba {c} je zástupná nebo chybí, alias vynechávám (oprav data/osoby.py)")
+            del SAME[a]
+            continue
         slugs[a] = slugs[c]
     aliases_of = {}
     for a, c in SAME.items():
@@ -293,7 +297,7 @@ def main():
             continue
         fs, ms = slugs.get(f), slugs.get(m)
         fid = "-a-".join(x for x in (fs, ms) if x) if fs and ms else (fs or ms) + "-rodina"
-        surname = (P[m]["n"].split()[-1] if m in P else "").strip("()?")
+        surname = ((P[m]["n"].split() or [""])[-1] if m in P else "").strip("()?")   # i zástupná matka bez jména
         mfacts = [x for x in P.get(f, {}).get("f", []) + P.get(m, {}).get("f", []) if x.startswith("×")]
         marriage = [x for x in mfacts if surname and surname[:5] in x] or mfacts
         frec = P.get(f, {}).get("r", []) + P.get(m, {}).get("r", [])
@@ -380,10 +384,10 @@ def main():
     gen_dir = os.path.join(WEB, "src", "generated")
     for src, dst in (("archivni_dotazy.md", "dotazy.md"), ("research_log.md", "denik.md"), ("zajimavosti.md", "zajimavosti.md")):
         path = os.path.join(DATA, src)
-        text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+        text = open(path, encoding="utf-8-sig").read() if os.path.exists(path) else ""
         write(os.path.join(gen_dir, dst), strip_comments(re.sub(r"^# .*\n", "", text, count=1)))
     story = os.path.join(DATA, "pribeh.md")
-    write(os.path.join(gen_dir, "pribeh.md"), strip_comments(open(story, encoding="utf-8").read()) if has_story else "---\ntitle: Příběh\nlead: ''\n---\n")
+    write(os.path.join(gen_dir, "pribeh.md"), strip_comments(open(story, encoding="utf-8-sig").read()) if has_story else "---\ntitle: Příběh\nlead: ''\n---\n")
 
     hrefs = os.path.join(gen_dir, "fan_hrefs.json")
     json.dump({k: f"/osoba/{s}/" for k, s in slugs.items()}, open(hrefs, "w", encoding="utf-8", newline="\n"))

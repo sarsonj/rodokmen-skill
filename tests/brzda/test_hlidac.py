@@ -46,6 +46,16 @@ with open(SMISENY, "w", encoding="utf-8") as f:
 
 Z, P = "zamítnout", "pustit"
 PRIPADY = [
+    # 0.9.3: síťové slovo nebo curl jen v textu (grep, commit, poznámka) – pustit; skutečné spuštění – zamítnout
+    ("Bash", 'python3 -I tools/kontrola.py; grep -n "urlopen(" tools/*.py', P),
+    ("Bash", 'git commit -m "oprava; curl https://www.mza.cz/actapublica"', P),
+    ("Bash", 'echo "- hlídač: curl https://www.mza.cz zamítnut; import requests" >> poznamky_pro_skill.md', P),
+    ("Bash", 'echo "$(curl -s https://www.mza.cz/x)"', Z),
+    ("Bash", "echo `curl -s https://www.mza.cz/x`", Z),
+    ("Bash", 'eval "curl -s https://www.mza.cz/x"', Z),
+    ("Bash", 'echo "import urllib.request" | python3 -', Z),
+    ("Bash", "cat > pracovni/x.py <<'EOF'\nimport urllib.request\nEOF\npython3 pracovni/x.py", Z),
+    ("Bash", 'python3 -c "print(1)"; curl -s https://www.mza.cz/x', Z),
     # Bash – zamítnout
     ("Bash", "python -I -X utf8 -c \"import urllib.request; urllib.request.urlopen('https://aron.vychodoceskearchivy.cz')\"", Z),
     ("Bash", "python -I -X utf8 - <<'EOF'\nimport json, urllib.request\nprint(1)\nEOF", Z),

@@ -9,7 +9,7 @@ a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hle
 | příkaz | co dělá |
 |---|---|
 | `npm install` | jednou na začátku (stáhne knihovny, ~1 minuta) |
-| `npm run data` | převede data do webu (vždy po změně dat; funkční Python 3 vyhledá `scripts/data.mjs`) |
+| `npm run data` | převede data do webu (vždy po změně dat; `scripts/data.mjs` si sám najde funkční Python 3) |
 | `npm run build` | sestaví web do `dist/` |
 | `npm run nahled` | data + build + náhled na http://localhost:4321 (Ctrl+C ukončí) |
 | `npm run dev` | vývojový režim při úpravách vzhledu |
@@ -37,7 +37,7 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
   Odpověď se porovnává bez diakritiky a velkých písmen a musí obsahovat písmena nebo číslice z latinky (azbuka
   a samotné symboly nejdou). Na serveru i v cookie prohlížeče je jen její otisk (SHA-256),
   samotná odpověď se nikam neukládá. Krátkou nebo běžnou odpověď (jméno, obec) ale jde z otisku uhádnout zkoušením,
-  proto ať ji uživatel nepoužívá jako heslo jinde. Bez odpovědi nasazení (`npm run nasadit`, `deploy-caprover`)
+  proto ať ji uživatel nepoužívá jako heslo jinde. Bez odpovědi nasazení (`npm run nasadit-cloudflare`, `nasadit`, `deploy-caprover`)
   skončí chybou; otevřený web jen výslovně přes `"otevreny": true` v `prihlaseni`.
   Je to lehká ochrana proti náhodným návštěvníkům, ne bankovní zabezpečení – citlivé věci na web nepatří.
 - `uvod.foto` = klíč obrázku ve `vyrezy/` (ulož přes `vyrez.py`).

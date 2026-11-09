@@ -46,7 +46,7 @@ def main():
         sys.exit(__doc__)
     key = sys.argv[1]
     magick()   # bez ImageMagicku skončit dřív, než se rámeček zapíše
-    data = json.load(open(PATH, encoding="utf-8")) if os.path.exists(PATH) else {}
+    data = json.load(open(PATH, encoding="utf-8-sig")) if os.path.exists(PATH) else {}
     if sys.argv[2] == "--nahled":
         print(preview(key, data.get(key, {}).get("boxes", [])))
         return

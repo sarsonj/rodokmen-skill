@@ -3,7 +3,7 @@
 // Nový web na Netlify bývá „Private“ (ochrana týmu) – rodina pak místo otázky vidí přihlášení k Netlify
 // a majitel si toho nevšimne, protože je u Netlify přihlášený.
 // Adresu a stav ochrany zjistí přes netlify-cli (web propojený v .netlify/state.json); --url <adresa> = jen otevřít adresu.
-import { spawnSync } from "node:child_process";
+import { npxSync } from "./npx.mjs";
 import { existsSync, readFileSync } from "node:fs";
 
 const BRANA = /document\.cookie\s*=\s*'rodokmen=/;   // přihlašovací stránka (prihlaseni.html z tools/export_web.py)
@@ -43,8 +43,8 @@ if (!url) {
     konec(0, "Kontrola přeskočena: složka není propojená s webem na Netlify (.netlify/state.json).",
       "Otevři adresu webu v anonymním okně – musí se ukázat rodinná otázka.");
   }
-  const r = spawnSync("npx", ["-y", "netlify-cli@latest", "api", "getSite", "--data", JSON.stringify({ site_id: siteId })],
-    { encoding: "utf8", shell: process.platform === "win32" });
+  const r = npxSync(["-y", "netlify-cli@latest", "api", "getSite", "--data", JSON.stringify({ site_id: siteId })],
+    { encoding: "utf8" });
   let site = null;
   try {
     site = JSON.parse(r.stdout.slice(r.stdout.indexOf("{")));

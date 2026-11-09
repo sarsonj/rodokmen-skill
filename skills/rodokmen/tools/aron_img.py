@@ -59,7 +59,7 @@ def volume(apu_id):
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(data)
         os.replace(tmp, path)  # atomic, safe when several processes fetch the same volume
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         return json.load(f)
 
 
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     if sys.argv[2] == "svazek":
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         path = os.path.join(root, "data", "svazky.json")
-        sv = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+        sv = json.load(open(path, encoding="utf-8-sig")) if os.path.exists(path) else {}
         fond, _, rest = vol["name"].partition(": ")
         sv[apu[:8]] = dict(archiv=fond if rest else "", portal="ARON", svazek=rest or vol["name"],
                            popis=(vol.get("description") or "")[:300], snimku=len(tiles),

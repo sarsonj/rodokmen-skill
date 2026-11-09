@@ -240,7 +240,7 @@ def zkrat(s, n=300):
 def svazek(kniha):
     kniha, fields, scans, _ = info(kniha)
     path = os.path.join(ROOT, "data", "svazky.json")
-    d = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    d = json.load(open(path, encoding="utf-8-sig")) if os.path.exists(path) else {}
     sig = fields.get("Signatura", kniha)
     popis = "; ".join(x for x in (fields.get("Místo", ""), fields.get("Text desky", "")) if x)
     d[f"pf_{kniha}"] = {"archiv": "SOA Plzeň – Sbírka matrik západních Čech", "portal": "Porta fontium",

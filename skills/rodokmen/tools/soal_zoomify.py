@@ -15,7 +15,7 @@ POZOR: aplikace digi.soalitomerice.cz po ~100 rychlých požadavcích (digi.arch
 přístup na 30 minut. Prohlížečem jen najdi knihu a cestu k obrázkům, snímky pak stahuj tímto nástrojem (obrázkový server
 neomezuje).
 """
-import glob, math, os, re, shutil, subprocess, sys, tempfile, time, urllib.parse, urllib.request
+import glob, math, os, re, shutil, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 import concurrent.futures as cf
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -41,6 +41,14 @@ def get(url):
     for _ in range(3):
         try:
             return urllib.request.urlopen(url, timeout=30).read()
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 429, 503):   # archiv odmítá – nezkoušet znovu, web v brzdě zastavit (i u obrázků)
+                host = urllib.parse.urlsplit(url).hostname
+                slusne.zastav(host, f"HTTP {e.code} u snímku")
+                sys.exit(f"Archiv odmítl snímek (HTTP {e.code}) – web {host} je v brzdě zastavený. Dnes s ním přestaň "
+                         "a zkus to jindy; snímky, které teď potřebuješ, ať uloží uživatel v prohlížeči.")
+            time.sleep(1)
+            err = e
         except Exception as e:
             time.sleep(1)
             err = e

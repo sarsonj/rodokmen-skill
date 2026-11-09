@@ -59,7 +59,8 @@ tmp = tempfile.mkdtemp(prefix="overit_web_")
 try:
     web = os.path.join(tmp, "web")
     os.makedirs(os.path.join(web, "scripts"))
-    shutil.copy(os.path.join(SABLONA, "scripts", "overit.mjs"), os.path.join(web, "scripts", "overit.mjs"))
+    for f in ("overit.mjs", "npx.mjs"):   # npx.mjs: spuštění npx bez shellu (importuje ho overit.mjs)
+        shutil.copy(os.path.join(SABLONA, "scripts", f), os.path.join(web, "scripts", f))
 
     def overit(cesta, brana=True, cloudflare=None):
         edge = os.path.join(web, "netlify", "edge-functions", "brana.js")

@@ -144,8 +144,8 @@ Základní smyčka pro každou osobu:
 5. **Zapiš nález** (vždy všech 6 kroků, i když to zdržuje):
    1. svazek do `data/svazky.json` (ARON: `python3 -I tools/aron_img.py <apu> svazek`),
    2. zápis do `data/zaznamy.json` (klíč = popisný název, např. `holice_krest_jan_novak_1890`; odkaz na snímek) přes `tools/zapis.py`,
-   3. výřez: `python3 -I tools/vyrez.py pracovni/<stránka>.jpg <klíč> x0,y0,x1,y1` (velkoryse – celý zápis s hlavičkou sloupců a okrajovými poznámkami),
-   4. rámeček čteného místa: `python3 -I tools/ramecek.py <klíč> x0,y0,x1,y1` a **prohlédni si** `pracovni/ramecek_<klíč>.jpg`,
+   3. výřez: `python3 -I tools/vyrez.py pracovni/<stránka>.jpg <klíč> x0,y0,x1,y1` (zlomky 0–1 stránky; velkoryse – celý zápis s hlavičkou sloupců a okrajovými poznámkami),
+   4. rámeček čteného místa: `python3 -I tools/ramecek.py <klíč> x0,y0,x1,y1` (zlomky 0–1 **výřezu** `vyrezy/<klíč>.jpg`, ne stránky) a **prohlédni si** `pracovni/ramecek_<klíč>.jpg`,
    5. přepis originálu a český překlad do `data/prepisy.json` (nejistá místa „(?)“, nečitelná „[…]“),
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`;
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
@@ -192,8 +192,9 @@ pro každý web (dotaz 1 za 2 s, obrázky 10 za s) pro všechny procesy na poč�
   nástroj hlásí „neodpovídá“ a brzda po 3 neúspěšných spojeních nebo vypršeních za sebou web zastaví. Přepni na jiný
   archiv nebo jinou práci a zkus to později. Kontrolu certifikátu nikdy nevypínej, na prošlý certifikát jen počkej.
 - **V prohlížeči brzda neplatí, hlídáš se sám:** při cíleném hledání (konkrétní snímek, rejstřík) aspoň 5 s mezi
-  stránkami, při listování stránku po stránce 10 s. Na jednom archivu jen jeden prohlížeč, žádní pomocníci, žádné
-  smyčky `fetch` ani `Promise.all`.
+  stránkami, při listování stránku po stránce 10 s; má-li archiv v `portaly.md` vlastní tempo, platí to. Na jednom
+  archivu jen jeden prohlížeč, žádní pomocníci, žádné souběžné dotazy (`Promise.all`) ani smyčky přes celé svazky.
+  Postupná smyčka `fetch` jen pro snímky, které opravdu čteš, a jen tam, kde ji `portaly.md` u archivu uvádí.
 - **Archiv může zablokovat i prohlížeč** (403 po stovkách snímků za den). Když se snímek nenačte nebo stránka hlásí
   chybu, podívej se do síťových požadavků (`browser_network_requests`). Při 403, 429 nebo 503 hned skonči, zapiš to
   brzdě (`python3 -I tools/slusne.py zastav <web> "HTTP 403 v prohlížeči"` – zastaví i skripty a pomocníky), řekni to
@@ -321,8 +322,8 @@ Nedělej to pořád. Postup:
 | `mapa_knihy.py aron/pf/ahmp <kniha> <od> <do> [krok]`, `--vedle --ostre --vyrez …`, `soubory …` | mapa knihy (horní pruhy snímků pod sebou) a montáž sloupce se jmény vedle sebe – orientace v knihách po vsích (`matriky.md`) |
 | `overit.py <snímek> x0,y0,x1,y1 <prefix> [--kontrast]` | zápis na dvě čitelné poloviny – ověření čtení (souřadnice = zlomky 0–1) |
 | `napady.py` | náměty na zajímavosti z dat |
-| `vyrez.py <stránka.jpg> <klíč> x0,y0,x1,y1 [--kontrast]` | výřez do `zdroje/` a `vyrezy/` (`--kontrast` u vybledlého písma) |
-| `ramecek.py <klíč> x0,y0,x1,y1` | rámeček čteného místa + kontrolní obrázek |
+| `vyrez.py <stránka.jpg> <klíč> x0,y0,x1,y1 [--kontrast]` | výřez do `zdroje/` a `vyrezy/` (zlomky stránky; `--kontrast` u vybledlého písma) |
+| `ramecek.py <klíč> x0,y0,x1,y1 [--pozn "…"]` | rámeček čteného místa (zlomky výřezu) + kontrolní obrázek; `--nahled` jen obrázek znovu |
 | `mista.py pridej "Obec"` / `mista.py` | místa pro mapu (souřadnice z OpenStreetMap) |
 | `zapis.py <soubor> <klíč> <vstup.json> [--sloucit]` | přidá / změní položku v `zaznamy`, `svazky`, `prepisy`… beze změny formátu |
 | `slusne.py <skript.py> / curl … / bash x.sh / stav` | brzda proti zablokování archivem – vlastní skripty a curl spouštěj přes ni |

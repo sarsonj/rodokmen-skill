@@ -10,9 +10,10 @@
 // Subdoména workers.dev: nový účet ji nemá. Wrangler spuštěný z Claude ji zaregistruje sám, název ale bere
 // z package.json (u všech „rodokmen-web“ – obsazené). Proto ho spouštíme ze složky .wrangler/subdomena,
 // kde package.json nese název z data/web.json (cloudflare.nazev); když je obsazený, zkusíme ho s číslem.
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import { npxSpawn, npxSync } from "./npx.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 const argv = process.argv.slice(2).filter((a) => a !== "--prepsat");
 const prepsat = process.argv.includes("--prepsat");
@@ -67,8 +68,6 @@ try {
 const zaklad = slug(web.cloudflare?.nazev) || slug(web.nazev) || "rodokmen";
 const navrhy = [zaklad, ...[0, 1, 2].map(() => `${zaklad}-${Math.floor(1000 + Math.random() * 9000)}`)];
 
-const win = process.platform === "win32";
-const config = resolve("wrangler.jsonc");
 
 function nasad(subdomena) {
   const slozka = resolve(".wrangler", "subdomena");
@@ -76,8 +75,9 @@ function nasad(subdomena) {
   writeFileSync(resolve(slozka, "package.json"), JSON.stringify({ name: subdomena, private: true }) + "\n");
   return new Promise((hotovo) => {
     let text = "";
-    const p = spawn("npx", ["-y", "wrangler@4", "deploy", "--config", config],
-      { cwd: slozka, shell: win, stdio: ["inherit", "pipe", "pipe"] });
+    // relativní cesta: bez mezer i v záložní cestě přes shell (projekt v „C:\Users\Jan Novák\…“)
+    const p = npxSpawn(["-y", "wrangler@4", "deploy", "--config", join("..", "..", "wrangler.jsonc")],
+      { cwd: slozka, stdio: ["inherit", "pipe", "pipe"] });
     p.stdout.on("data", (d) => { process.stdout.write(d); text += d; });
     p.stderr.on("data", (d) => { process.stderr.write(d); text += d; });
     p.on("close", (kod) => hotovo({ kod, text }));
@@ -91,8 +91,7 @@ try {
   minule = readFileSync(resolve(".wrangler", "adresa.txt"), "utf8").trim();
 } catch {}
 if (!prepsat && !minule.startsWith(`https://${webNazev}.`)) {
-  const r = spawnSync("npx", ["-y", "wrangler@4", "deployments", "list", "--name", webNazev, "--json"],
-    { shell: win, encoding: "utf8" });
+  const r = npxSync(["-y", "wrangler@4", "deployments", "list", "--name", webNazev, "--json"], { encoding: "utf8" });
   if (r.status === 0) {
     console.error(`\nNa účtu Cloudflare už web „${webNazev}“ je – nejspíš z jiného projektu rodokmenu. Nahráním bych ho přepsal.`,
       `\nDej tomuto projektu jiný název webu: v data/web.json "cloudflare": {"web": "${webNazev}-…"} (malá písmena,`,
