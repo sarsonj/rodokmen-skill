@@ -351,7 +351,7 @@ def main():
             continue
         yrs = [int(y) for p in hits for y in re.findall(r"\b1[4-9]\d\d\b", p["y"] or "")]
         places.append(dict(name=name, lat=e["lat"], lon=e["lon"], lines=[dict(k=k, people=v) for k, v in sorted(byline.items())],
-                           years=[min(yrs), max(yrs)] if yrs else None, hypothesis=bool(e.get("hypoteza"))))
+                           years=[min(yrs), max(yrs)] if yrs else None, hypothesis=bool(e.get("hypoteza")), house=bool(e.get("dum"))))
 
     known = [p for p in people.values() if p["k"] > 1]
     stats = dict(ancestors=len(known), documented=sum(p["st"] == "doc" for p in known), records=len(records),
