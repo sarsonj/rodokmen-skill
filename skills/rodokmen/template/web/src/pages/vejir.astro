@@ -88,18 +88,31 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
     };
     const closeMenu = () => { menu.hidden = true; menuFor = null; };
     if (hover) {
-      stage.addEventListener('pointerover', (e) => {
-        const a = (e.target as Element).closest?.('.fan-links a');
+      // Nabídka se otevře, až když kurzor chvíli STOJÍ (HOVER_MS); pohyb o víc než ~6 px odpočet restartuje.
+      // Pozice nabídky je z posledního pohybu myši. Vjezd do nabídky zapomene jméno, přes které kurzor cestou přejel.
+      const HOVER_MS = 700;
+      let cur: Element | null = null, px = 0, py = 0, ax = 0, ay = 0;
+      const arm = () => {
         clearTimeout(openT);
-        if (!a) return;
-        clearTimeout(closeT);
-        if (a === menuFor) return;
-        const { clientX: x, clientY: y } = e;
-        openT = window.setTimeout(() => { if (!pts.size) openMenu(a, x, y); }, 400);
+        ax = px; ay = py;
+        if (!cur || cur === menuFor) return;
+        const a = cur;
+        openT = window.setTimeout(() => { if (cur === a && !pts.size && !menu.matches(':hover')) openMenu(a, px, py); }, HOVER_MS);
+      };
+      stage.addEventListener('pointerover', (e) => {
+        cur = (e.target as Element).closest?.('.fan-links a') ?? null;
+        px = e.clientX; py = e.clientY;
+        if (cur) clearTimeout(closeT);
+        arm();
       });
-      const leave = () => { clearTimeout(openT); clearTimeout(closeT); closeT = window.setTimeout(closeMenu, 350); };
-      stage.addEventListener('pointerout', (e) => { if (!menu.contains(e.relatedTarget as Node)) leave(); });
-      menu.addEventListener('pointerenter', () => clearTimeout(closeT));
+      stage.addEventListener('pointermove', (e) => {
+        px = e.clientX; py = e.clientY;
+        if (cur && cur !== menuFor && Math.hypot(px - ax, py - ay) > 6) arm();
+      });
+      const leave = () => { cur = null; clearTimeout(openT); clearTimeout(closeT); closeT = window.setTimeout(closeMenu, 350); };
+      const intoMenu = () => { cur = null; clearTimeout(openT); clearTimeout(closeT); };
+      stage.addEventListener('pointerout', (e) => { if (menu.contains(e.relatedTarget as Node)) intoMenu(); else leave(); });
+      menu.addEventListener('pointerenter', intoMenu);
       menu.addEventListener('pointerleave', (e) => { if (!(e.relatedTarget as Element)?.closest?.('.fan-links a')) leave(); });
       stage.addEventListener('wheel', () => { clearTimeout(openT); closeMenu(); });
     } else {
