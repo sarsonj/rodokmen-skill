@@ -14,6 +14,12 @@ Kopie v tools/ projektu najde nainstalovaný skill sama (registr pluginů Claude
 Kód je vždy 0 (kontrola nesmí zastavit práci).
 """
 import json, os, re, sys, time, urllib.request
+if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo kontroly (jinak by „--help“ bral jako složku projektu)
+    print(__doc__.strip())
+    sys.exit(0)   # kód vždy 0, viz výše
+if len(sys.argv) > 1 and (sys.argv[1].startswith("-") or not os.path.isdir(sys.argv[1])):
+    print(f"verze.py: „{sys.argv[1]}“ není složka projektu – zadej cestu ke složce projektu (nebo nic).")
+    sys.exit(0)
 
 for _s in (sys.stdout, sys.stderr):
     if hasattr(_s, "reconfigure"):

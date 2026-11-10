@@ -103,8 +103,14 @@ def main():
     if len(sys.argv) > 2 and sys.argv[1] == "pridej":
         name = sys.argv[2]
         stem = re.escape(name.split()[0][:5]) if len(name.split()) == 1 else re.escape(name)
-        cache[name] = dict(cache.get(name, {}), re=sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] else stem,
-                           dotaz=sys.argv[4] if len(sys.argv) > 4 else f"{name}, Česko")
+        stare = cache.get(name, {})
+        dotaz = sys.argv[4] if len(sys.argv) > 4 else stare.get("dotaz", f"{name}, Česko")
+        cache[name] = dict(stare, re=sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] else stare.get("re", stem),
+                           dotaz=dotaz)
+        if "lat" in stare and dotaz != stare.get("dotaz", f"{name}, Česko"):   # jiný dotaz = oprava místa → hledat znovu
+            for k in ("lat", "lon", "osm"):
+                cache[name].pop(k, None)
+            print(f"přepočítávám: {name} (nový dotaz „{dotaz}“)")
     pozor, nove = [], []   # varování se vypíšou až pod seznamem, aby se v něm neztratila
     for name, e in cache.items():
         if "lat" not in e:

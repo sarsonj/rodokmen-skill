@@ -280,8 +280,8 @@ def main():
             fatherUnknown=(2 * k in P and placeholder(P[2 * k])), motherUnknown=(2 * k + 1 in P and placeholder(P[2 * k + 1])),
             child=slugs.get(k // 2) if k > 1 else None, spouse=slugs.get(k ^ 1) if k > 1 else None,
             family=None, ownFamily=None, path=path,
-            side=[dict(name=s["n"], text=s["t"], records=[r for r in s.get("r", []) if r in recs]) for s in SIDE if s["k"] == k],
-            docs=[dict(img=d["img"], caption=d["popis"]) for d in docs_cfg if k in d.get("osoby", [])],
+            side=[dict(name=s["n"], text=s.get("t", ""), records=[r for r in s.get("r", []) if r in recs]) for s in SIDE if s["k"] == k],
+            docs=[dict(img=d["img"], caption=d.get("popis", "")) for d in docs_cfg if k in d.get("osoby", [])],
             children=[slugs[c] for c in [k // 2] + [a // 2 for a in aliases_of.get(k, [])] if k > 1 and c in slugs],
             also=[dict(k=a, rel=relation(a), line=line_of(a), child=slugs.get(a // 2)) for a in aliases_of.get(k, [])],
         )
@@ -340,7 +340,11 @@ def main():
         members = [(p["k"], p) for p in people.values() if p["line"] == k]
         members += [(a["k"], p) for p in people.values() for a in p["also"] if a["line"] == k]
         members.sort(key=lambda x: x[0])
-        lines[slugify(name)] = dict(k=k, slug=slugify(name), name=name, desc=desc, color=LINE_COLORS[k],
+        ls = slugify(name)
+        if ls in lines:   # dva rody stejného jména (např. Novákové z obou stran) – jinak by jeden tiše zmizel
+            print(f"POZOR: rody {lines[ls]['k']} a {k} mají stejný název „{name}“ – rozliš je v LINES (data/osoby.py)")
+            ls = f"{ls}-{k}"
+        lines[ls] = dict(k=k, slug=ls, name=name, desc=desc, color=LINE_COLORS[k],
                                     root=slugs.get(k), people=[p["slug"] for _, p in members],
                                     gens={p["slug"]: gen(kk) for kk, p in members})
     lines = {s: l for s, l in lines.items() if l["root"]}
@@ -377,7 +381,7 @@ def main():
     site = dict(config=public_cfg, places=places, root=slugs[1], aliases={a: slugs[a] for a in SAME}, people=people,
                 families=families, records=records, lines=lines,
                 issues=[dict(title=i, text="") if isinstance(i, str) else dict(title=i[0], text=i[1]) for i in ISSUES], stats=stats, hypotheses=hypotheses,
-                docs=[dict(img=d["img"], caption=d["popis"], people=[slugs[k] for k in d.get("osoby", []) if k in slugs])
+                docs=[dict(img=d["img"], caption=d.get("popis", ""), people=[slugs[k] for k in d.get("osoby", []) if k in slugs])
                       for d in docs_cfg if os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))])
 
     write(os.path.join(WEB, "src", "data", "site.json"), json.dumps(site, ensure_ascii=False, indent=1))

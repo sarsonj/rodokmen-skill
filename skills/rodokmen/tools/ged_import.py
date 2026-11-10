@@ -33,6 +33,8 @@ CZ_WORDS = {"JARO": "jaro", "LÉTO": "léto", "PODZIM": "podzim", "ZIMA": "zima"
 def decode(data):
     """UTF-8, a když soubor UTF-8 není a hlavička říká „1 CHAR ANSI“ (Brother's Keeper aj.), pak Windows-1250."""
     # CONC spojit už v bajtech: MyHeritage dělí dlouhé řádky i uprostřed vícebajtového znaku UTF-8 („č“ → „��“)
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):   # UTF-16 („1 CHAR UNICODE“, starší Family Tree Maker, Legacy…)
+        data = data.decode("utf-16").encode("utf-8")
     data = re.sub(rb"\r?\n[ \t]*\d+[ \t]+CONC(?: |(?=\r?\n))", b"", data)
     try:
         return data.decode("utf-8")
@@ -56,7 +58,7 @@ def read(path):
             continue
         lvl, xref, tag, val = int(m.group(1)), (m.group(2) or "").strip(), m.group(3), m.group(4)
         if lvl == 0:
-            cur = {"_id": xref, "_type": tag, "_sub": []} if xref else None
+            cur = {"_id": xref, "_type": tag, "_sub": [], "val": val} if xref else None   # val: text sdílené poznámky
             if cur:
                 recs[xref] = cur
             stack = [cur]
@@ -171,6 +173,14 @@ def main():
         f, m = parents(tree[k], recs)
         for kk, p in ((2 * k, f), (2 * k + 1, m)):
             if p:
+                linie, j = [], k   # vlastní linie nad kk: dítě, vnuk… až po výchozí osobu
+                while j >= 1:
+                    linie.append(tree[j]["_id"])
+                    j //= 2
+                if p["_id"] in linie:   # chyba ve stromu: osoba je sama sobě předkem → nekonečná smyčka
+                    print(f"POZOR: smyčka ve stromu – {name(p)} je zapsaný jako vlastní předek (chyba ve stromu, "
+                          "zkontroluj s rodinou); tuhle větev dál nesleduji.", file=sys.stderr)
+                    continue
                 tree[kk] = p
                 todo.append(kk)
     queue = []
@@ -186,7 +196,9 @@ def main():
             elif d or p:   # příčinu úmrtí jen do výpisu, ne do kostry dat (zdravotní údaj)
                 facts.append(" ".join(x for x in (EVENTS[tag], d, p) if x) + (f" ({extra})" if extra and not as_py else ""))
         facts += [first(n, "OCCU") or n.get("val", "") for n in sub(ind, "OCCU")]
-        notes = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", n.get("val", ""))).strip() for n in sub(ind, "NOTE")]
+        notes = [n.get("val", "") for n in sub(ind, "NOTE")]
+        notes = [(recs.get(t.strip(), {}).get("val", "") if re.fullmatch(r"\s*@[^@]+@\s*", t) else t) for t in notes]   # sdílená poznámka @N1@
+        notes = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t)).strip() for t in notes]
         notes = [n for n in notes if n]
         b = next((year(d) for t, d, p, x in ev if t == "BIRT"), None)
         dd = next((year(d) for t, d, p, x in ev if t == "DEAT"), None)

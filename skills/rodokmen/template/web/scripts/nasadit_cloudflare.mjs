@@ -28,13 +28,35 @@ function nazevWebu() {
   }
 }
 
-// --volno <název> […]: je subdoména <název>.workers.dev volná? Ptá se DNS Cloudflare (DoH), ne počítače –
+function slug(t) {
+  return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50).replace(/-+$/, "");
+}
+
+// data/web.json (i s BOM z Windows). Nečitelný soubor nasazení zastaví: s výchozím názvem by se u nového účtu
+// natrvalo založila jiná subdoména (přes API ji změnit nejde). Chybějící soubor = bez nastavení.
+function nactiWeb() {
+  try {
+    return JSON.parse(readFileSync("../data/web.json", "utf8").replace(/^\uFEFF/, ""));
+  } catch (e) {
+    if (e.code === "ENOENT") return {};
+    console.error(`CHYBA: data/web.json nejde přečíst (${e.message}) – oprav ho a spusť nasazení znovu.`);
+    process.exit(1);
+  }
+}
+
+function subdomenaZWebu() {
+  const web = nactiWeb();
+  return slug(web.cloudflare?.nazev) || slug(web.nazev) || "rodokmen";
+}
+
+// --volno [<název> …]: je subdoména <název>.workers.dev volná? Ptá se DNS Cloudflare (DoH), ne počítače –
 // ten by si „neexistuje“ zapamatoval a novou adresu pak až 30 minut neviděl. Obsazená subdoména má záznam
 // pro *.<název>.workers.dev; prázdná odpověď = nejspíš volná (jistotu dá až nasazení, to pak zkusí variantu s číslem).
 if (argv[0] === "--volno") {
   const doh = process.env.RODOKMEN_DOH || "https://cloudflare-dns.com/dns-query";
   let obsazeno = false;
-  for (const nazev of argv.slice(1)) {
+  for (const nazev of argv.length > 1 ? argv.slice(1) : [subdomenaZWebu()]) {   // bez názvu: ten z web.json
     if (!PLATNY.test(nazev)) {
       console.log(`${nazev}: nejde použít – jen malá písmena bez diakritiky, číslice a pomlčky (nejvýš 50 znaků)`);
       process.exit(2);
@@ -44,7 +66,7 @@ if (argv[0] === "--volno") {
     obsazeno ||= ma;
     console.log(`${nazev}: ${ma ? "obsazené" : "volné (nejspíš)"}  →  https://${nazevWebu()}.${nazev}.workers.dev`);
   }
-  process.exit(obsazeno && argv.length === 2 ? 1 : 0);
+  process.exit(obsazeno && argv.length <= 2 ? 1 : 0);
 }
 if (argv.length) {
   console.error(`CHYBA: neznámý přepínač ${argv[0]} (umím --volno <název> a --prepsat).`);
@@ -56,16 +78,7 @@ if (!existsSync("wrangler.jsonc") || !existsSync("cloudflare/worker.js")) {
   process.exit(1);
 }
 
-function slug(t) {
-  return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50).replace(/-+$/, "");
-}
-
-let web = {};
-try {
-  web = JSON.parse(readFileSync("../data/web.json", "utf8"));
-} catch {}
-const zaklad = slug(web.cloudflare?.nazev) || slug(web.nazev) || "rodokmen";
+const zaklad = subdomenaZWebu();
 const navrhy = [zaklad, ...[0, 1, 2].map(() => `${zaklad}-${Math.floor(1000 + Math.random() * 9000)}`)];
 
 

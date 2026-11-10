@@ -82,7 +82,8 @@ předků bez obce vypíše v hranatých závorkách slova z faktů, která vypad
 jen ji výraz `re` nechytí ve skloňovaném tvaru („v Přesece“ × `Přesek`) – uprav výraz (`Přese?[kc]`).
 
 ## `dokumenty.json` – rodinné fotky a dokumenty na webu
-`[{"img": "foto_svatba_1919", "popis": "Svatba Jana a Josefy, Holice 1919.", "osoby": [8, 9]}]`
+`[{"img": "foto_svatba_1919", "popis": "Svatba Jana a Josefy, Holice 1919.", "osoby": [8, 9]}]` – `popis` je na webu
+vidět jako popisek, vyplň ho (stejně jako `t` u bočních příbuzných).
 Obrázek ulož přes `vyrez.py dokumenty/<sken>.jpg foto_svatba_1919` (vznikne `vyrezy/` i `zdroje/`).
 
 ## `web.json` – nastavení webu

@@ -6,6 +6,8 @@ Vypíše CHYBY (rozbijí web nebo jsou věcně špatně) a UPOZORNĚNÍ (něco c
 Návratový kód 1, pokud jsou chyby.
 """
 import datetime, json, os, re, sys, unicodedata
+if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo pádu
+    sys.exit(__doc__.strip())
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -67,6 +69,8 @@ def main():
         for r in s.get("r", []):
             if r not in keys:
                 err.append(f"boční příbuzný '{s.get('n')}' cituje neexistující zápis '{r}'")
+        if not (s.get("t") or "").strip():
+            warn.append(f"boční příbuzný '{s.get('n')}' nemá text (t) – na webu bude jen jméno")
     for a, c in SAME.items():
         if c not in P:
             err.append(f"SAME: {a} -> {c}, ale osoba {c} neexistuje")
@@ -75,6 +79,16 @@ def main():
     for k in LINES:
         if k not in range(8, 16):
             err.append(f"LINES: rod {k} – rody mají čísla 8 až 15 (pradědečci a prababičky)")
+    nazvy = {}
+    for k, v in sorted(LINES.items()):
+        nazvy.setdefault(str(v[0]).strip().lower(), []).append(k)
+    for n, ks in nazvy.items():
+        if len(ks) > 1:
+            err.append(f"LINES: rody {', '.join(map(str, ks))} mají stejný název „{LINES[ks[0]][0]}“ – rozliš je "
+                       "(např. „Novákové z Holic“ a „Novákové z Chrudimi“), web by je jinak nerozlišil")
+    for d in jload("dokumenty.json", []):
+        if isinstance(d, dict) and not (d.get("popis") or "").strip():
+            warn.append(f"dokument {d.get('img')} nemá popis – na webu bude bez popisku")
 
     cited = ({r for p in P.values() for r in p.get("r", [])} | {r for s in SIDE for r in s.get("r", [])}
              | {r for h in ns.get("HYPOTEZY", []) if isinstance(h, dict) for r in h.get("zaznamy", [])})
