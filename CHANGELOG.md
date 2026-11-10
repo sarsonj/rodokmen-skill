@@ -6,6 +6,46 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.10.0 – 10. 11. 2026
+
+Hlavní novinka: **přepracované návody.** SKILL.md, který Claude čte v každém sezení, je o třetinu kratší – podrobnosti
+k instalaci a importu stromu jsou v samostatných návodech, které čte, až je potřebuje. Anglickou metodickou příručku
+nahradila česká `metodika.md`: spojování záznamů, ztotožnění osob, co dělat, když se hledání zasekne, a prameny
+na Slovensku, v Rakousku, Polsku, Německu a Maďarsku. Pravidla, na kterých stojí kvalita, zůstala beze změny.
+
+**Nové**
+- Dva rodokmeny na jednom účtu Cloudflare: název webu jde nastavit v `web.json` (`cloudflare.web`, výchozí zůstává
+  „rodokmen“). Nasazení nově nepřepíše web jiného projektu – když na účtu web stejného jména už je, zastaví se a poradí.
+- Úvodní stránka webu na mobilu ukazuje jen vějíř (dřív vějíř i rodokmen pod sebou).
+- Vějíř: přibližování kolečkem je úměrné posunu, takže na touchpadu notebooku už neskáče (#165).
+- `zapis.py odkaz` přidá k osobě v `osoby.py` odkaz na zápis bez rizika rozbitých uvozovek.
+- Staré mapy z archivu ČÚZK: návod na ostrý výřez vsi z indikační skici ve vysokém rozlišení.
+
+**Opravy**
+- Windows: zápis dat přes vstup (`zapis.py … -`) už tiše nerozbíjí češtinu; nasazení na Cloudflare funguje i ze složky
+  s mezerou v cestě a kontrola soukromí webu na Netlify konečně proběhne. Prosím o zpětnou vazbu, na Windows jsem to
+  zkoušel jen nepřímo.
+- Brzda proti zablokování archivem chytí i adresu bez `https://`, víc adres nebo rozsah `[1-200]` v jednom `curl`
+  a vlastní výpis stavového kódu – dřív tudy mohly odejít dávky dotazů a odmítnutí archivu nezastavilo další.
+- ZA Opava: snímky se stahují pomaleji a při odmítnutí se nástroj zastaví místo opakování – po několika snímcích
+  rychle za sebou archiv blokoval.
+- Hlídač sítě nezamítá nevinné příkazy (text v uvozovkách v commitu nebo poznámce, `grep` vedle Pythonu).
+- Export webu nespadne na zástupné osobě bez jména, na opakovaném předkovi odkazujícím na neznámou osobu, na dokumentu
+  bez popisu ani na číselné odpovědi na přihlašovací otázku; dva rody stejného jména se na webu objeví oba.
+- Import rodinného stromu (GEDCOM) zvládne soubory v UTF-16 a sdílené poznámky a nezasekne se na chybě ve stromu.
+- `mista.py pridej` s novým dotazem obec znovu vyhledá – oprava stejnojmenné obce na mapě (#167).
+- Matricula: prošlý odkaz už neuloží chybovou stránku jako snímek.
+- Soubory dat s neviditelnou značkou BOM z Windows (Poznámkový blok, PowerShell) už nástroje neshodí.
+- Nástroje na `--help` a bez argumentů vypíšou nápovědu místo pádu (#157).
+
+**Návody**
+- Matriční úřad: zápis starší 100 / 75 / 30 let vydá komukoli i ze svazku, který je ještě na úřadě; mladší jen rodina
+  (§ 25b zákona o matrikách). Na Slovensku platí jiná pravidla (#150).
+- Pozemkové knihy jsou online i u SOA Třeboň a ZA Opava; doplněný slovníček latinských a německých výrazů.
+- Starší projekt se zapnutým hlídačem sítě se o nové verzi dozví i tehdy, když hlídač kontrolu zamítne.
+
+Děkuji všem za podrobné poznámky z praxe a za hotové návrhy oprav.
+
 ## 0.9.2 – 7. 11. 2026
 
 **Opravy**
