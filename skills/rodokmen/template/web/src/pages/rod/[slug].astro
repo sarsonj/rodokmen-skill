@@ -24,24 +24,36 @@ const partnerLine = lineByK[l.k ^ 1];
   </p>
   <p class="small muted">Rodokmen je rozdělený do osmi rodů podle osmi pradědečků a prababiček – každý manželský pár proto patří do dvou sousedních rodů.</p>
 
+  <div class="view-switch" role="group" aria-label="Zobrazení dat">
+    <span class="small muted">Zobrazit Život:</span>
+    <button type="button" data-view="roky" aria-pressed="true">jen roky</button>
+    <button type="button" data-view="data" aria-pressed="false">celá data</button>
+  </div>
+  <div class="rod-tab" data-view="roky">
   {gens.map((g) => (
     <>
       <h2>{genName(g)}</h2>
       <div class="table-box"><table>
-        <thead><tr><th>Jméno</th><th>Život</th><th>Údaje</th><th>Stav</th></tr></thead>
+        <colgroup><col class="c-k" /><col class="c-jmeno" /><col class="c-zivot" /><col /><col class="c-stav" /></colgroup>
+        <thead><tr><th>#</th><th>Jméno</th><th>Život</th><th>Údaje</th><th>Stav</th></tr></thead>
         <tbody>
           {members.filter((p) => p.gen === g).map((p) => (
             <tr>
+              <td class="small muted nowrap c-k">{p.k}</td>
               <td><PersonLink slug={p.slug} showYears={false} /></td>
-              <td class="small">{p.years}</td>
+              <td class="small">
+                <span class="v-roky nowrap">{p.years}</span>
+                <span class="v-data">{(p.dates || p.years || '').split(' – ').map((d) => <span class="nowrap d-cast">{d}</span>)}</span>
+              </td>
               <td class="small">{p.facts.slice(0, 2).join(' · ')}</td>
-              <td><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
+              <td class="nowrap"><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
             </tr>
           ))}
         </tbody>
       </table></div>
     </>
   ))}
+  </div>
 
   {hypotheses.filter((h) => h.line === l.k).map((h) => (
     <>
@@ -52,3 +64,37 @@ const partnerLine = lineByK[l.k ^ 1];
     </>
   ))}
 </Base>
+
+<script>
+  // Přepínač „jen roky / celá data“ – stejná zapamatovaná volba jako na stránce Předci.
+  const box = document.querySelector<HTMLElement>('.rod-tab');
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.view-switch button');
+  const nastav = (v: string) => {
+    if (!box) return;
+    box.dataset.view = v;
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    try { localStorage.setItem('predci-zobrazeni', v); } catch {}
+  };
+  let ulozeno = '';
+  try { ulozeno = localStorage.getItem('predci-zobrazeni') || ''; } catch {}
+  if (ulozeno === 'roky' || ulozeno === 'data') nastav(ulozeno);
+  buttons.forEach((b) => b.addEventListener('click', () => nastav(b.dataset.view || 'roky')));
+</script>
+
+<style>
+  /* stav, roky a číslo předka na jeden řádek */
+  .nowrap { white-space: nowrap; }
+  .rod-tab[data-view='data'] .v-roky, .rod-tab[data-view='roky'] .v-data { display: none; }
+  .rod-tab .d-cast { display: block; }   /* celá data: narození a úmrtí pod sebou */
+  /* všechny generace mají stejně široké sloupce, aby při posouvání zůstaly pod sebou */
+  .rod-tab table { table-layout: fixed; width: 100%; min-width: 36rem; }
+  .rod-tab col.c-k { width: 4rem; }
+  .rod-tab col.c-jmeno { width: 22%; }
+  .rod-tab col.c-zivot { width: 8.5rem; }
+  .rod-tab col.c-stav { width: 9.5rem; }
+  .rod-tab td { overflow-wrap: break-word; }
+  .rod-tab td.c-k { overflow-wrap: normal; }
+  .view-switch { display: flex; align-items: center; gap: 0.4rem; margin: 0.5rem 0 1rem; }
+  .view-switch button { font: inherit; font-size: 0.88rem; padding: 0.2rem 0.7rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: inherit; cursor: pointer; }
+  .view-switch button[aria-pressed='true'] { background: #3b2e22; color: #fbf3e6; border-color: #3b2e22; }
+</style>

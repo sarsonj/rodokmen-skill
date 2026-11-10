@@ -100,6 +100,44 @@ def years(y):
     return f"{approx}{ys[0]}–{second}"
 
 
+def full_dates(p):
+    """Data narození a úmrtí z faktů pro výpis předků: přesná („* 16. 7. 1903“, „† 10. 4. 1989“), měsíc („† 9/1855“)
+    i přibližná („* asi 1820“, „† před 9/1855“, „* 1810“). Bez „*“ vezme datum křtu („pokřtěn 2. 7. 1777“ → „pokř. …“).
+    Web je jen pro rodinu, proto celá data i u žijících (jako na stránce osoby). Nejisté datum („16. (?) 4. 1882“, „(?)“ hned za ním,
+    „nepotvrzeno“, „pravděpodobně * …“) dostane značku „(?)“. Fakt bez data se vynechá (stránka ukáže aspoň roky)."""
+    q = r"(?:\s*\(\?\))?"   # otazník vložený do data
+    datum = (r"(?:\d{1,2}\." + q + r"\s*\d{1,2}\." + q + r"\s*\d{4}|\d{1,2}/\d{4}|\d{4})")
+    kvalif = r"(?:(?:asi|kolem|cca|před|po)\s+)?"
+    def najdi(znak):
+        for f in p.get("f", []):
+            m = re.match(r"\s*(pravděpodobně\s+)?" + znak + r"(?:\s*a\s+pokřtěn[a]?)?\s*(" + kvalif + datum + r")(?![\d./])", f)
+            if m:
+                d = re.sub(r"\s+", " ", m.group(2))
+                nejiste = "(?)" in d or m.group(1) or "nepotvrz" in f or f[m.end():].lstrip().startswith("(?)")
+                return re.sub(r"\s*\(\?\)", "", d) + (" (?)" if nejiste else "")
+        return None
+    out = []
+    nar = najdi(r"\*")
+    if nar:
+        out.append(f"* {nar}")
+    else:
+        krest = najdi(r"(?:a\s+)?pokřtěn[a]?(?:\s+jako\s+\S+)?")
+        if krest:
+            out.append(f"pokř. {krest}")
+    umr = najdi("†")
+    if umr:
+        out.append(f"† {umr}")
+    if not out:   # fakta bez data → z pole y ve stejném tvaru („asi 1764“ → „* asi 1764“, „1752–1786“ → „* 1752 – † 1786“)
+        y = re.sub(r"\s+", " ", str(p.get("y") or "")).strip()
+        if y:
+            m = re.match(r"(.*?\d.*?)\s*[–-]\s*(.*)$", y)
+            od, do = (m.group(1).strip(), m.group(2).strip()) if m else (y, "")
+            for znak, cast in (("*", od), ("†", do)):
+                if cast and re.search(r"\d", cast):
+                    out.append(cast if cast[0] in "*†" else f"{znak} {cast}")
+    return " – ".join(out)
+
+
 def gen(k):
     return k.bit_length() - 1
 
@@ -273,7 +311,7 @@ def main():
             path.append(slugs.get(c))
             c //= 2
         people[slugs[k]] = dict(
-            k=k, slug=slugs[k], name=p["n"], y=p.get("y", ""), years=years(p.get("y")), st=p.get("st", "unk"),
+            k=k, slug=slugs[k], name=p["n"], y=p.get("y", ""), years=years(p.get("y")), dates=full_dates(p), st=p.get("st", "unk"),
             status=STATUS.get(p.get("st"), ""), gen=gen(k), sex="M" if k == 1 and p.get("sex", "M") == "M" or k > 1 and k % 2 == 0 else "F",
             rel=relation(k), line=line_of(k), facts=p.get("f", []), note=p.get("note", ""), records=[r for r in p.get("r", []) if r in recs],
             father=slugs.get(2 * k), mother=slugs.get(2 * k + 1),
