@@ -60,7 +60,7 @@ const gens = [...new Set(list.map((p) => p.gen))];
 <style>
   .nowrap { white-space: nowrap; }
   /* všechny generace mají stejně široké sloupce, aby při posouvání zůstaly pod sebou */
-  .predci table { table-layout: fixed; width: 100%; min-width: 40rem; }
+  .predci table { table-layout: fixed; width: 100%; min-width: 52rem; }   /* i na mobilu zbyde sloupci Vztah ~12 rem; tabulka se posouvá vodorovně (.table-box) */
   .predci col.c-k { width: 4rem; }
   .predci col.c-jmeno { width: 21%; }
   .predci col.c-zivot { width: 8.5rem; }

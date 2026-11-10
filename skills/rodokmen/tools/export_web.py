@@ -101,41 +101,47 @@ def years(y):
 
 
 def full_dates(p):
-    """Data narození a úmrtí z faktů pro výpis předků: přesná („* 16. 7. 1903“, „† 10. 4. 1989“), měsíc („† 9/1855“)
-    i přibližná („* asi 1820“, „† před 9/1855“, „* 1810“). Bez „*“ vezme datum křtu („pokřtěn 2. 7. 1777“ → „pokř. …“).
-    Web je jen pro rodinu, proto celá data i u žijících (jako na stránce osoby). Nejisté datum („16. (?) 4. 1882“, „(?)“ hned za ním,
-    „nepotvrzeno“, „pravděpodobně * …“) dostane značku „(?)“. Fakt bez data se vynechá (stránka ukáže aspoň roky)."""
+    """Data narození a úmrtí pro výpis předků: přesná („* 16. 7. 1903“, „† 10. 4. 1989“), měsíc („† 9/1855“)
+    i přibližná („* asi 1820“, „† před 9/1855“, „* 1810“). Bez „*“ vezme datum křtu („pokřtěn 2. 7. 1777“ i „* (křest) …“
+    z importu GEDCOM → „pokř. …“). Nejisté datum („16. (?) 4. 1882“, „(?)“ hned za ním, „nepotvrzeno“, „pravděpodobně * …“)
+    dostane značku „(?)“. Co ve faktech chybí, doplní zvlášť narození a zvlášť úmrtí z pole y ve stejném tvaru
+    („asi 1665 – 1729“ → „* asi 1665“ / „† 1729“; „? – před 1743“ → „† před 1743“; „– po 1921“ → „žil 1921“ jako years()).
+    Web je jen pro rodinu, proto celá data i u žijících (jako na stránce osoby)."""
     q = r"(?:\s*\(\?\))?"   # otazník vložený do data
     datum = (r"(?:\d{1,2}\." + q + r"\s*\d{1,2}\." + q + r"\s*\d{4}|\d{1,2}/\d{4}|\d{4})")
     kvalif = r"(?:(?:asi|kolem|cca|před|po)\s+)?"
     def najdi(znak):
         for f in p.get("f", []):
-            m = re.match(r"\s*(pravděpodobně\s+)?" + znak + r"(?:\s*a\s+pokřtěn[a]?)?\s*(" + kvalif + datum + r")(?![\d./])", f)
+            m = re.match(r"\s*(pravděpodobně\s+)?" + znak + r"\s*(" + kvalif + datum + r")(?![\d./])", f)
             if m:
                 d = re.sub(r"\s+", " ", m.group(2))
                 nejiste = "(?)" in d or m.group(1) or "nepotvrz" in f or f[m.end():].lstrip().startswith("(?)")
                 return re.sub(r"\s*\(\?\)", "", d) + (" (?)" if nejiste else "")
         return None
-    out = []
-    nar = najdi(r"\*")
-    if nar:
-        out.append(f"* {nar}")
-    else:
-        krest = najdi(r"(?:a\s+)?pokřtěn[a]?(?:\s+jako\s+\S+)?")
-        if krest:
-            out.append(f"pokř. {krest}")
+    nar = najdi(r"\*(?:\s*a\s+pokřtěn[a]?)?(?!\s*\(křest\))")
+    nar = f"* {nar}" if nar else None
+    if not nar:
+        krest = najdi(r"(?:(?:a\s+)?pokřtěn[a]?(?:\s+jako\s+\S+)?|\*\s*\(křest\))")
+        nar = f"pokř. {krest}" if krest else None
     umr = najdi("†")
-    if umr:
-        out.append(f"† {umr}")
-    if not out:   # fakta bez data → z pole y ve stejném tvaru („asi 1764“ → „* asi 1764“, „1752–1786“ → „* 1752 – † 1786“)
+    umr = f"† {umr}" if umr else None
+    if not (nar and umr):   # chybějící část doplnit z pole y („asi 1764“, „1752–1786“, „? – před 1743“, „– po 1921“)
         y = re.sub(r"\s+", " ", str(p.get("y") or "")).strip()
-        if y:
-            m = re.match(r"(.*?\d.*?)\s*[–-]\s*(.*)$", y)
-            od, do = (m.group(1).strip(), m.group(2).strip()) if m else (y, "")
-            for znak, cast in (("*", od), ("†", do)):
-                if cast and re.search(r"\d", cast):
-                    out.append(cast if cast[0] in "*†" else f"{znak} {cast}")
-    return " – ".join(out)
+        m = re.match(r"^(.*?)\s*[–-]\s*(.*)$", y) if re.search(r"(?:^|\s|\d|\?)[–-]", y) else None
+        if m:
+            od, do = m.group(1).strip(), m.group(2).strip()
+        elif y.startswith("†") or re.match(r"po\b", y):
+            od, do = "", y
+        else:
+            od, do = y, ""
+        if not nar and re.search(r"\d", od) and od.strip("? ") :
+            nar = od if od[0] in "*†" else f"* {od}"
+        if not umr and re.search(r"\d", do):
+            if re.match(r"po\b", do):
+                umr = "žil " + re.findall(r"\d{4}", do)[-1]
+            else:
+                umr = do if do[0] in "*†" else f"† {do}"
+    return " – ".join(x for x in (nar, umr) if x)
 
 
 def gen(k):
@@ -384,7 +390,8 @@ def main():
             ls = f"{ls}-{k}"
         lines[ls] = dict(k=k, slug=ls, name=name, desc=desc, color=LINE_COLORS[k],
                                     root=slugs.get(k), people=[p["slug"] for _, p in members],
-                                    gens={p["slug"]: gen(kk) for kk, p in members})
+                                    gens={p["slug"]: gen(kk) for kk, p in members},
+                                    ks={p["slug"]: kk for kk, p in members})   # číslo výskytu v rodu (alias ze SAME má jiné než hlavní osoba)
     lines = {s: l for s, l in lines.items() if l["root"]}
     for p in people.values():
         p["lineSlug"] = next((l["slug"] for l in lines.values() if l["k"] == p["line"]), None)

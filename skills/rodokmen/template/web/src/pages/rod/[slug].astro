@@ -8,7 +8,8 @@ export function getStaticPaths() {
   return Object.keys(lines).map((slug) => ({ params: { slug } }));
 }
 const l = lines[Astro.params.slug];
-const members = l.people.map((s) => ({ ...people[s], gen: l.gens[s] }));
+// k = číslo výskytu v tomto rodu (předek ve vějíři vícekrát – SAME – má v jiném rodu jiné číslo než hlavní osoba)
+const members = l.people.map((s) => ({ ...people[s], gen: l.gens[s], k: l.ks?.[s] ?? people[s].k }));
 const gens = [...new Set(members.map((p) => p.gen))].sort((a, b) => a - b);
 const partnerLine = lineByK[l.k ^ 1];
 ---
@@ -87,7 +88,7 @@ const partnerLine = lineByK[l.k ^ 1];
   .rod-tab[data-view='data'] .v-roky, .rod-tab[data-view='roky'] .v-data { display: none; }
   .rod-tab .d-cast { display: block; }   /* celá data: narození a úmrtí pod sebou */
   /* všechny generace mají stejně široké sloupce, aby při posouvání zůstaly pod sebou */
-  .rod-tab table { table-layout: fixed; width: 100%; min-width: 36rem; }
+  .rod-tab table { table-layout: fixed; width: 100%; min-width: 44rem; }   /* na mobilu se tabulka posouvá vodorovně (.table-box) */
   .rod-tab col.c-k { width: 4rem; }
   .rod-tab col.c-jmeno { width: 22%; }
   .rod-tab col.c-zivot { width: 8.5rem; }
