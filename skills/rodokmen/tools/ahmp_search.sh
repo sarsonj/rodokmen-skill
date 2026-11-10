@@ -1,6 +1,7 @@
 #!/bin/bash
 # Matriky AHMP (Praha): ahmp_search.sh "dotaz" -> vypíše svazky Sbírky matrik (popis | farnost | XID, počet snímků).
 # Používá starý katalog katalog.ahmp.cz/pragapublica (nový digi.ahmp.cz má ochranu proti robotům – nepoužívat).
+if [ "$1" = -h ] || [ "$1" = --help ] || [ $# -lt 1 ]; then sed -n '2,3p' "$0" | sed 's/^# \{0,1\}//'; exit 2; fi   # nápověda
 D=$(mktemp -d); B=https://katalog.ahmp.cz; C=$D/cj
 # Python 3: na Windows je „python3“ často jen nefunkční alias z Microsoft Store → zkus python, py -3
 PY=python3; $PY -c "" 2>/dev/null || PY=python; $PY -c "" 2>/dev/null || PY="py -3"

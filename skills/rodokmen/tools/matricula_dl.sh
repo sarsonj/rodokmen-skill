@@ -1,5 +1,6 @@
 #!/bin/bash
 # matricula_dl.sh URL OUT  -- stáhne obrázek z img.data.matricula-online.eu (URL s csrf+ctrl z prohlížeče)
+if [ "$1" = -h ] || [ "$1" = --help ] || [ $# -lt 2 ]; then sed -n '2,2p' "$0" | sed 's/^# \{0,1\}//'; exit 2; fi   # nápověda
 PY=python3; $PY -c "" 2>/dev/null || PY=python; $PY -c "" 2>/dev/null || PY="py -3"
 curl() { $PY -I "$(dirname "$0")/slusne.py" curl "$@"; }   # brzda proti zablokování archivem
 tok=$(echo "$1" | sed -E 's/.*csrf=([^&]+).*/\1/')

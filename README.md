@@ -133,8 +133,8 @@ O mladší údaje se žádá na matričním úřadě. Claude vám řekne, kdy to
 ```
 skills/rodokmen/
   SKILL.md           průvodce pro Clauda (fáze, pravidla)
-  reference/         podrobné návody: čtení matrik, portály archivů, formát dat, web, soukromí,
-                     metodická příručka (playbook, anglicky)
+  reference/         podrobné návody: příprava počítače, čtení matrik, portály archivů, metodika
+                     (spojování záznamů, mrtvé body, prameny mimo ČR), formát dat, web, soukromí
   tools/             nástroje v Pythonu (ARON, výřezy, rámečky, mapa, kontrola dat, export do webu, vějíř)
   template/          šablona projektu: prázdná data, ukázková rodina, web (Astro)
 .claude-plugin/      instalace jako plugin
@@ -210,5 +210,3 @@ tady v repozitáři.
 
 ## Licence
 Skill je pod licencí [MIT](LICENSE): smíte ho volně používat, upravovat a šířit dál, jen zachovejte uvedení autora (Jindřich Šaršon).
-Výjimkou je metodická příručka `skills/rodokmen/reference/playbook.md`. Je to převzatá rešeršní zpráva bez uvedeného
-autora, licence MIT se na ni nevztahuje (podrobnosti na začátku souboru).

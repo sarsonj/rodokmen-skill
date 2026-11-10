@@ -27,7 +27,7 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
   - SOA Třeboň (digi.ceskearchivy.cz) nástroj od 2. 11. 2026 odmítá: skripty nic, jen prohlížeč.
   - SOA Praha (soapraha.cz, eBadatelna) nástroj od 2. 11. 2026 zakazuje (robots.txt): skripty nic, jen prohlížeč.
 localhost, vlastní web (Netlify, Cloudflare), GitHub a npm se nebrzdí. V prohlížeči (Playwright, Claude in Chrome) brzda neplatí –
-tam aspoň 5–10 s mezi stránkami a žádné smyčky fetch / Promise.all (SKILL.md, Šetrně k archivům).
+tam aspoň 5–10 s mezi stránkami, žádné souběžné dotazy ani smyčky přes celé svazky (SKILL.md, Šetrně k archivům).
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
 """
 import http.client, io, json, os, re, shutil, socket, subprocess, sys, tempfile, threading, time
