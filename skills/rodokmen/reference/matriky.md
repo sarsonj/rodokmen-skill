@@ -6,7 +6,7 @@
 | **N** | narození (křty), *Liber natorum / baptisatorum*, *Geburtsbuch* | datum narození a křtu, dům (čp.), dítě, rodiče (od ~1784 i jejich rodiče a bydliště), kmotři, porodní bába | pohlaví, legitimita, rodiče matky → další generace |
 | **O** | oddaní (sňatky), *Liber copulatorum*, *Trauungsbuch* | datum, dům, ženich a nevěsta (věk, stav, náboženství), jejich rodiče, svědci | **nejlepší první cíl** – otevírá dvě rodiny naráz |
 | **Z** | zemřelí, *Liber defunctorum*, *Sterbebuch* | datum úmrtí a pohřbu, dům, jméno, věk, příčina | věk → odhad roku narození, stav (vdova po…) |
-| **I** | index (rejstřík) k N/O/Z | jméno → datum / strana | rychlé hledání; **index bývá neúplný**, negativní výsledek v indexu nic nedokazuje |
+| **I** | index (rejstřík) k N/O/Z | jméno → datum / strana | rychlé hledání; **index bývá neúplný**, negativní výsledek v indexu nic nedokazuje – a „v rejstříku není“ ověř čtením po sloupcích (Čtení písma) |
 
 Další prameny: sčítání lidu (1857–1921; domácnosti s daty narození; operáty 1930 jsou jen v Národním archivu,
 běžně nepřístupné a online nejsou), soupis poddaných 1651 (celé rodiny s věkem),
@@ -97,9 +97,17 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
    pokrývá** (skutečná chyba: sňatek „nenalezen“ ve dvou farách, přitom byl ve vesnické knize správné fary).
 
 ## Čtení písma
-- Kurentový rejstřík: stáhni plné rozlišení a rozřež stránku na čtvrtiny (sloupec jmen + data),
-  `magick f.jpg -crop 1250x1650+X+Y +repage ctvrt.jpg`. **Dopisované řádky** se snadno přečtou špatně (Franziska × Heinrich,
-  strana 131 × 151) – údaj z rejstříku vždy ověř v matrice.
+- **Rejstřík čti po sloupcích, ne celou dvoustranu naráz.** Při rychlém čtení sloupce příjmení se jméno snadno přehlédne
+  (skutečná chyba: „v rejstříku oddaných 1686–1739 není“, a bylo tam třikrát – rod se pak dohledal o tři generace dál).
+  Snímek v plném rozlišení rozřež na svislé pruhy a každý přečti zvlášť, řádek po řádku:
+  `python3 -I tools/mapa_knihy.py aron <apu> <snímek> <snímek> --sloupce 4` (nebo `soubory <obrázek>`; hranice podle
+  sloupců rejstříku, např. rodič – jméno – rok – folio: `--sloupce 0.3,0.55,0.8`; jednu stranu dvoustrany vybere
+  `--vyrez 0,0,0.5,1`). **Negativní výsledek z rejstříku zapiš až po takovém čtení.**
+- Ozdobná velká písmena v rejstřících 17. a 18. století řadí jména jinam, než čekáš: **Š psané jako „St“ / „Sſt“**
+  (Sſtiepanek = Štěpánek), W místo V a O (Wawra, Wotawa), C/K a G/K zaměněné. Než napíšeš „pod písmenem není“, projdi
+  i písmena, pod která mohl písař jméno zařadit.
+- Kurentový rejstřík: totéž, plné rozlišení a pruhy (`--sloupce`). **Dopisované řádky** se snadno přečtou špatně
+  (Franziska × Heinrich, strana 131 × 151) – údaj z rejstříku vždy ověř v matrice.
 - **Vybledlé písmo** (mikrofilm, propiska nebo tužka 1945–1949, celé knihy hlavně v eBadatelně): je-li písmo zápisu
   světlé nebo stránka vypadá skoro prázdná, čti z výřezu s `--kontrast` (`vyrez.py … --kontrast`,
   `overit.py … --kontrast`; jinak `magick x.jpg -colorspace Gray -contrast-stretch 2%x35% x_k.jpg`). Stránku

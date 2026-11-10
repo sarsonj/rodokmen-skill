@@ -156,7 +156,8 @@ tolik neubývají.
 - Přesné zadání: svazek, snímky, koho hledat, formát výsledku (klíč, snímek, souřadnice zápisu, přepis), technické
   pasti z `reference/matriky.md` a pravidla brzdy (síť jen přes `tools/slusne.py`, při hlášce „zastavený“ skončit
   a ohlásit). Ať u každého prošlého snímku napíše, co na něm skutečně přečetl (rok, první jméno), a zmíní i zjevně
-  související výskyty.
+  související výskyty. Rejstřík ať čte po sloupcích (`mapa_knihy.py … --sloupce`, `reference/matriky.md` → Čtení
+  písma) – jeho „v rejstříku není“ bez toho neber jako výsledek.
 - Pomocník píše jen do `pracovni/pom_<větev>/`, **do `data/` nikdy**. Zapisuješ ty; výstupy nemaž, dokud nejsou vytěžené.
 - **Jejich čtení vždy ověř sám na snímku** (`python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over`, zlomky
   0–1, rozdělí zápis na dvě čitelné poloviny), než ho zapíšeš jako `doc`. Uživateli to vysvětli správně: je to stejný
