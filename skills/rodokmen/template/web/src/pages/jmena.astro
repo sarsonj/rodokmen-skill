@@ -8,10 +8,16 @@ const givenNames = (name) => {
   const w = (name || '').replace(/\([^)]*\)/g, ' ').replace(/\b(st|ml)\./g, ' ').trim().split(/\s+/).filter(Boolean);
   return [...new Set(w.length > 1 ? w.slice(0, -1) : w)];
 };
-const valid = (g) => /^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]+$/.test(g);
+// Jméno = velké písmeno a malá písmena (i Ľ, ö…), případně se spojovníkem (Anna-Marie); zástupné popisky malými písmeny („otec neuveden“) vypadnou.
+const valid = (g) => /^\p{Lu}\p{Ll}+(?:-\p{Lu}\p{Ll}+)*$/u.test(g);
 const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
-const lineBySlug = Object.fromEntries(lineList.map((l) => [l.slug, l]));
 const BEZ = { slug: '', name: 'Nejbližší rodina', color: '#b8ad9e' };
+// Rody osoby podle seznamů lines[*].people – předek ve vějíři vícekrát (SAME) patří do všech svých rodů, stejně jako na stránkách rodů.
+const rodyOsoby = (p) => {
+  const r = lineList.filter((l) => l.people?.includes(p.slug));
+  return r.length ? r : [BEZ];
+};
+const generace = (l, p) => l.gens?.[p.slug] ?? p.gen ?? 0;
 
 function build(sex) {
   const map = new Map();
@@ -21,10 +27,11 @@ function build(sex) {
       if (!valid(g)) continue;
       if (!map.has(g)) map.set(g, { name: g, total: 0, byLine: new Map() });
       const e = map.get(g);
-      e.total++;
-      const l = (p.lineSlug && lineBySlug[p.lineSlug]) || BEZ;
-      if (!e.byLine.has(l.slug)) e.byLine.set(l.slug, { line: l, people: [] });
-      e.byLine.get(l.slug).people.push(p);
+      e.total++;   // osoba se do celkového počtu jména počítá jednou, i když patří do víc rodů
+      for (const l of rodyOsoby(p)) {
+        if (!e.byLine.has(l.slug)) e.byLine.set(l.slug, { line: l, people: [] });
+        e.byLine.get(l.slug).people.push(p);
+      }
     }
   }
   const order = (s) => (s === '' ? -1 : lineList.findIndex((l) => l.slug === s));
@@ -33,7 +40,7 @@ function build(sex) {
       ...e,
       parts: [...e.byLine.entries()]
         .sort((a, b) => b[1].people.length - a[1].people.length || order(a[0]) - order(b[0]))
-        .map(([, v]) => ({ ...v, people: v.people.sort((a, b) => (a.gen ?? 0) - (b.gen ?? 0)) })),
+        .map(([, v]) => ({ ...v, people: v.people.sort((a, b) => generace(v.line, a) - generace(v.line, b)) })),
     }))
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'cs'));
 }
@@ -46,7 +53,7 @@ const total = Object.values(people).filter((p) => givenNames(p.name).some(valid)
 <Base title="Jména">
   <h1>Jména</h1>
   <p class="lead">Jaká křestní jména se v rodokmenu dědí. U každého je počet všech osob s tímto jménem a pod ním, kolik jich je v jednotlivých rodech. Rozkliknutím jména se ukážou konkrétní lidé.</p>
-  <p class="small muted">Započteno {total} osob. Dvojité jméno (např. Marie Magdalena) se počítá u každého z obou jmen. „Nejbližší rodina“ = rodiče a prarodiče, kteří ještě nepatří do žádného z rodů.</p>
+  <p class="small muted">Započteno {total} osob. Dvojité jméno (např. Marie Magdalena) se počítá u každého z obou jmen. Předek, který je v rodokmenu vícekrát (patří do dvou rodů), se u jména počítá jednou, ale v rozpadu je u každého svého rodu – součet po rodech pak může být vyšší. „Nejbližší rodina“ = rodiče a prarodiče, kteří ještě nepatří do žádného z rodů.</p>
   <div class="chips">
     {lineList.map((l) => <span class="chip"><span class="dot" style={`background:${l.color}`}></span>{l.name}</span>)}
   </div>
