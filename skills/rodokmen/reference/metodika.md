@@ -112,7 +112,8 @@ Ostatní archivy jsou většinou jen na písemnou žádost – zapiš do `archiv
 
 **Slovensko**
 - **Církevní matriky** (řkt., evangelické, reformované, židovské) od 1592, dnes ve státních archivech
-  (Zbierka cirkevných matrík). Snímky a neúplný index (hlavně křty) na FamilySearch, zpravidla do ~1895.
+  (Zbierka cirkevných matrík). Snímky a neúplný index (hlavně křty) na FamilySearch, zpravidla do ~1895. Zápisy
+  po roce 1895 v církevních knihách (některé sahají do 1935) jsou v archivu přístupné po 90 letech.
 - **Civilní (štátne) matriky** od 1. 10. 1895 (uherský zákon), na matričním úřadě; do archivu až po 100 letech.
 - **Sčítání 1869** na FamilySearch („Slovakia, Census, 1869“): celé domácnosti s roky a místy narození, náboženstvím
   a povoláním; jen snímky bez jmenného rejstříku a jen z archivů Bytča, Banská Bystrica a Nitra. Dobrá náhrada za
@@ -160,7 +161,7 @@ Ostatní archivy jsou většinou jen na písemnou žádost – zapiš do `archiv
 (ČR viz `matriky.md`.) Počty let narození / sňatky / úmrtí:
 | země | lhůta | počítá se od | poznámka |
 |---|---|---|---|
-| **Slovensko** | 100 / 100 / 100 | posledního zápisu | pak přechází do státního archivu; i úmrtí po ~1926 jsou na matričním úřadě |
+| **Slovensko** | státní matriky (od 1895): 100 / 100 / 100 | posledního zápisu | do té doby na matričním úřadě, jen pro rodinu; **církevní knihy ve státním archivu** jsou archiválie – osobní údaje přístupné 90 let od zápisu, dřív se souhlasem nebo pro historický výzkum s čestným prohlášením (zákon 395/2002 Z. z., § 13) |
 | **Rakousko** | 100 / 75 / 30 | zápisu (zákon) – diecézní archiv Vídeň počítá od uzavření knihy | 100 a 75 let jen pokud zápis netýká žijící osoby; po 1938 Standesamt |
 | **Německo** | 110 / 80 / 30 | roku registru | úmrtí Sonderstandesamt Bad Arolsen 80 let; dřív jen přímí příbuzní nebo právní zájem |
 | **Polsko** | 100 / 80 / 80 | uzavření knihy | do státního archivu do 2 let po lhůtě – online dostupnost se zpožďuje |

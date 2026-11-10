@@ -335,7 +335,7 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
      `[...document.querySelectorAll('tr')].map(r => [...r.cells].map(c => c.innerText.trim()).join(' | '))`
      → Poznámka (druhy a roky) | Film | **DGS**. Název záznamu přeceňuje: „Cirkevná matrika, 1762–1927“ má křty,
      sňatky i úmrtí jen do **1895** (do 1927 jen biřmování). Po ~1895 vedl stát civilní matriky – mladší zápisy jsou
-     ve státním archivu nebo na matričním úřadě (na Slovensku 100 let i u úmrtí), ne online.
+     ve státním archivu nebo na matričním úřadě (na Slovensku státní matriky 100 let od posledního zápisu; církevní knihy v archivu po 90 letech od zápisu), ne online.
   3. **Index je neúplný** (hlavně křty) a jména zkomolená, u dvou křestních jmen bývá jen jedno; `q.anyPlace`
      výsledky nefiltruje, jen řadí. Hledej přes rodiče a bez křestního jména, jinak listuj snímky filmu (DGS výše;
      nejdřív rejstřík „Zoznam krstov A–Z“, bývá na začátku knihy).
