@@ -1,0 +1,95 @@
+---
+import Base from '../layouts/Base.astro';
+import PersonLink from '../components/PersonLink.astro';
+import { people, lines } from '../lib/data.js';
+
+// Křestní jména = všechna slova kromě příjmení (bez závorek a „st.“/„ml.“); dvojité jméno („Marie Magdalena“) se počítá u každého jména.
+const givenNames = (name) => {
+  const w = (name || '').replace(/\([^)]*\)/g, ' ').replace(/\b(st|ml)\./g, ' ').trim().split(/\s+/).filter(Boolean);
+  return [...new Set(w.length > 1 ? w.slice(0, -1) : w)];
+};
+const valid = (g) => /^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]+$/.test(g);
+const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
+const lineBySlug = Object.fromEntries(lineList.map((l) => [l.slug, l]));
+const BEZ = { slug: '', name: 'Nejbližší rodina', color: '#b8ad9e' };
+
+function build(sex) {
+  const map = new Map();
+  for (const p of Object.values(people)) {
+    if (p.sex !== sex) continue;
+    for (const g of givenNames(p.name)) {
+      if (!valid(g)) continue;
+      if (!map.has(g)) map.set(g, { name: g, total: 0, byLine: new Map() });
+      const e = map.get(g);
+      e.total++;
+      const l = (p.lineSlug && lineBySlug[p.lineSlug]) || BEZ;
+      if (!e.byLine.has(l.slug)) e.byLine.set(l.slug, { line: l, people: [] });
+      e.byLine.get(l.slug).people.push(p);
+    }
+  }
+  const order = (s) => (s === '' ? -1 : lineList.findIndex((l) => l.slug === s));
+  return [...map.values()]
+    .map((e) => ({
+      ...e,
+      parts: [...e.byLine.entries()]
+        .sort((a, b) => b[1].people.length - a[1].people.length || order(a[0]) - order(b[0]))
+        .map(([, v]) => ({ ...v, people: v.people.sort((a, b) => (a.gen ?? 0) - (b.gen ?? 0)) })),
+    }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'cs'));
+}
+const groups = [
+  { title: 'Mužská jména', list: build('M') },
+  { title: 'Ženská jména', list: build('F') },
+];
+const total = Object.values(people).filter((p) => givenNames(p.name).some(valid)).length;
+---
+<Base title="Jména">
+  <h1>Jména</h1>
+  <p class="lead">Jaká křestní jména se v rodokmenu dědí. U každého je počet všech osob s tímto jménem a pod ním, kolik jich je v jednotlivých rodech. Rozkliknutím jména se ukážou konkrétní lidé.</p>
+  <p class="small muted">Započteno {total} osob. Dvojité jméno (např. Marie Magdalena) se počítá u každého z obou jmen. „Nejbližší rodina“ = rodiče a prarodiče, kteří ještě nepatří do žádného z rodů.</p>
+  <div class="chips">
+    {lineList.map((l) => <span class="chip"><span class="dot" style={`background:${l.color}`}></span>{l.name}</span>)}
+  </div>
+  {groups.map((g) => (
+    <section>
+      <h2>{g.title} <span class="muted small">({g.list.length})</span></h2>
+      <div class="names">
+        {g.list.map((e) => (
+          <details class="card name-card">
+            <summary>
+              <span class="nm-row"><strong class="nm-big">{e.name}</strong><span class="nm-count">{e.total}×</span></span>
+              <span class="nm-bar" aria-hidden="true">
+                {e.parts.map((pt) => <span style={`flex:${pt.people.length};background:${pt.line.color}`}></span>)}
+              </span>
+              <span class="nm-lines small">
+                {e.parts.map((pt) => <span><span class="dot" style={`background:${pt.line.color}`}></span>{pt.line.name} {pt.people.length}</span>)}
+              </span>
+            </summary>
+            {e.parts.map((pt) => (
+              <div class="nm-people">
+                <p class="small muted">{pt.line.name}</p>
+                <ul>{pt.people.map((p) => <li><PersonLink slug={p.slug} /></li>)}</ul>
+              </div>
+            ))}
+          </details>
+        ))}
+      </div>
+    </section>
+  ))}
+</Base>
+
+<style>
+  .names { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 0.8rem; align-items: start; margin-bottom: 1.5rem; }
+  .name-card { padding: 0.7rem 0.9rem; }
+  .name-card summary { list-style: none; cursor: pointer; display: grid; gap: 0.35rem; }
+  .name-card summary::-webkit-details-marker { display: none; }
+  .nm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .nm-big { font-size: 1.15rem; }
+  .nm-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); }
+  .nm-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; }
+  .nm-lines { display: flex; flex-wrap: wrap; gap: 0.15rem 0.7rem; color: var(--muted); }
+  .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; margin-right: 0.3rem; vertical-align: baseline; }
+  .nm-people { margin-top: 0.5rem; }
+  .nm-people p { margin: 0; }
+  .nm-people ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
+</style>
