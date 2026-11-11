@@ -165,6 +165,15 @@ jen jméno a rok narození a před zveřejněním s vámi projít, co o nich web
 rozhodnutí je na vás.
 Pokud projekt chcete zálohovat na GitHub, použijte **soukromý** repozitář.
 
+## Komunitní sdílení (volitelné)
+Spousta lidí čte tytéž matriky. Claude se proto před otevřením knihy podívá do dvou otevřených projektů:
+[Mapa matrik](https://github.com/ondrnovy/mapa-matrik) (kde v knize začíná který rok nebo ves, bez jmen) a
+[index matrik](https://github.com/pe-pan/matriky-index) (zápisy, které už někdo přečetl). Ušetří to hledání, kredity
+i servery archivů (#138). Po prvním kole se vás **jednou** zeptá, jestli může na oplátku sdílet, co sám přečetl:
+orientační body a přepisy zápisů starších 100 let (narození) a 75 let (sňatky, úmrtí), s odkazem na snímek. Výřezy,
+fotky, údaje od rodiny ani závěry rodokmenu se nesdílí. Potřebujete k tomu účet GitHub; když řeknete ne, už se
+neptá. Podrobnosti: [skills/rodokmen/reference/sdileni.md](skills/rodokmen/reference/sdileni.md).
+
 ## Zpětná vazba a vaše zkušenosti
 Děkuji všem, kdo mi poslali připomínky – jen verze 0.5.0 zapracovala přes čtyřicet podnětů od šesti lidí (podpora
 Windows a staršího ImageMagicku, postupy pro MZA Brno a ZA Opava, bezpečná úprava dat a další). Každou připomínku čtu
