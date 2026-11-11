@@ -185,6 +185,13 @@ def main():
         sys.exit(f"Vstup {vstup} není platný JSON: {e}")
     if not isinstance(obj, dict):
         sys.exit("Vstup musí být jeden objekt JSON ({…}).")
+    if len(obj) == 1 and isinstance(obj.get(klic), dict):   # {"klíč": {…}} – rozbalit jedinou položku
+        obj = obj[klic]
+    vnorene = [k for k, x in obj.items() if isinstance(x, dict)]
+    if nazev in ("zaznamy", "prepisy", "zvyrazneni") and vnorene:
+        # dřív se vstup {"k1": {…}, "k2": {…}} uložil celý pod klíč z příkazové řádky (vznikl nesmyslný klíč „x“)
+        sys.exit(f"Vstup vypadá jako víc položek najednou ({', '.join(vnorene[:4])}). zapis.py zapisuje jednu položku: "
+                 "pro každý klíč spusť příkaz zvlášť, nebo použij tools/nalez.py.")
     seznam = nazev in SEZNAMY
     if seznam and obj.setdefault(SEZNAMY[nazev], klic) != klic:
         sys.exit(f"Klíč „{klic}“ nesedí s „{SEZNAMY[nazev]}“ ve vstupu („{obj[SEZNAMY[nazev]]}“).")

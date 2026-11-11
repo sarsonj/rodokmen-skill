@@ -6,6 +6,8 @@ Vypíše CHYBY (rozbijí web nebo jsou věcně špatně) a UPOZORNĚNÍ (něco c
 Návratový kód 1, pokud jsou chyby.
 """
 import datetime, json, os, re, sys, unicodedata
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # -I nepřidá složku skriptu: kontrola_dat.py, denik.py
 if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo pádu
     sys.exit(__doc__.strip())
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -275,6 +277,20 @@ def main():
         if n >= 6:
             warn.append(f"rod {jmeno} má už {n} generací – je čas napsat příběh rodu "
                         f"(data/pribeh.md, reference/pribehy.md); koncept nejdřív ukaž uživateli v chatu")
+
+    try:   # obsahové kontroly (y × fakta, roky z cizích stromů, kandidáti jako doklad, ledig × vdovec …)
+        import kontrola_dat
+        warn += kontrola_dat.kontroly(P, SIDE, zaz, prep)
+    except ImportError:
+        pass
+    try:   # tabulka deníku: prázdný řádek uvnitř ji na webu ukončí, nové řádky musí mít 7 sloupců a vlastní číslo
+        import denik
+        if os.path.exists(os.path.join(DATA, "research_log.md")):
+            e_d, w_d = denik.kontrola(open(os.path.join(DATA, "research_log.md"), encoding="utf-8-sig").read())
+            err += e_d
+            warn += w_d
+    except ImportError:
+        pass
 
     log = os.path.join(DATA, "research_log.md")
     rows = sum(1 for l in open(log, encoding="utf-8-sig") if re.match(r"^\| \d+ \|", l)) if os.path.exists(log) else 0

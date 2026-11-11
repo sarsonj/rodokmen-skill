@@ -96,10 +96,16 @@ Základní smyčka pro každou osobu:
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`;
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
+   Má-li projekt `tools/nalez.py`, udělej kroky 1–5 a řádek deníku jedním příkazem: `nalez.py nahled pracovni/x.json`
+   (zkontroluje vstup a ukáže výřez a rámeček), pak `nalez.py zapis pracovni/x.json`.
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
-7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
+   Řádek přidávej `python3 -I tools/denik.py pridej --zdroj … --rozsah … --hledano … --vysledek …` (vezme další číslo,
+   ohlídá sloupce, svislé čáry a prázdné řádky), **nikdy `printf >>` nebo `echo >>`** – rozbije tabulku a web ji pak neukáže.
+7. Spusť `python3 -I tools/kontrola.py` a oprav chyby. `tools/kontrola_dat.py` (volá ho `kontrola.py`, nebo samostatně)
+   hlídá obsahové chyby: roky v `y` × fakta, roky z cizího stromu u `doc`, kandidátní zápis citovaný jako doklad,
+   zastaralé věty („neověřeno“, „křest se nečetl“) a ženich „ledig“ v přepisu × „vdovec“ ve faktech.
 
 Pravidla, která chrání kvalitu:
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
@@ -164,6 +170,12 @@ tolik neubývají.
 - Na špatně čitelné knihy (kurent 1. poloviny 19. století, vybledlé snímky) pomocníky nepouštěj, nebo jim dej přesný
   snímek; ARON a Porta fontium zvládají dobře. Prohlížeč může mít najednou jen jeden pomocník, proto dávej přednost
   nástrojům bez prohlížeče.
+- Pomocníkovi dej **jednu úzkou stopu** (jedna kniha, jedna osoba). Široké zadání („4 stopy najednou“) nestihne – udělá jednu.
+- **Kontrola vyšším modelem po každé větší větvi:** 1–2 pomocníci na nejsilnějším modelu (Agent s `model: "opus"`), každý
+  na jednu skupinu větví, **jen čtení nad daty a výřezy, bez sítě**. Zadání: projdi osoby, zápisy, přepisy a výřezy a hledej
+  chybná čtení, ztotožnění jen podle jména, roky bez dokladu, rozpory mezi zápisy. Při skutečném výzkumu tak našli dvě chybně
+  přečtené kolonky „svobodný/vdovec“, přehozené rodiče a roky z MyHeritage vydávané za doložené. Opravy dělej ty, po ověření
+  na výřezu. Zprávy pomocníků ukládej do složky, která je v gitu (např. `pomocne/`), ne do `pracovni/` – jinak je jiný počítač nevidí.
 
 ### Kdy přestat
 Linie končí, když matriky mlčí (nemanželské dítě bez otce, shořelé knihy, chybějící svazky) nebo když jsi
@@ -241,5 +253,8 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
+| `kontrola_dat.py` | obsahové kontroly (y × fakta, cizí stromy u `doc`, kandidáti v `r`, zastaralé věty, ledig × vdovec) |
+| `denik.py pridej --zdroj … --rozsah … --hledano … --vysledek … / dalsi / kontrola` | řádek deníku bez rozbití tabulky; kontrola sloupců, prázdných řádků a čísel |
+| `nalez.py nahled\|zapis vstup.json` | zápis nálezu jedním příkazem: snímek, výřez, rámeček, zápis, přepis, osoby, deník, rejstřík snímků |
 | `slusne.py` | brzda proti zablokování archivem (`stav`, `zastav`, `odblokuj`) |
 | `export_web.py`, `fan_chart.py` | data → web (volá ho `npm run data`); vějíř jako plakát k tisku |

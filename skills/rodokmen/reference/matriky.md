@@ -213,6 +213,19 @@ vsi a sňatek byl v oddílu městyse; ves měla oddíl až na snímcích 380–4
 - Index nenašel ≠ zápis neexistuje. Zapiš, co přesně jsi prošel.
 - Oddací zápis uvádí „narozen dle mat. IV f. 149“ – podle folia najdeš křest jedním stažením (folio ≈ snímek − posun knihy).
 - Čtení pomocníků (subagentů) i jiných nástrojů na čtení písma vždy ověř sám na snímku (princip čtyř očí, SKILL.md → Pomocníci).
+- **Sloupce „ledig / Witwer“ (svobodný / vdovec) v tabulkových oddacích knihách** neodhaduj: jednička nebo čárka stojí
+  v jednom ze sloupců, porovnej její vodorovnou polohu s řádkem nad a pod. Dvakrát se tak „svobodný“ ženich ukázal
+  jako vdovec (Jevíčko 1793 a 1837), a to mění, kde hledat první manželství.
+- **Křížek u jména v knize narozených** nemusí znamenat úmrtí (bývá to značka kontroly nebo opisu). Úmrtí ověř v knize zemřelých.
+- **Rejstřík má rozsah let** – „jediný takový v rejstříku“ platí jen pro ty roky. Rejstříky zaměňují podobná příjmení
+  (Jandik × Jenisch): kontroluj zápis, ne řádek rejstříku.
+- **Jméno po zemřelém sourozenci (nekronymum):** najdeš-li křest se správným jménem a rodiči, projdi i další roky a knihu
+  zemřelých – předkem je ten, kdo přežil. Věk ve sňatku či úmrtí k rozhodnutí nestačí (bývá chybný o 4–10 let).
+- **Vdova zapsaná jako „dcera“ prvního muže:** „Dorota, dcera X“, ale X byl její první manžel. Při nesouhlasu příjmení prověř vdovství.
+- **Kandidátní zápis není doklad:** zápis, u kterého si nejsi jistý, že patří předkovi, nepiš do `r` osoby (web ho ukáže
+  jako doklad) – patří do `SIDE`, `HYPOTEZY` nebo poznámky, a jeho název má říkat „kandidát“.
+- **Údaje z cizích stromů (MyHeritage, strom příbuzných) nepiš do `y`** u osoby se stavem `doc` – web je ukáže jako
+  doložené. Nech je ve faktu se zdrojem, nebo k roku v `y` připiš „(?)“.
 
 ## Technické pasti (macOS, zsh) – napiš je i pomocníkům do zadání
 - Shell je zsh: `for a in "x y z"; do set -- $a` slova nerozdělí (v zsh `${=a}`); `ls F*` bez shody = chyba
