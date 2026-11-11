@@ -47,11 +47,20 @@ Nemá-li mapa obec ani knihu, postupuj jako dřív (portály v `portaly.md`).
 Je-li **NEROZHODNUTO** a je co sdílet, zeptej se na konci prvního kola, kde něco našel (ne na začátku, ne uprostřed
 hledání), krátce a jednou:
 
-> Při hledání jsem přečetl N zápisů a zjistil, kde v M knihách začínají roky a vsi. Můžu to anonymně přidat do dvou
-> otevřených projektů, ze kterých jsem dnes sám čerpal – Mapa matrik (jen „snímek 40 = rok 1785“, bez jmen)
-> a index matrik (přepisy zápisů starších 100 / 75 let s odkazem na snímek, licence CC BY 4.0). Ušetří to práci dalším
-> rodinám i archivům. Potřebuju k tomu účet GitHub. Mám to dělat sám na konci každého kola? A jak tě mám v indexu
-> uvést (jméno, přezdívka)?
+> Při hledání jsem přečetl N zápisů a zjistil, kde v M knihách začínají roky a vsi. Můžu to přidat do dvou
+> otevřených projektů, ze kterých jsem dnes sám čerpal: Mapa matrik (jen „snímek 40 = rok 1785“, bez jmen) a index
+> matrik (přepisy zápisů starších 100 / 75 let s odkazem na snímek, licence CC BY 4.0)?
+>
+> **Proč to má smysl:** stejné knihy čtou desítky rodin. Kdo přijde po nás, otevře rovnou správný snímek místo
+> listování desítkami stran – ušetří čas i kredity a archivy nezatěžuje tolik, že by blokovaly přístup všem (už se to
+> stalo). A pomůže to i nám: čím víc lidí přispívá, tím víc knih z našich vsí bude zmapovaných, až půjdeme o generaci
+> dál. Přepisy navíc najdou vzdálení příbuzní, kteří hledají stejné předky.
+>
+> Potřebuju k tomu účet GitHub (zdarma, jednou se přihlásíš). Mám to pak dělat sám na konci každého kola? A jak tě
+> mám v indexu uvést (jméno, přezdívka)?
+
+Je-li v tom kole něco z mapy nebo indexu opravdu využité, řekni to konkrétně („dnes nám mapa ušetřila listování
+v Liblínu 01“) – je to nejlepší důvod.
 
 Odpověď zapiš: `python3 -I tools/sdileni.py souhlas ano "Jméno Příjmení"` nebo `souhlas ne`. Při **NE** se už
 neptej (uživatel může názor změnit sám). Účet GitHub: `gh auth login` (dej uživateli s `!`); bez něj sdílení vynech.
