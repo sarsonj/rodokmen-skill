@@ -22,7 +22,7 @@ import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abs
 MAPA = "https://ondrnovy.github.io/mapa-matrik/v1"
 INDEX = "https://pe-pan.github.io/matriky-index"
 REPO_MAPA, REPO_INDEX = "ondrnovy/mapa-matrik", "pe-pan/matriky-index"
-SCHRANKA = os.environ.get("SDILENI_SCHRANKA", "https://mapa-matrik-schranka.DOPLNIT.workers.dev")   # sběrná schránka (bez účtu GitHub)
+SCHRANKA = os.environ.get("SDILENI_SCHRANKA", "https://mapa-matrik-schranka.schranka.workers.dev")   # sběrná schránka (bez účtu GitHub)
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache"), "rodokmen_sdileni")
 DEN = 24 * 3600
 LHUTA = {"N": 100, "O": 75, "Z": 75}   # lhůty indexu matrik (jeho kontrola.py); úmrtí přísněji než archivy (30 let)
