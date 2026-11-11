@@ -52,12 +52,19 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo 5–10 s mezi
   stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky
   obrazovky uživatel.
+- **Ověření člověka (ALTCHA):** od 10. 11. 2026 může portál před snímkem ukázat „Ochrana webu aktivována… ověřte, že
+  jste člověk“. Ověření projde jen uživatel sám ve svém prohlížeči – ty ho neřeš ani neobcházej, skonči a řekni mu to.
+  Okno o skončené relaci stačí potvrdit.
 - Obec: `https://digi.ceskearchivy.cz/<Obec>` (bez diakritiky a mezer, např. `RatiborskeHory`) → stránka místa, vlevo
   „Matriční knihy“ (stránka je v rámci `ram_obsah`) → seznam knih s roky a obcemi; kliknutí otevře knihu v nové záložce.
   **Zkontroluj název a okres**: u stejnojmenných obcí portál vybere jinou (Buk → Bukovka), u měst i okres nebo synagogu.
   Malé osady portál nezná (Malá Chyška) – hledej farní nebo sousední obec a osadu v popisu knih.
+  Na stránce místa jsou vlevo i **sčítání lidu** (v anglické verzi CENSUS), **pozemkové knihy** (LAND REGISTERS)
+  a **kroniky** (CHRONICLES) – sčítání viz „Sčítání lidu“ níže.
 - Snímek: `https://digi.ceskearchivy.cz/<kniha>/<snímek>` (zároveň trvalý odkaz). Knihy mívají dobrovolnický jmenný
   rejstřík (stránka místa → „Rejstříky“) – obrovská úspora; ne každá kniha ho má.
+  Adresa `…/<kniha>/<snímek>/<x>/<y>/100/0` otevře snímek rovnou ve **100 %** se středem v bodě x, y (pixely plného
+  rozlišení) – na čtení a snímek obrazovky jednoho zápisu stačí, bez ručního přibližování.
 - **Každé zobrazení snímku stáhne všechny dlaždice znovu** – i šipka zpět na snímek, který byl právě na obrazovce
   (rám se načte znovu s novým tokenem, mezipaměť prohlížeče nepomůže). Na snímku proto vyřiď všechno najednou: přibliž
   a přečti všechny zápisy, které můžeš potřebovat, než přejdeš dál.
@@ -104,7 +111,13 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - `link <kniha> <snímek>` → trvalý odkaz, `svazek <kniha>` → `svazky.json` (klíč `pf_<kniha>`).
 - **Tempo:** portál žádá 10 s mezi dotazy (robots.txt „Crawl-delay: 10“) – brzda to drží sama, i u snímků.
 - Bez prohlížečového User-Agentu portál vrací 403 (nástroj ho posílá). Jmenné hledání portál nemá – indexy jsou jen uvnitř knih
-  (`*i`, `ooi`, `+i` v seznamu knih fary).
+  (`*i`, `ooi`, `+i` v seznamu knih fary). Stránky portálu proto nestahuj přes `slusne.py curl` – dostane 403 a brzda
+  zastaví celý portál na 30 minut; používej `portafontium.py`.
+- Kromě matrik má portál **kroniky** (u části okresů jen ukázka prvních snímků) a u některých okresů **sčítání lidu
+  1880–1921**. `portafontium.py` umí jen matriky – ostatní v prohlížeči.
+- Knihy bez popisu („Plný popis bude zveřejněn…“, typicky 20. století): `info` neřekne, zda je kniha po obcích, nebo
+  chronologická – stáhni `nahled` prvních dvou a pár dalších snímků. U oddacích knih 20. století náhled stačí na jména
+  snoubenců; plné rozlišení jen u nalezeného zápisu.
 
 ## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – jen v prohlížeči
 - **Od 2. 11. 2026 archiv nástroj zakazuje** (robots.txt „User-agent: rodokmen – Disallow: /“, HTTP 403),
@@ -198,7 +211,7 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 ## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – `tools/soal_zoomify.py`
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
-  má ochranu proti robotům – curl ani WebFetch se nedostanou ani na hledání. Potřebuješ připojený prohlížeč (Claude in
+  má ochranu proti robotům (Radware) – curl ani WebFetch se nedostanou ani na hledání. Potřebuješ připojený prohlížeč (Claude in
   Chrome – uživatel ho připojí příkazem `/chrome` – nebo Playwright); jinak ať knihu najde a snímky uloží uživatel.
   **Vestavěný prohlížeč aplikace Claude** (desktop, Code) archiv odmítne hned („Anomaly detected“) – nepoužívej ho.
   Úvodní ověření projde samo, ale jen v kartě v popředí. Okno nastav aspoň na 1400×900, v užším se nezobrazí
@@ -215,6 +228,11 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   (id je konec cesty odkazu ve výsledcích, `vysledekDetail/<id>`) – ten ukáže svazek podle id bez ohledu na poslední
   hledání, ale jen v prohlížeči, který už prošel ověřením. Jinak klikni ve výsledcích (ikona snímků v řádku, nebo
   mozaika výsledků a dvojklik na náhled). **Vždy na stránce ověř signaturu a název knihy**, než z ní cokoli čteš.
+  Číslo snímku zadané do ovladače prohlížeče někdy ukáže snímek o 1–2 vedle – skutečné číslo je vpravo nahoře, ověř ho
+  před čtením i před zápisem do `odkaz`.
+- **Indexy MyHeritage jako rozcestník:** MyHeritage má zindexované matriky ZA Opava (narození, sňatky, úmrtí).
+  Detail záznamu ukazuje snímek matriky a z adresy obrázku je vidět signatura svazku a číslo snímku – zápis pak otevři a přečti v badatelně ZA Opava. Jen jednotlivé záznamy tempem člověka
+  (`soukromi.md`, Placené a cizí služby), údaj z indexu je vodítko, ne doklad.
 - **Seznam svazků a ID snímků si hned ulož** do `pracovni/<svazek>/` – relace po pár hodinách vyprší a výsledky
   hledání platí jen v ní. Na detailu svazku: entita `document.querySelector('[entityuuid]').getAttribute('entityuuid')`
   (u svazků uložených v jiném archivu nemá tvar UUID – nehledej ji regexem), ID snímků jsou hodnoty
@@ -365,6 +383,25 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   příponu `.tmp`. Přesuň **jen soubor s očekávaným názvem**, nikdy „nejnovější soubor ve Stažených“ (je tam i cizí).
   Žádné vlastní přijímače na localhostu ani jiné obcházení ochran prohlížeče.
 
+## Sčítání lidu – domácnosti a sourozenci
+Sčítací archy (1857, 1869, 1880, 1890, 1900, 1910, 1921) zapisují **celou domácnost** po domech: jména, vztah
+k přednostovi, datum (nebo rok) a místo narození, náboženství, povolání, od kdy v obci. Nejcennější je pro konec 19.
+a začátek 20. století, kdy křty dětí ještě nejsou online: ukáže sourozence, ovdovělé rodiče, švagry a děti, které
+odešly z domu.
+- **Kde:** SOA Třeboň (stránka místa → sčítání lidu; archy 1921 podle čísla domu, asi 2 snímky na dům – dům najdi
+  podle náhledů), ARON (fondy sčítání, `aron_search.py "Obec" "název fondu"`), Porta fontium u některých okresů (1880–1921,
+  v prohlížeči), Slovensko 1869 na FamilySearch (`metodika.md`). Jinde bývají archy ve fondu obce nebo okresního úřadu
+  ve státním okresním archivu – zeptej se archivu. Operáty 1930 nejsou přístupné (`matriky.md`).
+- **Indexy MyHeritage** (sčítání 1921) bez předplatného ukážou jen jména a roky – stačí jako ukazatel, kde hledat.
+  Zúžit výsledky podle místa jde jen ručním výběrem z nabídky míst (adresa ani automaticky psaný formulář místo
+  nevezmou) – ať to udělá uživatel a pošle adresu výsledků.
+- **Vytěž celou domácnost**, ne jen hledanou osobu: všechny osoby s vztahem, daty a místem narození, sloupce o sňatku
+  a ovdovění. Projdi i ostatní domy obce se stejným příjmením a dům rodiny manželky.
+- **Potom dohledej křty.** Vztah ze sčítání („syn“, „sestra přednosty“) je doložený jen k přednostovi, rodiče
+  nejmenuje: sourozence předka zapiš jako doloženého až s křtem (oba rodiče výslovně), do té doby `prob`. Spolubydlící
+  stejného příjmení bez uvedeného vztahu je stopa do deníku, ne příbuzný.
+- Zápis: `druh` „S“ v `zaznamy.json`, klíč např. `horni_lhota_scitani_1921_cp12`, výřez celé domácnosti.
+
 ## Hroby a hřbitovy
 - Kde jsou předci pohřbeni, víš z rozhovoru s rodinou (Fáze 1). Fotky náhrobků (jména, data, rodná příjmení) jsou
   cenný pramen hlavně pro 20. století, kde matriky ještě nejsou přístupné.
@@ -380,6 +417,14 @@ A když osoba „chybí“ v očekávaných matrikách (stěhovala se se službo
   – jména **německy** („Johann Nowak“, „Wenzel Dworschak“). Výřez místa: `tools/anno_snap.py <docId> "<dotaz>" pracovni/x.jpg`.
   ALEX a annoshow jsou za Cloudflare – neobcházet.
 - Kramerius NK ČR (české noviny, ročenky, adresáře): `python3 -I tools/kramerius.py 'text_ocr:"Jan Novák" AND datum_begin:[1900 TO 1910]'`.
+- **Krajské Krameriusy** mívají víc volně přístupných regionálních titulů (krajské noviny, výroční zprávy škol)
+  a méně blokují než NK ČR – např. JVK České Budějovice (kramerius.cbvk.cz), SVK Plzeň (kramerius.svkpk.cz), MZK Brno.
+  API v7 bez přihlášení (přes `slusne.py curl`): hledání
+  `https://<server>/search/api/client/v7.0/search?q=text_ocr:"…"&fq=model:page`, text stránky
+  `…/api/client/v7.0/items/uuid:<pid>/ocr/text`, obrázek stránky `…/items/uuid:<pid>/image`, odkaz pro lidi
+  `https://<server>/uuid/<uuid>`. Fulltext neskloňuje – hledej i tvary v pádech („v Horní Lhotě“, „z Horní Lhoty“).
+  Tempo nejvýš 1 dotaz za 10 s a asi 10 za hodinu (po ~15 dotazech za 20 minut přišlo 403 na hodinu). 403 u titulu
+  s licencí DNNT není blokace, jen nepřístupný dokument.
 - Vojenské schematismy: fulltext na archive.org (např. `militrschematis13kriegoog` = 1850).
 - **Vojáci 1. světové války – seznamy ztrát** (ANNO, plný text): `python3 -I tools/anno.py '"Příjmení Jméno"' 1914 1919 3 --snip --ztraty`
   (jen `vll` Verlustliste, `vlv` abecední rejstřík s číslem seznamu, `nvv` Nachrichten über Verwundete; jiné listy

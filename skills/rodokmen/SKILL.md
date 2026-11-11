@@ -112,6 +112,8 @@ Pravidla, která chrání kvalitu:
 - **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka).
 - **Čti celý zápis včetně okrajů** – pozdější poznámky o úmrtí, sňatku, legitimaci bývají nejcennější.
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
+  U **sčítání lidu** vytěž celou domácnost (i další domy stejného příjmení) a pak dohledej křty – sčítání rodiče
+  nejmenuje (`portaly.md` → Sčítání lidu).
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne
   „bey Hohenelbe“ = u Vrchlabí).
 - U úředníků, vojáků, lékařů, učitelů, farářů zkus noviny a ročenky (`portaly.md` → Noviny); pro 17. století soupis
@@ -160,10 +162,16 @@ tolik neubývají.
 - Pomocník píše jen do `pracovni/pom_<větev>/`, **do `data/` nikdy**. Zapisuješ ty; výstupy nemaž, dokud nejsou vytěžené.
 - **Jejich čtení vždy ověř sám na snímku** (`python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over`, zlomky
   0–1, rozdělí zápis na dvě čitelné poloviny), než ho zapíšeš jako `doc`. Uživateli to vysvětli správně: je to stejný
-  model, jde o princip čtyř očí – pomocník nemá kontext (dvě rodiny stejného jména ve vsi).
+  model, jde o princip čtyř očí – pomocník nemá kontext (dvě rodiny stejného jména ve vsi). Po větším kole si před
+  zápisem prohlédni všechny nové výřezy pohromadě (`magick montage vyrezy/<klíč>.jpg … -geometry +6+6 pracovni/montaz.jpg`)
+  – špatně zvolený výřez nebo zápis jiné osoby je tak vidět hned.
+- Nové osoby ať pomocník ve výsledku označí **dočasnými odkazy** (`nova1`, `nova2` – s otcem, matkou, manželem),
+  ne odhadnutými čísly osob; čísla a zařazení do `P`/`SIDE` určíš ty při zápisu.
 - Na špatně čitelné knihy (kurent 1. poloviny 19. století, vybledlé snímky) pomocníky nepouštěj, nebo jim dej přesný
-  snímek; ARON a Porta fontium zvládají dobře. Prohlížeč může mít najednou jen jeden pomocník, proto dávej přednost
-  nástrojům bez prohlížeče.
+  snímek; ARON a Porta fontium zvládají dobře. Prohlížeč může mít najednou jen jeden pomocník (Claude in Chrome má
+  pro všechny jednu skupinu karet – souběžní pomocníci si zavírají karty a ztrácejí rozpracované hledání), proto dávej
+  přednost nástrojům bez prohlížeče. Z prohlížeče ať čte a ukládá zápis přiblížený na 100 % – z přehledového
+  zmenšení (třetina rozlišení) vznikají chybná čtení.
 
 ### Kdy přestat
 Linie končí, když matriky mlčí (nemanželské dítě bez otce, shořelé knihy, chybějící svazky) nebo když jsi

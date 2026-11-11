@@ -41,6 +41,8 @@ LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
     "digi.nacr.cz": (4.0, 4.0),      # Národní archiv (policejní přihlášky) – po pár rychlých kartách přiškrcuje podle IP
     "aron.vychodoceskearchivy.cz": (2.0, 2.0),   # ARON: celý sken (2–4 MB) jedním požadavkem; dlaždice imgx.… dál 0,1 s
     "portafontium.eu": (10.0, 10.0), # SOA Plzeň – robots.txt „Crawl-delay: 10“ (snímek IIIF je jeden požadavek)
+    "kramerius.cbvk.cz": (10.0, 10.0),   # krajské Krameriusy (JVK, SVK Plzeň): po ~15 dotazech za 20 min 403 na hodinu
+    "kramerius.svkpk.cz": (10.0, 10.0),
 }
 ZAKAZ = {                            # konec názvu webu: (cesty povolené skriptům, hláška pro ostatní)
     suffix: (re.compile(r"/actapublica/matrika/hledani"),

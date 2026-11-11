@@ -13,10 +13,13 @@ doc,q,out=sys.argv[1:4]; page=sys.argv[4] if len(sys.argv)>4 else None
 mode=sys.argv[5] if len(sys.argv)>5 else 'ctx'; w=sys.argv[6] if len(sys.argv)>6 else '1400'
 u='https://anno.onb.ac.at/anno-suche/rest/search/snippet?'+urllib.parse.urlencode({'documentId':doc,'query':q})
 d=json.load(urllib.request.urlopen(u,timeout=90))
-for sp in d['snippetPages']:
+# u části titulů (např. abecední rejstříky seznamů ztrát) API výřezy stránek nevrací – bez „snippetPages“
+for sp in d.get('snippetPages') or []:
     if page and str(sp['page'])!=page and sp['pageLabel']!=page: continue
+    if not sp.get('snippets'): continue
     s=sp['snippets'][0]; url=s['imageURL']
     m=re.search(r'iiif=(/[^/]+/[^/]+)/(\d+),(\d+),(\d+),(\d+)/',url)
+    if not m: continue
     base,x,y,ww,hh=m.group(1),*map(int,m.groups()[1:])
     W,H=s['imageWidth'],s['imageHeight']
     if mode=='full': reg='full'
@@ -26,3 +29,6 @@ for sp in d['snippetPages']:
     url2=url.split('&iiif=')[0]+f'&iiif={base}/{reg}/{w},/0/default.jpg'
     open(out,'wb').write(urllib.request.urlopen(url2,timeout=120).read())
     print('saved',out,'page',sp['page'],sp['openURL']); break
+else:
+    sys.exit(f"ANNO pro dokument {doc} a dotaz {q!r} nevrátil výřez stránky"+(f" {page}" if page else "")+
+             " – zkus jiný tvar dotazu nebo stránku otevři v prohlížeči (anno.onb.ac.at, adresa z anno.py).")

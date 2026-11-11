@@ -13,7 +13,8 @@ Použití (z kořene projektu `python3 -I tools/portafontium.py …`, na Windows
                                              -> snímek v plném rozlišení (IIIF, jeden požadavek); „nahled“ = 1/4;
                                                 x0,y0,x1,y1 = jen výřez (zlomky 0..1)
   portafontium.py link <kniha> <snímek>      -> trvalý odkaz na snímek (pole „odkaz“ v zaznamy.json)
-  portafontium.py svazek <kniha>             -> zapíše svazek do data/svazky.json (klíč pf_<kniha>)
+  portafontium.py svazek <kniha> [vypis]     -> zapíše svazek do data/svazky.json (klíč pf_<kniha>, přes zapis.py –
+                                                změní jen tu položku); „vypis“ = jen vypíše, nic nezapíše
 Snímek = pořadové číslo náhledu v prohlížeči portálu (1, 2, 3…). Stránky knih se ukládají do pracovni/.cache_pf/.
 Ber ohled na server: stahuj jen snímky, které čteš.
 """
@@ -237,18 +238,20 @@ def zkrat(s, n=300):
     return s if len(s) <= n else s[:n].rsplit(" ", 1)[0] + " …"
 
 
-def svazek(kniha):
+def svazek(kniha, jen_vypsat=False):
     kniha, fields, scans, _ = info(kniha)
-    path = os.path.join(ROOT, "data", "svazky.json")
-    d = json.load(open(path, encoding="utf-8-sig")) if os.path.exists(path) else {}
     sig = fields.get("Signatura", kniha)
     popis = "; ".join(x for x in (fields.get("Místo", ""), fields.get("Text desky", "")) if x)
-    d[f"pf_{kniha}"] = {"archiv": "SOA Plzeň – Sbírka matrik západních Čech", "portal": "Porta fontium",
-                        "svazek": f"{sig}, {fields.get('Typ', '')}".strip(", "), "popis": popis[:300],
-                        "snimku": len(scans), "url": f"{BASE}/register/{ARCHIV}/{kniha}"}
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(d, f, ensure_ascii=False, indent=1)
-    print(f"pf_{kniha} ->", d[f"pf_{kniha}"]["svazek"])
+    klic = f"pf_{kniha}"
+    polozka = {"archiv": "SOA Plzeň – Sbírka matrik západních Čech", "portal": "Porta fontium",
+               "svazek": f"{sig}, {fields.get('Typ', '')}".strip(", "), "popis": popis[:300],
+               "snimku": len(scans), "url": f"{BASE}/register/{ARCHIV}/{kniha}"}
+    if jen_vypsat:
+        print(klic, json.dumps(polozka, ensure_ascii=False, indent=1))
+        return
+    import zapis   # jen ta jedna položka, formát souboru zůstane (tools/zapis.py)
+    zapis.zapis("svazky", klic, polozka)
+    print(klic, "->", polozka["svazek"])
 
 
 if __name__ == "__main__":
@@ -289,6 +292,6 @@ if __name__ == "__main__":
     elif a[0] == "link" and len(a) > 2:
         print(BASE + scan(a[1], a[2])[3])
     elif a[0] == "svazek" and len(a) > 1:
-        svazek(a[1])
+        svazek(a[1], "vypis" in a[2:])
     else:
         sys.exit(__doc__)
