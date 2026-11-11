@@ -56,9 +56,10 @@ hledání), krátce a jednou:
 > stalo). A pomůže to i nám: čím víc lidí přispívá, tím víc knih z našich vsí bude zmapovaných, až půjdeme o generaci
 > dál. Přepisy navíc najdou vzdálení příbuzní, kteří hledají stejné předky.
 >
-> Potřebuju k tomu účet GitHub (zdarma, jednou se přihlásíš). Mám to pak dělat sám na konci každého kola?
+> Nic k tomu nepotřebuješ – pošlu to přes sběrnou schránku Mapy matrik (máš-li účet GitHub, můžu i pod ním). Mám to pak
+> dělat sám na konci každého kola?
 > A chceš být u přepisů uvedený, nebo anonymně? Můžu napsat tvoje jméno, přezdívku, nebo nic (jen že četl Claude).
-> Pull request ale vždycky ponese název tvého účtu GitHub – kdo nechce být dohledatelný, zvolí si v něm přezdívku.
+> (Kdybych posílal pod tvým účtem GitHub, bude u příspěvku vidět jeho název; přes schránku žádný účet vidět není.)
 
 Jméno ani přezdívku nenavrhuj sám z dat rodokmenu.
 
@@ -67,7 +68,8 @@ v Liblínu 01“) – je to nejlepší důvod.
 
 Odpověď zapiš: `python3 -I tools/sdileni.py souhlas ano "Jméno nebo přezdívka"`, anonymně `souhlas ano` (bez jména),
 nebo `souhlas ne`. Při **NE** se už
-neptej (uživatel může názor změnit sám). Účet GitHub: `gh auth login` (dej uživateli s `!`); bez něj sdílení vynech.
+neptej (uživatel může názor změnit sám). Účet GitHub není potřeba: bez přihlášeného `gh` jde odeslání sběrnou
+schránkou Mapy matrik (`SCHRANKA` v nástroji), s ním pod uživatelovým účtem.
 
 ## Odeslání (na konci kola, jen při ANO)
 
@@ -78,8 +80,9 @@ Ve stejné chvíli jako uložení do gitu po větším kroku:
    věk, příčina smrti, strana) a `jistota` (vysoká / střední / nízká) – **jen z `_orig` a `_shrnuti`**, nejisté místo
    `[?]`, bez ztotožnění osob a závěrů rodokmenu. Zápisy bez přepisu tam nejsou.
 2. `SDILENI_MODEL=<id modelu>/<effort> python3 -I tools/sdileni.py odeslat` (např. `claude-opus-5-5/high`; index chce
-   vědět, čím se četlo). Nástroj založí fork, přidá body do mapy a zápisy do indexu (jen nové řádky, kontrolu indexu
-   spustí sám) a otevře dva pull requesty.
+   vědět, čím se četlo). S přihlášeným `gh` nástroj založí fork, přidá body do mapy a zápisy do indexu (jen nové řádky,
+   kontrolu indexu spustí sám) a otevře dva pull requesty; bez něj pošle totéž jedním požadavkem sběrné schránce
+   Mapy matrik, která PR založí sama (formát a lhůty hlídá i ona).
 3. Uživateli řekni **jednou větou** výsledek s odkazy („Nasdílel jsem 12 bodů do Mapy matrik a 5 zápisů do indexu
    matrik: …“). Neptej se znovu.
 

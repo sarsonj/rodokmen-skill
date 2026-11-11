@@ -8,7 +8,8 @@ Použití (z kořene projektu `python3 -I tools/sdileni.py …`):
   sdileni.py prehled                     -> co je nového k nasdílení, souhlas uživatele (data/sdileni.json)
   sdileni.py souhlas <ano|ne> [jméno]    -> zapíše rozhodnutí uživatele (jméno nebo přezdívka v indexu; bez něj anonymně)
   sdileni.py navrh                       -> pracovni/sdileni/: body pro mapu a zápisy pro index (osoby a ostatní doplní Claude)
-  sdileni.py odeslat [mapa|index]        -> pull request do mapy a/nebo indexu (gh, účet GitHub); jen se souhlasem
+  sdileni.py odeslat [mapa|index]        -> pull request do mapy a/nebo indexu; s účtem GitHub (gh) pod ním,
+                                            bez něj přes sběrnou schránku Mapy matrik; jen se souhlasem
 
 Čtení jde přes brzdu (tools/slusne.py) a ukládá se na den do ~/.cache/rodokmen_sdileni/. Ven jde jen to, co uživatel
 schválí: orientační body (bez jmen) a přepisy zápisů starších zákonných lhůt (narození 100 let, sňatky a úmrtí 75 let),
@@ -21,6 +22,7 @@ import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abs
 MAPA = "https://ondrnovy.github.io/mapa-matrik/v1"
 INDEX = "https://pe-pan.github.io/matriky-index"
 REPO_MAPA, REPO_INDEX = "ondrnovy/mapa-matrik", "pe-pan/matriky-index"
+SCHRANKA = os.environ.get("SDILENI_SCHRANKA", "https://mapa-matrik-schranka.DOPLNIT.workers.dev")   # sběrná schránka (bez účtu GitHub)
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache"), "rodokmen_sdileni")
 DEN = 24 * 3600
 LHUTA = {"N": 100, "O": 75, "Z": 75}   # lhůty indexu matrik (jeho kontrola.py); úmrtí přísněji než archivy (30 let)
@@ -383,7 +385,8 @@ def odeslat_mapu(body, klic):
     return odeslane
 
 
-def odeslat_index(n):
+def pripravene_zapisy(n):
+    """Zápisy z pracovni/sdileni/zapisy.jsonl s doplněnými poli, sloupec cetl a model."""
     path = os.path.join(NAVRH, "zapisy.jsonl")
     if not os.path.exists(path):
         sys.exit("Nejdřív sdileni.py navrh a doplň osoby/ostatni.")
@@ -395,7 +398,11 @@ def odeslat_index(n):
     if not re.match(r"^[a-z][a-z0-9.-]+/[a-z0-9]+$", model):
         sys.exit("Nastav SDILENI_MODEL=<id modelu>/<effort> (např. claude-opus-5-5/high) – index chce, čím se četlo.")
     kdo = f"{n['jmeno']} + " if n.get("jmeno") else ""   # bez jména = anonymně (jen model a datum)
-    cetl = f"{kdo}{model} (z rodokmenu, přeneseno {datetime.date.today().isoformat()})"
+    return zapisy, f"{kdo}{model} (z rodokmenu, přeneseno {datetime.date.today().isoformat()})", model
+
+
+def odeslat_index(n):
+    zapisy, cetl, model = pripravene_zapisy(n)
     d, vetev, login = klon(REPO_INDEX)
     hlav = ["snimek", "datum", "typ", "obec", "osoby", "ostatni", "jistota", "cetl", "odkaz"]
     sv = {kniha_z_url(s.get("url")): s for s in svazky().values() if kniha_z_url(s.get("url"))}
@@ -436,11 +443,71 @@ def odeslat_index(n):
     return [z["klic"] for z in zapisy]
 
 
+def ma_github():
+    if not shutil.which("gh"):
+        return False
+    return subprocess.run(["gh", "auth", "status"], capture_output=True).returncode == 0
+
+
+def odeslat_schrankou(n, body, klic, se_zapisy):
+    """Bez účtu GitHub: body a zápisy jedním požadavkem do sběrné schránky Mapy matrik, ta založí PR."""
+    sv = svazky()
+    data = {"nastroj": "rodokmen/sdileni.py", "body": [], "zapisy": []}
+    poslane_body = []
+    for b in body:
+        s = sv.get(b["svazek"]) or {}
+        k = kniha_z_url(s.get("url"))
+        if not k or not k[0]:
+            continue
+        p = {x: b[x] for x in ("scan", "type", "year", "year_to", "months", "page", "place", "letters", "note") if b.get(x) not in (None, "")}
+        p.update(archive=k[0], portal_id=k[2], signature=(s.get("svazek") or k[2]).split(",")[0].strip()[:120], url=s.get("url"))
+        if str(s.get("snimku", "")).isdigit():
+            p["scans"] = int(s["snimku"])
+        data["body"].append(p)
+        poslane_body.append(klic(b))
+    poslane_zapisy = []
+    if se_zapisy:
+        zapisy, cetl, _ = pripravene_zapisy(n)
+        nazvy = {kniha_z_url(s.get("url")): s for s in sv.values() if kniha_z_url(s.get("url"))}
+        for z in zapisy:
+            s = next((v for k, v in nazvy.items() if k[1] == z["archiv"] and k[2] == z["kniha"]), {})
+            data["zapisy"].append({**{k: z[k] for k in ("archiv", "kniha", "snimek", "datum", "typ", "obec", "osoby", "ostatni", "jistota")},
+                                   "cetl": cetl, "nazev": (s.get("svazek") or "")[:200], "url": s.get("url", "")})
+            poslane_zapisy.append(z["klic"])
+    if not data["body"] and not data["zapisy"]:
+        return [], []
+    slusne.pockej(SCHRANKA, obrazek=False)
+    req = urllib.request.Request(f"{SCHRANKA}/v1/prispevek", data=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", "User-Agent": slusne.UA}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            vysledek = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        sys.exit(f"Schránka odmítla příspěvek ({e.code}): {e.read().decode('utf-8', 'replace')[:300]}")
+    except OSError as e:
+        sys.exit(f"Schránka neodpovídá ({e}) – zkus to příště, nic se neztratilo.")
+    for k, url in vysledek.items():
+        if url:
+            print(f"{'Mapa matrik' if k == 'mapa' else 'Index matrik'}: {url}")
+    return poslane_body, poslane_zapisy
+
+
 def odeslat(co=None):
     n = nastaveni()
     if n.get("souhlas") != "ano":
         sys.exit("Bez souhlasu uživatele nic neodesílám (sdileni.py prehled, reference/sdileni.md).")
     body, _, _, klic = nove(n)
+    if not ma_github():   # bez účtu GitHub (nebo bez gh) přes sběrnou schránku
+        zapisy_jsou = co in (None, "index") and os.path.exists(os.path.join(NAVRH, "zapisy.jsonl"))
+        b, z = odeslat_schrankou(n, body if co in (None, "mapa") else [], klic, zapisy_jsou)
+        n["odeslano"]["body"] += b
+        n["odeslano"]["zapisy"] += z
+        uloz_nastaveni(n)
+        if zapisy_jsou:
+            os.remove(os.path.join(NAVRH, "zapisy.jsonl"))
+        if co is None and os.path.exists(FRONTA):
+            os.remove(FRONTA)
+        return 0
     if co in (None, "mapa") and body:
         n["odeslano"]["body"] += odeslat_mapu(body, klic)
         uloz_nastaveni(n)
