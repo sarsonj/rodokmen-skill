@@ -56,13 +56,17 @@ hledání), krátce a jednou:
 > stalo). A pomůže to i nám: čím víc lidí přispívá, tím víc knih z našich vsí bude zmapovaných, až půjdeme o generaci
 > dál. Přepisy navíc najdou vzdálení příbuzní, kteří hledají stejné předky.
 >
-> Potřebuju k tomu účet GitHub (zdarma, jednou se přihlásíš). Mám to pak dělat sám na konci každého kola? A jak tě
-> mám v indexu uvést (jméno, přezdívka)?
+> Potřebuju k tomu účet GitHub (zdarma, jednou se přihlásíš). Mám to pak dělat sám na konci každého kola?
+> A chceš být u přepisů uvedený, nebo anonymně? Můžu napsat tvoje jméno, přezdívku, nebo nic (jen že četl Claude).
+> Pull request ale vždycky ponese název tvého účtu GitHub – kdo nechce být dohledatelný, zvolí si v něm přezdívku.
+
+Jméno ani přezdívku nenavrhuj sám z dat rodokmenu.
 
 Je-li v tom kole něco z mapy nebo indexu opravdu využité, řekni to konkrétně („dnes nám mapa ušetřila listování
 v Liblínu 01“) – je to nejlepší důvod.
 
-Odpověď zapiš: `python3 -I tools/sdileni.py souhlas ano "Jméno Příjmení"` nebo `souhlas ne`. Při **NE** se už
+Odpověď zapiš: `python3 -I tools/sdileni.py souhlas ano "Jméno nebo přezdívka"`, anonymně `souhlas ano` (bez jména),
+nebo `souhlas ne`. Při **NE** se už
 neptej (uživatel může názor změnit sám). Účet GitHub: `gh auth login` (dej uživateli s `!`); bez něj sdílení vynech.
 
 ## Odeslání (na konci kola, jen při ANO)

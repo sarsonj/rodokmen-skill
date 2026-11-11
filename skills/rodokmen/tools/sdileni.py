@@ -6,7 +6,7 @@ Použití (z kořene projektu `python3 -I tools/sdileni.py …`):
   sdileni.py bod <klíč svazku> <snímek> [rok=1785] [rok_do=1787] [druh=N] [strana=fol. 12] [ves=Lhota] [rejstrik=A–C]
                                          -> orientační bod do fronty (rok, ves, začátek rejstříku na snímku, který čteš)
   sdileni.py prehled                     -> co je nového k nasdílení, souhlas uživatele (data/sdileni.json)
-  sdileni.py souhlas <ano|ne> [jméno]    -> zapíše rozhodnutí uživatele (jméno = jak chce být uveden v indexu)
+  sdileni.py souhlas <ano|ne> [jméno]    -> zapíše rozhodnutí uživatele (jméno nebo přezdívka v indexu; bez něj anonymně)
   sdileni.py navrh                       -> pracovni/sdileni/: body pro mapu a zápisy pro index (osoby a ostatní doplní Claude)
   sdileni.py odeslat [mapa|index]        -> pull request do mapy a/nebo indexu (gh, účet GitHub); jen se souhlasem
 
@@ -266,7 +266,8 @@ def prehled():
     stav = {None: "NEROZHODNUTO – zeptej se uživatele jednou (reference/sdileni.md → Jak se zeptat)",
             "ano": "ANO – odešli na konci kola (sdileni.py navrh, odeslat) a řekni jednou větou co",
             "ne": "NE – neodesílej a znovu se neptej"}
-    print(f"Souhlas: {stav.get(n.get('souhlas'), n.get('souhlas'))}" + (f"; uvádět jako „{n['jmeno']}“" if n.get("jmeno") else ""))
+    kdo = f"; uvádět jako „{n['jmeno']}“" if n.get("jmeno") else ("; v indexu anonymně" if n.get("souhlas") == "ano" else "")
+    print(f"Souhlas: {stav.get(n.get('souhlas'), n.get('souhlas'))}{kdo}")
     return 0
 
 
@@ -275,8 +276,8 @@ def souhlas(odpoved, jmeno=""):
         sys.exit("souhlas ano | ne")
     n = nastaveni()
     n["souhlas"] = odpoved
-    if jmeno:
-        n["jmeno"] = jmeno
+    if odpoved == "ano":
+        n["jmeno"] = jmeno   # prázdné = anonymně
     uloz_nastaveni(n)
     print(f"Zapsáno do data/sdileni.json: {odpoved}")
     return 0
@@ -390,12 +391,11 @@ def odeslat_index(n):
     chybi = [z["klic"] for z in zapisy if not (z.get("datum") and z.get("osoby") and z.get("jistota"))]
     if chybi:
         sys.exit(f"V pracovni/sdileni/zapisy.jsonl chybí datum/osoby/jistota u: {', '.join(chybi[:5])}…")
-    if not n.get("jmeno"):
-        sys.exit("Chybí jméno pro sloupec cetl (sdileni.py souhlas ano \"Jméno Příjmení\").")
     model = os.environ.get("SDILENI_MODEL", "")   # např. claude-opus-5-5/high – index ho vyžaduje (README indexu, Kdo četl)
     if not re.match(r"^[a-z][a-z0-9.-]+/[a-z0-9]+$", model):
         sys.exit("Nastav SDILENI_MODEL=<id modelu>/<effort> (např. claude-opus-5-5/high) – index chce, čím se četlo.")
-    cetl = f"{n['jmeno']} + {model} (z rodokmenu, přeneseno {datetime.date.today().isoformat()})"
+    kdo = f"{n['jmeno']} + " if n.get("jmeno") else ""   # bez jména = anonymně (jen model a datum)
+    cetl = f"{kdo}{model} (z rodokmenu, přeneseno {datetime.date.today().isoformat()})"
     d, vetev, login = klon(REPO_INDEX)
     hlav = ["snimek", "datum", "typ", "obec", "osoby", "ostatni", "jistota", "cetl", "odkaz"]
     sv = {kniha_z_url(s.get("url")): s for s in svazky().values() if kniha_z_url(s.get("url"))}
