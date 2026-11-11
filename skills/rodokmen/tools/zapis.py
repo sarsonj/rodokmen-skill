@@ -178,13 +178,19 @@ def main():
     if len(args) != 3 or args[0] not in {*SEZNAMY, *SLOVNIKY}:
         sys.exit(__doc__)
     nazev, klic, vstup = args
-    path = os.path.join(ROOT, "data", nazev + ".json")
     try:
         obj = json.load(sys.stdin if vstup == "-" else open(vstup, encoding="utf-8-sig"))
     except (OSError, ValueError) as e:
         sys.exit(f"Vstup {vstup} není platný JSON: {e}")
+    zapis(nazev, klic, obj, sloucit)
+
+
+def zapis(nazev, klic, obj, sloucit=False):
+    """Zapíše jednu položku do data/<nazev>.json, zbytek souboru nechá doslova. Volají ho i jiné nástroje
+    (`aron_img.py`, `portafontium.py`, `ebadatelna.py` u příkazu svazek)."""
     if not isinstance(obj, dict):
         sys.exit("Vstup musí být jeden objekt JSON ({…}).")
+    path = os.path.join(ROOT, "data", nazev + ".json")
     seznam = nazev in SEZNAMY
     if seznam and obj.setdefault(SEZNAMY[nazev], klic) != klic:
         sys.exit(f"Klíč „{klic}“ nesedí s „{SEZNAMY[nazev]}“ ve vstupu („{obj[SEZNAMY[nazev]]}“).")
