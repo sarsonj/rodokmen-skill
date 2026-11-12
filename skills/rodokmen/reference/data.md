@@ -55,6 +55,27 @@ P = {
 - `druh`: N, O, Z, I (index/rejstřík), S (sčítání), J (jiný pramen).
 - `datum` jako v češtině („14. 2. 1890“, „3/1867“, „1797“) – web podle něj řadí.
 
+### Příčina úmrtí
+
+U zápisu druhu `Z` může být pole `pricina_umrti`. Zdroj a datum patří k tomuto zápisu; příčinu nevkládej bez dokladu do osobních údajů. Například (smyšlený údaj):
+
+```json
+{"pricina_umrti": {"stav": "uvedena", "puvodni": "Altersschwäche", "cesky": "stařecká slabost", "jistota": "doc", "poznamka": "Dobový výraz, nikoli dnešní diagnóza."}}
+```
+
+| `stav` | Význam |
+|---|---|
+| `uvedena` | Příčina je zapsaná. Vyplň `puvodni`, `cesky` a `jistota`: `doc` = bezpečné čtení, `prob` = nejisté čtení. |
+| `necitelna` | Údaj tam je, ale nejde bezpečně přečíst. V `puvodni` lze nechat čitelnou část s `[…]`; `cesky` nech prázdné. |
+| `nevyplnena` | Rubrika existuje, ale je prázdná. |
+| `bez_rubriky` | Matrika rubriku pro příčinu nemá. |
+
+U posledních dvou stavů `puvodni` a `cesky` vynech nebo nech prázdné; stačí například `{"stav": "bez_rubriky"}`. Volitelná `poznamka` vysvětlí nejasnost. Jistota čtení není potvrzení správnosti tehdejší diagnózy.
+
+Původní výraz opiš doslova, nejistá místa označ `(?)` a zachovej sloupec v obrazu i přepisu. Příčinu neodvozuj z věku či sousedních zápisů a dobový termín nenahrazuj odhadem moderní nemoci. Pro novější citlivé údaje platí `soukromi.md`.
+
+Pole je nepovinné kvůli starším datům. Když chybí, znamená to „zatím nezpracováno“, nikoli „bez rubriky“; web nic nedoplňuje. Pokud je vyplněné, zobrazí se u zápisu na stránce osoby i na detailu zápisu.
+
 ## `svazky.json`
 `{"1a0b2337": {"archiv": "SOA Zámrsk – Sbírka matrik…", "portal": "ARON", "svazek": "N Holice 1880–1900, sign. …",
 "popis": "obce", "url": "odkaz na svazek"}}` – u ARON zapisuje `aron_img.py <apu> svazek`.

@@ -1,0 +1,20 @@
+---
+const { cause } = Astro.props;
+const states = {
+  necitelna: 'údaj nelze bezpečně přečíst',
+  nevyplnena: 'rubrika není vyplněna',
+  bez_rubriky: 'matrika nemá rubriku pro příčinu',
+};
+---
+{cause && (
+  <p class="small">
+    <strong>Příčina úmrtí:</strong>{' '}
+    {cause.stav === 'uvedena' ? (
+      <>{cause.cesky} <span class="muted">(v matrice: {cause.puvodni})</span></>
+    ) : (
+      <>{states[cause.stav]}{cause.puvodni && <span class="muted"> (částečné čtení: {cause.puvodni})</span>}</>
+    )}
+    {cause.jistota === 'prob' && <span class="muted"> — nejisté čtení</span>}
+    {cause.poznamka && <span class="muted"> — {cause.poznamka}</span>}
+  </p>
+)}

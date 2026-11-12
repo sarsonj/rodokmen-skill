@@ -94,6 +94,26 @@ def main():
              | {r for h in ns.get("HYPOTEZY", []) if isinstance(h, dict) for r in h.get("zaznamy", [])})
     for z in zaz:
         k = z.get("klic", "?")
+        if "pricina_umrti" in z:
+            cause = z["pricina_umrti"]
+            if z.get("druh") != "Z" or not isinstance(cause, dict):
+                err.append(f"zápis {k}: příčina úmrtí musí být objekt u zápisu druhu Z")
+            else:
+                stav = cause.get("stav")
+                if stav not in ("uvedena", "necitelna", "nevyplnena", "bez_rubriky"):
+                    err.append(f"zápis {k}: neznámý stav příčiny úmrtí '{stav}'")
+                for f in ("puvodni", "cesky", "jistota", "poznamka"):
+                    if f in cause and not isinstance(cause[f], str):
+                        err.append(f"zápis {k}: příčina úmrtí – '{f}' musí být text")
+                if stav == "uvedena" and not all(isinstance(cause.get(f), str) and cause[f].strip()
+                                                 for f in ("puvodni", "cesky", "jistota")):
+                    err.append(f"zápis {k}: uvedená příčina úmrtí potřebuje původní výraz, český překlad a jistotu")
+                if "jistota" in cause and cause["jistota"] not in ("doc", "prob"):
+                    err.append(f"zápis {k}: jistota čtení příčiny úmrtí musí být 'doc' nebo 'prob'")
+                if stav in ("necitelna", "nevyplnena", "bez_rubriky") and cause.get("cesky"):
+                    err.append(f"zápis {k}: příčina úmrtí ve stavu '{stav}' nemá mít český překlad")
+                if stav in ("nevyplnena", "bez_rubriky") and cause.get("puvodni"):
+                    err.append(f"zápis {k}: příčina úmrtí ve stavu '{stav}' nemá mít původní výraz")
         for f in ("klic", "druh", "datum", "nazev", "shrnuti"):
             if not z.get(f):
                 err.append(f"zápis {k}: chybí pole '{f}'")
@@ -252,6 +272,11 @@ def main():
         roky = [int(y) for y in re.findall(r"\b1[5-9]\d\d|20\d\d\b", p.get("y", "") + " " + text)]
         texty.append((f"osoba {k}", text + (f" {hranice}" if roky and min(roky) >= 1870 or k < 8 else "")))
     texty += [(f"boční příbuzný {s.get('n')}", s.get("n", "") + " " + s.get("t", "")) for s in SIDE]
+    for z in zaz:
+        cause = z.get("pricina_umrti")
+        if isinstance(cause, dict):
+            text = " ".join(str(cause.get(f, "")) for f in ("puvodni", "cesky", "poznamka"))
+            texty.append((f"příčina úmrtí {z.get('klic')}", text + " " + str(z.get("datum", ""))))
     for f in ("zajimavosti.md", "pribeh.md"):
         if os.path.exists(os.path.join(DATA, f)):
             obsah = open(os.path.join(DATA, f), encoding="utf-8-sig").read()

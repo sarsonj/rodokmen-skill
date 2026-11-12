@@ -53,7 +53,7 @@ def record_rows():
         key = z["klic"]
         rows.append(dict(
             key=key, kind=z.get("druh", "J"), date=z.get("datum", ""), title=z.get("nazev", key),
-            summary=z.get("shrnuti", ""), scan=z.get("snimek", ""),
+            summary=z.get("shrnuti", ""), scan=z.get("snimek", ""), cause=z.get("pricina_umrti"),
             archive=sv.get("archiv", ""), volume=sv.get("svazek", ""), vdesc=sv.get("popis", ""),
             portal=sv.get("portal", "archivu"), url=z.get("odkaz") or sv.get("url", ""),
             img=os.path.exists(os.path.join(VYREZY, key + ".jpg")),
