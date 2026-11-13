@@ -5,5 +5,49 @@ import { Content } from '../generated/denik.md';
 <Base title="Výzkumný deník" wide>
   <h1>Výzkumný deník</h1>
   <p class="lead">Každé hledání v matrikách – kde, co, s jakým výsledkem. I neúspěšná hledání jsou důležitá: říkají, kde už hledat nemusíme.</p>
-  <div class="table-box small"><Content /></div>
+  <div class="denik-nastroje">
+    <input type="search" id="denik-hledat" placeholder="Hledat v deníku (jméno, obec, kniha, rok…)" aria-label="Hledat v deníku" />
+    <button type="button" id="denik-razeni" class="btn" aria-live="polite"></button>
+    <span id="denik-pocet" class="small muted"></span>
+  </div>
+  <div class="table-box small" id="denik-tabulka"><Content /></div>
+  <style>
+    .denik-nastroje { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0 0 1rem; }
+    .denik-nastroje input { flex: 1 1 18rem; max-width: 32rem; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; }
+    .denik-nastroje button { cursor: pointer; font: inherit; }
+  </style>
+  <script>
+    const box = document.getElementById('denik-tabulka');
+    const tbody = box?.querySelector('tbody');
+    const input = document.getElementById('denik-hledat') as HTMLInputElement | null;
+    const btn = document.getElementById('denik-razeni') as HTMLButtonElement | null;
+    const pocet = document.getElementById('denik-pocet');
+    if (tbody && input && btn) {
+      const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const rows = [...tbody.rows].map((tr, i) => ({ tr, i, text: norm(tr.textContent ?? '') }));
+      const KEY = 'denik-razeni';
+      let nejnovejsi = true; // výchozí: nejnovější záznam nahoře
+      try { if (localStorage.getItem(KEY) === 'nejstarsi') nejnovejsi = false; } catch {}
+      const render = () => {
+        const q = norm(input.value.trim()).split(/\s+/).filter(Boolean);
+        const sorted = [...rows].sort((a, b) => nejnovejsi ? b.i - a.i : a.i - b.i);
+        let shown = 0;
+        for (const r of sorted) {
+          const ok = q.every((w) => r.text.includes(w));
+          r.tr.hidden = !ok;
+          if (ok) shown++;
+          tbody.appendChild(r.tr);
+        }
+        btn.textContent = nejnovejsi ? 'Řazení: nejnovější první ↓' : 'Řazení: nejstarší první ↑';
+        if (pocet) pocet.textContent = q.length ? `Nalezeno ${shown} z ${rows.length} záznamů` : `${rows.length} záznamů`;
+      };
+      btn.addEventListener('click', () => {
+        nejnovejsi = !nejnovejsi;
+        try { localStorage.setItem(KEY, nejnovejsi ? 'nejnovejsi' : 'nejstarsi'); } catch {}
+        render();
+      });
+      input.addEventListener('input', render);
+      render();
+    }
+  </script>
 </Base>
