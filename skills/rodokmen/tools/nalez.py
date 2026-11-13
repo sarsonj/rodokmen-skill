@@ -22,7 +22,7 @@ Vstup (napiš ho nástrojem Write do pracovni/):
   "ramecek": [[0, 0.30, 1, 0.62]],                        zlomky VÝŘEZU – kde přesně je čtený zápis
   "ramecek_pozn": "Zápis 1. 2. 1791, č. 108",
   "zaznam":  {"druh": "N|O|Z|S", "datum": "1. 2. 1791", "nazev": "Úmrtí Tomáše Příhody (1791)", "shrnuti": "…"},
-  "prepis":  {"orig": "[Datum] …", "cz": "…"},
+  "prepis":  {"orig": "[Datum] …", "cs": "…"},       překlad pod klíčem „cs“ (web čte orig a cs; „cz“ se přijme a uloží jako cs)
   "osoby":   [928, "Isidor Jenisch"],                     Kekulého čísla nebo jednoznačná část jména bočního příbuzného
   "denik":   {"zdroj": "…", "rozsah": "…", "hledano": "…", "vysledek": "…", "citace": "…"},   nepovinné
   "snimky_co": "zemřelí 1791, fol. 14, Tomáš Příhoda"     popis do data/snimky.tsv (výchozí: název zápisu)
@@ -113,8 +113,11 @@ def over(v, prepsat, zapis):
     if z["druh"] not in DRUHY:
         sys.exit(f"druh „{z['druh']}“ musí být jeden z {', '.join(sorted(DRUHY))} (narození, oddaní, zemřelí, sčítání).")
     p = v.get("prepis") or {}
-    if not (str(p.get("orig") or "").strip() and str(p.get("cz") or "").strip()):
-        sys.exit("V „prepis“ chybí „orig“ (doslovný přepis) nebo „cz“ (překlad) – každý zápis má mít obojí.")
+    if "cs" not in p and "cz" in p:   # dřívější vstupy psaly „cz“; web čte jen „cs“
+        p["cs"] = p.pop("cz")
+        v["prepis"] = p
+    if not (str(p.get("orig") or "").strip() and str(p.get("cs") or "").strip()):
+        sys.exit("V „prepis“ chybí „orig“ (doslovný přepis) nebo „cs“ (překlad) – každý zápis má mít obojí.")
     if any(x.get("klic") == klic for x in jload("zaznamy.json", [])) and not prepsat:
         sys.exit(f"Zápis „{klic}“ už v data/zaznamy.json je. Chceš-li ho nahradit, přidej --prepsat.")
     osoby = v.get("osoby") or []
@@ -184,7 +187,7 @@ def data(v):
     print("zápis, přepis …")
     zapis_json("zaznamy", klic, {"klic": klic, "svazek": svazek, "snimek": v.get("snimek", ""), "druh": z["druh"],
                                  "datum": z["datum"], "nazev": z["nazev"], "shrnuti": z["shrnuti"], "odkaz": odkaz})
-    zapis_json("prepisy", klic, {"orig": v["prepis"]["orig"], "cz": v["prepis"]["cz"]})
+    zapis_json("prepisy", klic, {"orig": v["prepis"]["orig"], "cs": v["prepis"]["cs"]})
     print("osoby …")
     for o in v["osoby"]:
         nastroj("zapis.py", "odkaz", o, klic)
