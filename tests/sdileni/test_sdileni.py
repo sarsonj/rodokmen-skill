@@ -31,6 +31,11 @@ ok(sdileni.odhad(body, 1805) == (20, "odhad mezi sn. 10 (1800) a 30 (1810)"), "i
 ok(sdileni.odhad(body, 1813)[0] == 40, "přímo z bodu (year_to)")
 ok(sdileni.odhad(body, 1700) is None, "mimo rozsah")
 ok(sdileni.slug("Nová Ves u Plzně") == "nova-ves-u-plzne", "slug")
+ok(sdileni.rozsah_svazku({"svazek": "N Holice 1880–1900, sign. 12"}) == {"N": "1880–1900"}, "rozsah z názvu")
+ok(sdileni.rozsah_svazku({"svazek": "Matrika zemřelých 1784-1830"}) == {"Z": "1784–1830"}, "rozsah z názvu, druh slovem")
+ok(sdileni.rozsah_svazku({"svazek": "N 1800–1820, O 1800–1830"}) == {}, "víc druhů = bez rozsahu")
+ok(sdileni.rozsah_svazku({"svazek": "Kožlany 21, Matrika oddaných"}) == {}, "bez let = bez rozsahu")
+ok(sdileni.rozsah_svazku({"roky": {"N": "1900–1905", "X": "1"}, "svazek": "Z 1700–1710"}) == {"N": "1900–1905"}, "pole roky má přednost")
 
 json.dump({"pf_k22": {"url": "https://www.portafontium.eu/register/soap-pn/kozlany-22", "svazek": "Kožlany 22, Matrika zemřelých"},
            "aron_x": {"url": "https://aron.vychodoceskearchivy.cz/apu/x"}}, open("data/svazky.json", "w"))

@@ -228,6 +228,18 @@ def bod(klic, snimek, *pole):
     return 0
 
 
+def rozsah_svazku(s):
+    """Roky knihy z katalogu ({"N": "1900–1905"}): pole `roky` ve svazky.json, jinak z názvu svazku s jedním druhem a rozsahem."""
+    if isinstance(s.get("roky"), dict):
+        return {k: str(v) for k, v in s["roky"].items() if k in ("N", "O", "Z") and re.fullmatch(r"\d{4}(\s*[–-]\s*\d{4})?", str(v))}
+    nazev = s.get("svazek") or ""
+    druhy = {d for d, vzor in (("N", r"narozen|^N\s"), ("O", r"oddan|^O\s"), ("Z", r"zemřel|^Z\s")) if re.search(vzor, nazev, re.I)}
+    roky = re.findall(r"(?<!\d)(1\d{3})\s*[–-]\s*(1\d{3})(?!\d)", nazev)
+    if len(druhy) == 1 and len(roky) == 1 and roky[0][0] <= roky[0][1]:
+        return {druhy.pop(): f"{roky[0][0]}–{roky[0][1]}"}
+    return {}
+
+
 def rok_z(datum):
     roky = re.findall(r"(?<!\d)(1[0-9]{3})(?!\d)", datum or "")
     return int(roky[-1]) if roky else None
@@ -368,9 +380,13 @@ def odeslat_mapu(body, klic):
             continue
         vol["points"].append(p)
         vol["points"].sort(key=lambda q: q["scan"])
-        if p.get("type") in ("N", "O", "Z") and p.get("year"):   # rozsah knihy aspoň podle přečtených bodů
-            roky = [int(r) for r in re.findall(r"\d{4}", vol["records"].get(p["type"], ""))] + [p["year"]]
-            vol["records"][p["type"]] = f"{min(roky)}–{max(roky)}" if min(roky) != max(roky) else str(min(roky))
+        rozsahy = rozsah_svazku(s)   # rozsah knihy z katalogu, jinak aspoň podle přečtených bodů
+        if p.get("type") in ("N", "O", "Z") and p.get("year"):
+            rozsahy.setdefault(p["type"], str(p["year"]))
+            rozsahy[p["type"]] += f" {p['year']}"
+        for typ, r in rozsahy.items():
+            roky = [int(x) for x in re.findall(r"\d{4}", vol["records"].get(typ, "") + " " + r)]
+            vol["records"][typ] = f"{min(roky)}–{max(roky)}" if min(roky) != max(roky) else str(min(roky))
         with open(path, "w", encoding="utf-8") as f:
             json.dump(vol, f, ensure_ascii=False, indent=1)
             f.write("\n")
@@ -463,6 +479,8 @@ def odeslat_schrankou(n, body, klic, se_zapisy):
         p.update(archive=k[0], portal_id=k[2], signature=(s.get("svazek") or k[2]).split(",")[0].strip()[:120], url=s.get("url"))
         if str(s.get("snimku", "")).isdigit():
             p["scans"] = int(s["snimku"])
+        if rozsahy := rozsah_svazku(s):
+            p["records"] = rozsahy
         data["body"].append(p)
         poslane_body.append(klic(b))
     poslane_zapisy = []
