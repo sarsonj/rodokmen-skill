@@ -18,6 +18,7 @@ export const href = {
   family: (id) => `/rodina/${id}/`,
   line: (slug) => `/rod/${slug}/`,
   record: (key) => `/zdroj/${key}/`,
+  place: (slug) => `/misto/${slug}/`,
 };
 
 /** Sortable number from dates like "12. 5. 1811", "3/1867", "12/1790", "1797". */
