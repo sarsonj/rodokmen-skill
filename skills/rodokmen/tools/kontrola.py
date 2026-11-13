@@ -275,10 +275,24 @@ def main():
         if os.path.exists(os.path.join(DATA, f)):
             obsah = open(os.path.join(DATA, f), encoding="utf-8-sig").read()
             texty += [(f, odst) for odst in re.split(r"\n\s*\n|\n(?=#)", obsah)]   # odstavce i oddíly „## …“
+    # na web jdou i hypotézy (stránky rodů) a deník
+    texty += [(f"hypotéza {h.get('nadpis', '')}", h.get("nadpis", "") + " " + h.get("text", ""))
+              for h in ns.get("HYPOTEZY", []) if isinstance(h, dict)]
+    log = os.path.join(DATA, "research_log.md")
+    if os.path.exists(log):
+        texty += [(f"deník ř. {l.split('|')[1].strip()}", l.split('|', 3)[3]) for l in open(log, encoding="utf-8")
+                  if re.match(r"^\| \d+ \|", l)]   # bez sloupců č. a datum (datum hledání není rok události)
+    for i in ns.get("ISSUES", []):   # „Co hledáme“ bere štítek stavu z textu před dvojtečkou
+        t = i if isinstance(i, str) else i[1]
+        if t and not re.match(r"(Otevřené|Částečně vyřešeno|Vyřešeno|Hypotéza):", t):
+            warn.append(f"ISSUES: „{(i if isinstance(i, str) else i[0])[:60]}“ – text nezačíná stavem (Otevřené: / "
+                        "Částečně vyřešeno: / Vyřešeno: / Hypotéza:), na webu bude bez štítku")
     for kde, text in texty:
-        if not recent(text):
+        denik = kde.startswith("deník")   # řádek deníku míchá roky z různých století – rozhoduje jen okolí nálezu
+        if not denik and not recent(text):
             continue
-        m = next((m for m in citlive.finditer(text) if not schvalene(text, m) and not popreno(text, m)), None)
+        m = next((m for m in citlive.finditer(text) if not schvalene(text, m) and not popreno(text, m)
+                  and (not denik or recent(text[max(0, m.start() - 80):m.end() + 80]))), None)
         if m:
             warn.append(f"CITLIVÉ ({kde}): „…{text[max(0, m.start() - 40):m.end() + 40].strip()}…“ – jde na web; "
                         f"zeptej se uživatele, jestli to tam smí být (reference/soukromi.md); když ano, "

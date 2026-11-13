@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { issues, config } from '../lib/data.js';
+import { issues, hypotheses, config, lineByK, href } from '../lib/data.js';
 import { Content as Dotazy } from '../generated/dotazy.md';
 ---
 <Base title="Co hledáme">
@@ -8,13 +8,27 @@ import { Content as Dotazy } from '../generated/dotazy.md';
   <p class="lead">Otevřené otázky a hypotézy. Pokud o něčem z toho víte z rodinné paměti nebo dokumentů, ozvěte se{config.kontakt?.email ? <> na <a href={`mailto:${config.kontakt.email}`}>{config.kontakt.email}</a></> : ' autorovi rodokmenu'}.</p>
   <h2>Otevřené otázky</h2>
   <div class="grid2">
-    {issues.filter((i) => !i.text.startsWith('Vyřešeno')).map((i) => (
-      <div class="card">
-        <h3>{i.title}</h3>
-        <p class="small"><span class={`chip ${i.text.startsWith('Vyřešeno') ? 'st-doc' : i.text.startsWith('Hypotéza') ? 'st-prob' : 'st-unk'}`}>{i.text.split(':')[0]}</span> {i.text.slice(i.text.indexOf(':') + 1)}</p>
-      </div>
-    ))}
+    {issues.filter((i) => !i.text.startsWith('Vyřešeno')).map((i) => {
+      const m = i.text.match(/^(Otevřené|Částečně vyřešeno|Hypotéza): */);
+      return (
+        <div class="card">
+          <h3>{i.title}</h3>
+          <p class="small">{m && <span class={`chip ${m[1] === 'Otevřené' ? 'st-unk' : m[1] === 'Hypotéza' ? 'st-prob' : 'st-fam'}`}>{m[1]}</span>} {m ? i.text.slice(m[0].length) : i.text}</p>
+        </div>
+      );
+    })}
   </div>
+  {hypotheses.length > 0 && (
+    <>
+      <h2>Hypotézy</h2>
+      <ul class="facts">
+        {hypotheses.map((h) => {
+          const l = lineByK[h.line];
+          return <li>{l ? <a href={href.line(l.slug)}>{h.title}</a> : h.title}{l && <span class="small"> – rod {l.name}</span>}</li>;
+        })}
+      </ul>
+    </>
+  )}
   <h2>Prameny mimo online matriky</h2>
   <div class="prose small"><Dotazy /></div>
   <p><a href="/denik/">Výzkumný deník – všechna hledání včetně neúspěšných →</a></p>
