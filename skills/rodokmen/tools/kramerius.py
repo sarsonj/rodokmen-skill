@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Kramerius NKP full-text search (API v5). Usage: kramerius.py 'SOLR_QUERY' [rows]
-e.g. kramerius.py 'text_ocr:"Jan Novák" AND datum_begin:[1860 TO 1920]'"""
+"""Kramerius NKP full-text search (API v5). Usage: kramerius.py 'SOLR_QUERY' [rows] [--vse]
+e.g. kramerius.py 'text_ocr:"Jan Novák" AND datum_begin:[1860 TO 1920]'
+Hledá jen veřejná díla (dostupnost:public) – text neveřejných stran server nevydá (HTTP 403 = brzda web zastaví).
+--vse: ukáže i neveřejná (jen jako seznam pro uživatele, který je může číst v knihovně / se čtenářským účtem)."""
 import sys,json,urllib.request,urllib.parse
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
 if len(sys.argv)<2 or sys.argv[1] in ('-h','--help'): sys.exit(__doc__)
-q=sys.argv[1]; rows=sys.argv[2] if len(sys.argv)>2 else '30'
-p={'q':q+' AND fedora.model:page','fl':'PID,root_title,root_pid,datum_str,details,dostupnost','rows':rows,'wt':'json','hl':'true','hl.fl':'text_ocr','hl.fragsize':'250'}
+q=sys.argv[1]; rows=next((a for a in sys.argv[2:] if a.isdigit()),'30')
+p={'q':q+' AND fedora.model:page'+('' if '--vse' in sys.argv else ' AND dostupnost:public'),'fl':'PID,root_title,root_pid,datum_str,details,dostupnost','rows':rows,'wt':'json','hl':'true','hl.fl':'text_ocr','hl.fragsize':'250'}
 u='https://kramerius5.nkp.cz/search/api/v5.0/search?'+urllib.parse.urlencode(p)
 d=json.load(urllib.request.urlopen(u,timeout=90))
 print('found',d['response']['numFound'])
