@@ -52,6 +52,9 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo 5–10 s mezi
   stránkami (SKILL.md, Šetrně k archivům), jen stránky, které čteš, žádní pomocníci. Bez prohlížeče ať pošle snímky
   obrazovky uživatel.
+- **Prohlížeč se po načtení vrací na naposledy prohlížený snímek** (11. 11. 2026, Claude desktop): adresa
+  `/<kniha>/<snímek>` sama skok nezaručí, po chvíli ukáže znovu předchozí snímek. Po načtení vždy zkontroluj číslo
+  snímku v liště; když nesedí, přejdi na něj ovládáním prohlížeče (pole „Snímek“), ne opakovaným načítáním adresy.
 - Obec: `https://digi.ceskearchivy.cz/<Obec>` (bez diakritiky a mezer, např. `RatiborskeHory`) → stránka místa, vlevo
   „Matriční knihy“ (stránka je v rámci `ram_obsah`) → seznam knih s roky a obcemi; kliknutí otevře knihu v nové záložce.
   **Zkontroluj název a okres**: u stejnojmenných obcí portál vybere jinou (Buk → Bukovka), u měst i okres nebo synagogu.
@@ -366,6 +369,8 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 - URL obrázku obsahuje `csrf` a `ctrl` počítané JavaScriptem → je potřeba prohlížeč (Playwright / Claude in Chrome):
   otevři knihu, klikni na stránku (`.docview-pagelink`), URL obrázku vezmi z `performance.getEntriesByType('resource')`
   a stáhni `bash tools/matricula_dl.sh "<url>" pracovni/x.jpg`. Víc stránek: soubor řádků „<snímek> <url>“ → `matricula_batch.sh`.
+- **Pomocník bez prohlížeče obraz nezíská** (bez tokenu z prohlížeče vrací server chybu). Do zadání pomocníka piš,
+  že Matricula jde jen s adresou obrázku, kterou mu dáš z prohlížeče, jinak ať knihu jen najde a vrátí čísla snímků.
 - Rejstřík najdeš bez prohlížeče: HTML stránky knihy má seznam `labels` s popisky snímků („04-Index Taufe_0001“).
 - Vojenské matriky (např. Štýrský Hradec) tam nejsou – jsou v Kriegsarchivu ve Vídni (offline).
 
