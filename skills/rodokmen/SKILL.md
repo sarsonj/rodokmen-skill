@@ -81,7 +81,8 @@ Základní smyčka pro každou osobu:
 2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku (narození 100 let,
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
-3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
+3. **Najdi svazek**: nejdřív se zeptej sdílené mapy a indexu – `python3 -I tools/sdileni.py najdi "Obec" rok N`
+   (kde v knize začíná rok či ves, kolik zápisů už někdo přečetl; `reference/sdileni.md`). Jinak podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
    rejstřík, začni jím.
@@ -100,6 +101,9 @@ Základní smyčka pro každou osobu:
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
 7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
+8. **Na konci kola** `python3 -I tools/sdileni.py prehled`: co jsi přečetl, může ušetřit práci dalším (#138). Na sdílení
+   se zeptej **jednou za projekt**, pak při souhlasu odesílej sám a řekni to jednou větou (`reference/sdileni.md`).
+   Orientační body z listování (začátek roku, vsi, rejstříku) zapisuj průběžně `sdileni.py bod …`.
 
 Pravidla, která chrání kvalitu:
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
@@ -218,7 +222,7 @@ připomeň uživateli, že je může poslat správci skillu:
 ## Soubory projektu
 `data/`: `STAV.md` (vstupní bod), `osoby.py` (předci, `LINES`, `SIDE`, `ISSUES`, `HYPOTEZY`, `SAME`), `zaznamy.json`,
 `svazky.json`, `prepisy.json`, `zvyrazneni.json`, `research_log.md` (deník), `udaje_od_rodiny.md`, `archivni_dotazy.md`,
-`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json` (formát `reference/data.md`). Dál `vyrezy/`
+`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json` (formát `reference/data.md`), `sdileni.json` (souhlas se sdílením a co už odešlo). Dál `vyrezy/`
 a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od rodiny), `pracovni/` (nejde na web),
 `poznamky_pro_skill.md`, `tools/` (kopie ze skillu – aktualizuje se celý projekt přes `novy_projekt.py`), `web/`.
 
@@ -227,6 +231,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 |---|---|
 | `aron_search.py`, `aron_img.py` | ARON (SOA Zámrsk): hledání svazků; snímek, trvalý odkaz, zápis svazku |
 | `portafontium.py` | SOA Plzeň (Porta fontium) bez prohlížeče |
+| `sdileni.py` | Mapa matrik a index matrik: kde v knize hledat, co už je přečtené; sdílení bodů a zápisů (`reference/sdileni.md`) |
 | `ebadatelna.py` | SOA Praha: trvalý odkaz, náhled a výřez ze snímku uloženého z prohlížeče (stahovat nesmí) |
 | `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) |
 | `policie_prihlasky.py` | pražské policejní přihlášky 1850–1914 |
