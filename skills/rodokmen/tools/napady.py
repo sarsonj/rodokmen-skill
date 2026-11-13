@@ -32,11 +32,14 @@ def load():
     return ns["P"], ns.get("LINES", {}), ns.get("SAME", {})
 
 
+NEPRESNE = re.compile(r"^\S\s*(?:\S+\s+)?(?:před|po|mezi|asi|kolem|okolo|cca|nejpozději|nejdříve)\b", re.I)
+
+
 def event(p, sym):
-    """Všechna data události (* × †) z faktů osoby."""
+    """Všechna data události (* × †) z faktů osoby; „† před 6/1919“, „asi 1850“ apod. nejsou přesné datum."""
     out = []
     for f in p.get("f", []):
-        if f.strip().startswith(sym):
+        if f.strip().startswith(sym) and not NEPRESNE.match(f.strip()):
             m = re.search(DATE, f)
             if m:
                 try:
@@ -48,7 +51,7 @@ def event(p, sym):
 
 def year_of(p, sym):
     for f in p.get("f", []):
-        if f.strip().startswith(sym):
+        if f.strip().startswith(sym) and not NEPRESNE.match(f.strip()):
             m = re.search(r"\d{4}", f)
             if m:
                 return int(m.group())

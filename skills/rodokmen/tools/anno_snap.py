@@ -13,7 +13,11 @@ doc,q,out=sys.argv[1:4]; page=sys.argv[4] if len(sys.argv)>4 else None
 mode=sys.argv[5] if len(sys.argv)>5 else 'ctx'; w=sys.argv[6] if len(sys.argv)>6 else '1400'
 u='https://anno.onb.ac.at/anno-suche/rest/search/snippet?'+urllib.parse.urlencode({'documentId':doc,'query':q})
 d=json.load(urllib.request.urlopen(u,timeout=90))
-for sp in d['snippetPages']:
+stranky=d.get('snippetPages') or []
+if not stranky:   # dotaz v tomto čísle nemá shodu – srozumitelně místo KeyError
+    sys.exit(f'V čísle {doc} se „{q}“ nenašlo (ANNO nevrátilo žádnou stránku se shodou). Zkontroluj dotaz '
+             '(přesný tvar slova, OCR bývá chybné) nebo číslo novin z výsledků anno.py.')
+for sp in stranky:
     if page and str(sp['page'])!=page and sp['pageLabel']!=page: continue
     s=sp['snippets'][0]; url=s['imageURL']
     m=re.search(r'iiif=(/[^/]+/[^/]+)/(\d+),(\d+),(\d+),(\d+)/',url)
@@ -26,3 +30,6 @@ for sp in d['snippetPages']:
     url2=url.split('&iiif=')[0]+f'&iiif={base}/{reg}/{w},/0/default.jpg'
     open(out,'wb').write(urllib.request.urlopen(url2,timeout=120).read())
     print('saved',out,'page',sp['page'],sp['openURL']); break
+else:
+    sys.exit(f'Shoda je jen na stránkách {", ".join(str(sp.get("pageLabel") or sp.get("page")) for sp in stranky)}, '
+             f'ne na stránce {page}.')

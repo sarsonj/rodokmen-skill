@@ -380,7 +380,9 @@ def main():
     public_cfg["maPribeh"] = has_story
     site = dict(config=public_cfg, places=places, root=slugs[1], aliases={a: slugs[a] for a in SAME}, people=people,
                 families=families, records=records, lines=lines,
-                issues=[dict(title=i, text="") if isinstance(i, str) else dict(title=i[0], text=i[1]) for i in ISSUES], stats=stats, hypotheses=hypotheses,
+                issues=[dict(title=i, text="") if isinstance(i, str) else dict(title=i[0], text=i[1]) for i in ISSUES
+                        if isinstance(i, str) or (isinstance(i, (tuple, list)) and len(i) == 2)],   # jiné hlásí kontrola.py
+                stats=stats, hypotheses=hypotheses,
                 docs=[dict(img=d["img"], caption=d.get("popis", ""), people=[slugs[k] for k in d.get("osoby", []) if k in slugs])
                       for d in docs_cfg if os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))])
 

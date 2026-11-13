@@ -180,7 +180,8 @@ Podrobně `reference/pribehy.md`. Tohle rodina na webu čte nejradši – nenech
 
 ## Fáze 4 – Web
 Podrobně `reference/web.md`. Ve zkratce:
-1. `cd web && npm install` (jednou), pak `npm run nahled` → http://localhost:4321 – ukaž uživateli. V cloudovém
+1. `cd web && npm install` (jednou), pak `npm run nahled` **na pozadí** (běží, dokud ho nezastavíš) →
+   http://localhost:4321 – ukaž uživateli. Pouští-li si pak web sám (`npm run nahled`), svůj náhled předtím ukonči. V cloudovém
    prostředí (claude.ai) localhost neuvidí – pošli mu snímky stránek nebo nasaď náhled.
 2. Nastav `data/web.json`: název, úvod, kontakt a **přihlašovací otázku a odpověď** (web je jen pro rodinu).
 3. Po každé změně dat: `npm run data && npm run build`. Hlášky `POZOR: nefunkční odkaz` oprav hned. Po větším kole
@@ -231,7 +232,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `ebadatelna.py` | SOA Praha: trvalý odkaz, náhled a výřez ze snímku uloženého z prohlížeče (stahovat nesmí) |
 | `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) |
 | `policie_prihlasky.py` | pražské policejní přihlášky 1850–1914 |
-| `soal_zoomify.py` | snímek SOA Litoměřice nebo ZA Opava (knihu najdi v prohlížeči) |
+| `soal_zoomify.py` | snímek SOA Litoměřice (knihu najdi v prohlížeči); ZA Opava jen v prohlížeči (`portaly.md`) |
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko, Bavorsko, Polsko…) |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské, `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `mapa_knihy.py` | mapa knihy po vsích a montáž sloupce jmen (`matriky.md`) |

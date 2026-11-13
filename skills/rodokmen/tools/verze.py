@@ -13,7 +13,7 @@ bez sítě nebo při chybě se ho prostě nezeptá. Poslední řádek začíná 
 Kopie v tools/ projektu najde nainstalovaný skill sama (registr pluginů Claude Code, ~/.claude/skills/rodokmen).
 Kód je vždy 0 (kontrola nesmí zastavit práci).
 """
-import json, os, re, sys, time, urllib.request
+import glob, json, os, re, sys, time, urllib.request
 if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo kontroly (jinak by „--help“ bral jako složku projektu)
     print(__doc__.strip())
     sys.exit(0)   # kód vždy 0, viz výše
@@ -96,7 +96,29 @@ def nainstalovany(projekt_dir):
             return verze, cesta
     rucne = os.path.join(cfg, "skills", "rodokmen")
     verze = cti(os.path.join(rucne, "VERZE"))
-    return (verze, rucne) if cislo(verze) else (None, None)
+    if cislo(verze):
+        return verze, rucne
+    return desktop()
+
+
+def desktop():
+    """Skill u účtu v aplikaci Claude desktop (Windows %LOCALAPPDATA%\\Claude-Data\\claude_…\\rpm\\…\\plugin_…\\
+    skills\\rodokmen, obdobně na macOSu) – nejvyšší nalezená verze, jinak (None, None)."""
+    zaklady = [os.path.join(os.environ.get("LOCALAPPDATA", ""), "Claude-Data"),
+               os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Claude-Data")]
+    nalez = []
+    for z in zaklady:
+        if not os.path.isdir(z):
+            continue
+        for vzor in ("*/rpm/plugin_*", "*/rpm/*/plugin_*", "*/rpm/*/*/plugin_*"):
+            for d in glob.glob(os.path.join(z, vzor, "skills", "rodokmen")):
+                v = cti(os.path.join(d, "VERZE"))
+                if cislo(v):
+                    nalez.append((cislo(v), v, d))
+    if not nalez:
+        return None, None
+    _, v, d = max(nalez)
+    return v, d
 
 
 def main():

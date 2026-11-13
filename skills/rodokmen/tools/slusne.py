@@ -26,6 +26,7 @@ Pravidla (pro každý web zvlášť, společně pro všechny procesy i projekty 
     Doména actapublica.eu MZA nepatří – skripty na ni taky ne.
   - SOA Třeboň (digi.ceskearchivy.cz) nástroj od 2. 11. 2026 odmítá: skripty nic, jen prohlížeč.
   - SOA Praha (soapraha.cz, eBadatelna) nástroj od 2. 11. 2026 zakazuje (robots.txt): skripty nic, jen prohlížeč.
+  - ZA Opava (archives.cz) od 11/2026 skripty nepouští (robots.txt, obrázky 403/404): skripty nic, jen prohlížeč.
 localhost, vlastní web (Netlify, Cloudflare), GitHub a npm se nebrzdí. V prohlížeči (Playwright, Claude in Chrome) brzda neplatí –
 tam aspoň 5–10 s mezi stránkami, žádné souběžné dotazy ani smyčky přes celé svazky (SKILL.md, Šetrně k archivům).
 Stav je v ~/.cache/rodokmen_slusne/ (Windows %LOCALAPPDATA%\\rodokmen_slusne), jen malé soubory JSON.
@@ -64,6 +65,12 @@ ZAKAZ["soapraha.cz"] = (            # SOA Praha (eBadatelna): od 2. 11. 2026 rob
     "SOA Praha (eBadatelna) od 2. 11. 2026 nástroj rodokmen zakazuje (robots.txt, HTTP 403) – ebadatelna.py ani vlastní "
     "skripty nepoužívej. Matriky čti v prohlížeči eBadatelny: výřez zápisu ze snímku, který prohlížeč načetl, a snímek "
     "obrazovky (reference/portaly.md, SOA Praha). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
+ZAKAZ["archives.cz"] = (            # ZA Opava: robots.txt „Disallow: /“, od 11/2026 obrázky skriptům 403/404, jen prohlížeč
+    re.compile(r"(?!)"),             # skriptům nic
+    "ZA Opava (digi.archives.cz, images.archives.cz) od listopadu 2026 nástroje nepouští (robots.txt, obrázky "
+    "HTTP 403/404) – soal_zoomify.py ani vlastní skripty nepoužívej. Snímek ulož z prohlížeče snímků: Playwright "
+    "(dlaždice, které načte prohlížeč, složí úryvek do celého snímku), jinak snímek obrazovky přiblíženého zápisu "
+    "(reference/portaly.md, ZA Opava). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "workers.dev", "cloudflare.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
 UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)

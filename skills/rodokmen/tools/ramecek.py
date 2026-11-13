@@ -46,6 +46,8 @@ def main():
         sys.exit(__doc__)
     key = sys.argv[1]
     magick()   # bez ImageMagicku skončit dřív, než se rámeček zapíše
+    if not os.path.exists(os.path.join(ROOT, "vyrezy", key + ".jpg")):   # rámeček se kreslí do výřezu – nejdřív výřez
+        sys.exit(f"Chybí výřez vyrezy/{key}.jpg – nejdřív ho udělej (tools/vyrez.py), pak rámeček. Nic jsem nezapsal.")
     data = json.load(open(PATH, encoding="utf-8-sig")) if os.path.exists(PATH) else {}
     if sys.argv[2] == "--nahled":
         print(preview(key, data.get(key, {}).get("boxes", [])))
@@ -53,9 +55,16 @@ def main():
     args, note = sys.argv[2:], ""
     if "--pozn" in args:
         i = args.index("--pozn")
+        if i + 1 >= len(args):
+            sys.exit('--pozn potřebuje text, např. --pozn "okraj vpravo nečitelný"')
         note = args[i + 1]
         args = args[:i] + args[i + 2:]
-    boxes = [[round(float(v), 3) for v in a.split(",")] for a in args]
+    try:
+        boxes = [[round(float(v), 3) for v in a.split(",")] for a in args]
+    except ValueError:
+        sys.exit(f"Rámečky musí být čísla x0,y0,x1,y1 (zlomky 0..1, desetinná tečka), ne {' '.join(args)}")
+    if not boxes:
+        sys.exit(__doc__)
     for b in boxes:
         if len(b) != 4 or not (0 <= b[0] < b[2] <= 1 and 0 <= b[1] < b[3] <= 1):
             sys.exit(f"Špatný rámeček {b}: musí být x0,y0,x1,y1 v rozsahu 0..1 a x0<x1, y0<y1")

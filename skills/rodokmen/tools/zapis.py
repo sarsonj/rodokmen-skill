@@ -3,12 +3,14 @@
 řádků LF), takže změna v historii je jen ta jedna položka.
 
 Použití (z kořene projektu):
-  zapis.py <soubor> <klíč> <vstup.json> [--sloucit]
+  zapis.py <soubor> <klíč> <vstup.json> [--sloucit | --prepsat]
     soubor     zaznamy | svazky | prepisy | zvyrazneni | mista | dokumenty   (= data/<soubor>.json)
     klíč       zaznamy: „klic“ zápisu; dokumenty: „img“; ostatní: klíč ve slovníku (id svazku, klíč zápisu, obec)
     vstup.json soubor s jedním objektem JSON (napiš ho nástrojem Write do pracovni/), „-“ = ze vstupu
     --sloucit  jen změní / doplní uvedená pole, ostatní pole položky nechá
-Položka se stejným klíčem se nahradí, jinak se přidá na konec. Python skripty ani `sed -i` na data nepoužívej.
+    --prepsat  nahradí položku celou, i když nový vstup některá dosavadní pole nemá (ta se ztratí)
+Položka se stejným klíčem se nahradí, jinak se přidá na konec. Chyběla-li by v náhradě pole, která položka měla,
+nástroj nic nezmění a vypíše je (pak --sloucit, nebo --prepsat). Python skripty ani `sed -i` na data nepoužívej.
 
   zapis.py odkaz <osoba> <klíč zápisu> [<klíč> …]
     Přidá klíč(e) do seznamu `r` v data/osoby.py: osoba = Kekulého číslo (P), nebo část jména bočního příbuzného
@@ -173,8 +175,10 @@ def main():
         if len(sys.argv) < 4:
             sys.exit(__doc__)
         return odkaz(sys.argv[2], sys.argv[3:])
-    args = [a for a in sys.argv[1:] if a != "--sloucit"]
-    sloucit = "--sloucit" in sys.argv
+    args = [a for a in sys.argv[1:] if a not in ("--sloucit", "--prepsat")]
+    sloucit, prepsat = "--sloucit" in sys.argv, "--prepsat" in sys.argv
+    if sloucit and prepsat:
+        sys.exit("--sloucit a --prepsat nejdou spolu – vyber jedno.")
     if len(args) != 3 or args[0] not in {*SEZNAMY, *SLOVNIKY}:
         sys.exit(__doc__)
     nazev, klic, vstup = args
@@ -203,6 +207,10 @@ def main():
         idx = next((n for n, (k, _, _) in enumerate(poz) if k == klic), None)
     stare = None if idx is None else (data[idx] if seznam else data[klic])
     nove = {**stare, **obj} if sloucit and isinstance(stare, dict) else obj
+    ztracena = sorted(set(stare) - set(nove)) if isinstance(stare, dict) and not prepsat else []
+    if ztracena:   # tiché přepsání by smazalo pole (např. podrobný seznam obcí svazku)
+        sys.exit(f"data/{nazev}.json: „{klic}“ už existuje a náhrada nemá pole {', '.join(ztracena)} – nic jsem "
+                 "nezměnil. Doplnit / změnit jen uvedená pole: --sloucit; nahradit celé (pole se ztratí): --prepsat.")
     if not poz:   # prázdný nebo nový soubor
         text = json.dumps([nove] if seznam else {klic: nove}, ensure_ascii=False, indent=1) + "\n"
     elif idx is not None:   # nahradit jen text té jedné položky, zbytek souboru zůstane doslova

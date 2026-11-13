@@ -89,6 +89,24 @@ def main():
     for d in jload("dokumenty.json", []):
         if isinstance(d, dict) and not (d.get("popis") or "").strip():
             warn.append(f"dokument {d.get('img')} nemá popis – na webu bude bez popisku")
+        if isinstance(d, dict) and d.get("img") and not os.path.exists(os.path.join(ROOT, "vyrezy", d["img"] + ".jpg")):
+            warn.append(f"dokument {d.get('img')}: chybí vyrezy/{d['img']}.jpg – na webu se nezobrazí "
+                        "(originál z dokumenty/ zmenši do vyrezy/, reference/data.md)")
+    for i, x in enumerate(ns.get("ISSUES", [])):
+        if not (isinstance(x, str) or (isinstance(x, (tuple, list)) and len(x) == 2
+                                       and all(isinstance(y, str) for y in x))):
+            err.append(f"ISSUES[{i}]: má být text, nebo dvojice (\"Otázka\", \"Stav…\"), ne {type(x).__name__} "
+                       f"{str(x)[:60]} – export webu by na tom spadl")
+    for k, t in jload("prepisy.json", {}).items():
+        if not isinstance(t, dict):
+            err.append(f"prepisy.json „{k}“: má být {{\"orig\": …, \"cs\": …}}")
+            continue
+        nezname = sorted(set(t) - {"orig", "cs"})
+        if nezname:
+            warn.append(f"prepisy.json „{k}“: neznámý klíč {', '.join(nezname)} – web čte jen „orig“ (přepis) "
+                        "a „cs“ (překlad), text se nezobrazí")
+        elif not (t.get("cs") or "").strip():
+            warn.append(f"prepisy.json „{k}“: chybí překlad („cs“)")
 
     cited = ({r for p in P.values() for r in p.get("r", [])} | {r for s in SIDE for r in s.get("r", [])}
              | {r for h in ns.get("HYPOTEZY", []) if isinstance(h, dict) for r in h.get("zaznamy", [])})
@@ -246,7 +264,8 @@ def main():
                     return True
                 i = text.find(s, i + 1)
         return False
-    texty = [("ISSUES", i if isinstance(i, str) else " ".join(i)) for i in ns.get("ISSUES", [])]
+    texty = [("ISSUES", i if isinstance(i, str) else " ".join(map(str, i.values() if isinstance(i, dict) else i)))
+             for i in ns.get("ISSUES", []) if isinstance(i, (str, tuple, list, dict))]
     for k, p in P.items():
         text = " ".join(p.get("f", [])) + " " + p.get("note", "")
         roky = [int(y) for y in re.findall(r"\b1[5-9]\d\d|20\d\d\b", p.get("y", "") + " " + text)]

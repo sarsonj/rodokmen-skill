@@ -16,11 +16,12 @@ nejdéle nepoužité soubory se mažou samy. Celou složku lze kdykoli smazat, n
 Použití (z kořene projektu):
   cache.py stav                       -> kolik místa zabírá a kolik stažení z archivu ušetřila (podrobně slusne.py stav)
   cache.py uloz <soubor.json> [vystup.jpg] [--nahled nahled.jpg]
-                                      -> uloží snímek z prohlížeče eBadatelny nebo FamilySearch (výsledek úryvku
-                                         v reference/portaly.md); soubor .json pak smaže
+                                      -> uloží snímek z prohlížeče eBadatelny, FamilySearch nebo ZA Opava (výsledek
+                                         úryvku v reference/portaly.md); soubor .json pak smaže
   cache.py najdi <adresa snímku> [--nahled nahled.jpg]
-                                      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…) nebo FamilySearch
-                                         (adresa $dist nebo /ark:/61903/3:1:…), jinak kód 1
+                                      -> cesta k uloženému snímku eBadatelny (/d/… nebo /a/…), FamilySearch
+                                         (adresa $dist nebo /ark:/61903/3:1:…) nebo ZA Opava (adresa
+                                         showZoomifySeparate…myImageUuid=…), jinak kód 1; vypíše i rozměr
                                          (nalezený snímek se počítá jako ušetřené otevření v prohlížeči)
   --nahled nahled.jpg                 -> k tomu rovnou náhled široký 1600 px (k přečtení stránky, bez sítě)
 
@@ -202,7 +203,7 @@ def odvod(src, out, crop=None, zmenseni=1):
     return subprocess.run(args + ["-quality", "90", out], capture_output=True).returncode == 0
 
 
-# --- snímky z prohlížeče (eBadatelna, FamilySearch) -------------------------------------------------------------------------------
+# --- snímky z prohlížeče (eBadatelna, FamilySearch, ZA Opava) -------------------------------------------------------------------------------
 EBAD = re.compile(r"ebadatelna\.soapraha\.cz/(d|a)/(\d+)/(\d+)")
 
 
@@ -235,6 +236,10 @@ def klic_ebadatelna(druh, xid, n):
 FS = re.compile(r"familysearch\.org/.*?\b3:1:([0-9A-Z]{4}-[0-9A-Z-]{4,})")
 FS_WEB = "www.familysearch.org"
 
+# ZA Opava: snímek určuje myImageUuid v adrese prohlížeče snímků (showZoomifySeparate), dá se zjistit bez otevření snímku
+ZAO = re.compile(r"archives\.cz/da/showZoomifySeparate\?.*?\bmyImageUuid=([0-9A-Fa-f-]{32,36})")
+ZAO_WEB = "images.archives.cz"
+
 
 def z_prohlizece(adresa):
     """(klíč v mezipaměti, web) pro adresu snímku z prohlížeče (eBadatelna, FamilySearch), jinak None."""
@@ -244,7 +249,17 @@ def z_prohlizece(adresa):
     m = FS.search(adresa or "")
     if m:
         return f"familysearch/3_1_{m.group(1)}.jpg", FS_WEB   # bez dvojteček – Windows je v názvu souboru neumí
+    m = ZAO.search(adresa or "")
+    if m:
+        return f"zaopava/{m.group(1).replace('-', '').lower()}.jpg", ZAO_WEB
     return None
+
+
+def _sirka(p):
+    """Šířka a výška uloženého snímku (ImageMagick), jinak None."""
+    M = _magick()
+    r = subprocess.run([M, p + "[0]", "-format", "%w %h", "info:"], capture_output=True, text=True) if M else None
+    return tuple(map(int, r.stdout.split())) if r and re.fullmatch(r"\d+ \d+", r.stdout.strip()) else None
 
 
 def _ze_souboru(path):
@@ -300,13 +315,23 @@ def main(a):
     elif a[0] == "uloz" and len(a) > 1:
         d = _ze_souboru(a[1])
         zdroj = z_prohlizece(d.get("adresa", ""))
+        if d.get("chybi"):
+            sys.exit(f"chybějící dlaždice: {d['chybi']} – prohlížeč je nenačetl; spusť úryvek pro dlaždice znovu "
+                     "(doplní jen chybějící) a pak skládání")
         if not zdroj or not str(d.get("data", "")).startswith("data:image/"):
-            sys.exit("soubor není výsledek úryvku pro eBadatelnu ani FamilySearch (chybí adresa snímku nebo obrázek)")
+            sys.exit("soubor není výsledek úryvku pro eBadatelnu, FamilySearch ani ZA Opava (chybí adresa snímku "
+                     "nebo obrázek)")
         klic, web = zdroj
         znovu = os.path.exists(cesta(klic))   # snímek už byl uložený – prohlížeč ho načetl z archivu zbytečně
         data = base64.b64decode(d["data"].split(",", 1)[1])
         if not cely(data):
             sys.exit("snímek z prohlížeče není celý (chybí konec obrázku) – počkej na načtení a ulož ho znovu")
+        stary = _sirka(cesta(klic)) if znovu and web == ZAO_WEB else None
+        if stary and d.get("w") and stary[0] > int(d["w"]):   # ZA Opava: menší rozlišení nepřepíše větší
+            print(f"v mezipaměti už je větší snímek ({stary[0]} × {stary[1]}) – nechávám ho:", cesta(klic))
+            os.remove(a[1])
+            _nahled(cesta(klic), nahled, stary[0])
+            return
         p = uloz(klic, data)
         _zapocti(web, len(data), z_disku=False)
         if not p:
@@ -330,7 +355,8 @@ def main(a):
             sys.exit(1)
         _pouzito(p)
         _zapocti(zdroj[1], os.path.getsize(p))   # snímek se nemusí znovu otevírat v prohlížeči
-        print(p)
+        r = _sirka(p)
+        print(p, f"({r[0]} × {r[1]})" if r else "")
         _nahled(p, nahled)
     else:
         sys.exit(__doc__)

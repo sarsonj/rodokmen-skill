@@ -46,7 +46,7 @@ Bez prohlížeče ať uživatel posílá snímky obrazovky.
 ## Založení projektu
 1. Zeptej se, kde má projekt být (navrhni `~/Rodokmen`), a založ ho: `python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`.
    Chce-li uživatel nejdřív vidět, jak web vypadá, založ vedle ukázku: `… novy_projekt.py ~/Rodokmen-ukazka --ukazka`,
-   pak `cd web && npm install && npm run nahled` a pošli mu odkaz http://localhost:4321.
+   pak `cd web && npm install && npm run nahled` (na pozadí) a pošli mu odkaz http://localhost:4321.
 2. Zeptej se, jestli zapnout **hlídač sítě** (`… novy_projekt.py <složka> --hlidac`, vypnutí `--bez-hlidace`).
    Vysvětli jednou větou: archivy blokují IP adresu po sérii rychlých dotazů. Hlídač je malý skript v projektu
    (`tools/hlidac_site.py`), který před každým příkazem zkontroluje, že stahování jde přes brzdu, a jinak ho zamítne.
