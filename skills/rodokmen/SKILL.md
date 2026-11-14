@@ -83,7 +83,9 @@ Základní smyčka pro každou osobu:
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
-   jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
+   jen v prohlížeči (uživateli se hodí rozšíření Snímkovač, `reference/snimkovac.md`: snímky, které si sám prohlédne,
+   uloží i s údaji a `tools/snimky_import.py` je převezme), ostatní v `reference/portaly.md`. Sňatek hledej nejdřív
+   ve farnosti nevěsty. Je-li ke svazku
    rejstřík, začni jím.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš.
    Najdi zápis, **přečti ho sám ze snímku** (přiblíž si výřez v plném rozlišení).

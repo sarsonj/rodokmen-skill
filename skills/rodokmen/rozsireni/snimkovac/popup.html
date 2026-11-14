@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><title>Snímkovač</title>
+<style>
+  :root { --tmava: #24292f; --text: #1f2328; --slabe: #57606a; --okraj: #d0d7de; --plocha: #f6f8fa;
+          --prehled: #ef8f00; --cteni: #7cb342; --zapis: #1b5e20; --ok: #2da44e; --chyba: #cf222e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 300px; font: 13px/1.4 system-ui, "Segoe UI", sans-serif; color: var(--text); background: var(--plocha); }
+  .hlava { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--tmava); color: #fff; }
+  .hlava b { flex: 1; font-size: 14px; }
+  .tecka { width: 9px; height: 9px; border-radius: 50%; background: #8c959f; flex: none; }
+  .tecka.zap { background: var(--ok); }
+  .podhlava { padding: 4px 12px 0; font-size: 12px; color: var(--slabe); }
+  /* přepínač */
+  .prepinac { position: relative; width: 36px; height: 20px; flex: none; }
+  .prepinac input { opacity: 0; width: 0; height: 0; }
+  .prepinac span { position: absolute; inset: 0; border-radius: 10px; background: #57606a; cursor: pointer; transition: .15s; }
+  .prepinac span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; border-radius: 50%; background: #fff; transition: .15s; }
+  .prepinac input:checked + span { background: var(--ok); }
+  .prepinac input:checked + span::before { transform: translateX(16px); }
+  main { padding: 12px; display: grid; gap: 10px; }
+  .karta { background: #fff; border: 1px solid var(--okraj); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+  .karta h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .karta p { margin: 0; color: var(--slabe); font-size: 12px; }
+  .pruh { border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  .pruh.pozor { background: #fff8c5; border: 1px solid #d4a72c; color: #4d2d00; }
+  .pruh.chyba { background: #ffebe9; border: 1px solid var(--chyba); color: #82071e; }
+  .pruh.ok { background: #dafbe1; border: 1px solid #4ac26b; color: #116329; }
+  button { font: inherit; height: 32px; padding: 0 12px; border-radius: 6px; cursor: pointer; border: 1px solid var(--okraj); background: #fff; color: var(--text); }
+  button.hlavni { background: var(--zapis); border-color: var(--zapis); color: #fff; font-weight: 600; }
+  button.nebezpecne { color: var(--chyba); }
+  button:disabled { opacity: .45; cursor: default; }
+  button:not(:disabled):hover { filter: brightness(.95); }
+  .tlacitka { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tlacitka button { flex: 1; }
+  label.souhlas { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--text); }
+  .urovne { display: grid; gap: 4px; }
+  .uroven { display: grid; grid-template-columns: 58px 1fr 34px; align-items: center; gap: 6px; font-size: 11px; color: var(--slabe); }
+  .uroven .lista { height: 6px; border-radius: 3px; background: #eaeef2; overflow: hidden; }
+  .uroven .lista i { display: block; height: 100%; }
+  .uroven b { text-align: right; color: var(--text); font-weight: 600; }
+  .odkaz { background: none; border: 0; height: auto; padding: 0; color: #0969da; font-size: 12px; text-decoration: underline; }
+  .souhrn { font-size: 12px; color: var(--slabe); padding: 0 2px; }
+  details { background: #fff; border: 1px solid var(--okraj); border-radius: 10px; padding: 8px 12px; }
+  details > summary { cursor: pointer; font-weight: 600; font-size: 12px; }
+  details .obsah { display: grid; gap: 8px; margin-top: 8px; }
+  details .obsah button { width: 100%; }
+  .prahy label { display: flex; align-items: center; gap: 4px; }
+  details details { border: 0; padding: 0; background: none; }
+  details details > summary { font-weight: 400; color: var(--slabe); }
+  .prahy { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--slabe); flex-wrap: wrap; }
+  .prahy input { width: 44px; padding: 2px 4px; border: 1px solid var(--okraj); border-radius: 4px; font: inherit; }
+  input[type=text] { width: 100%; padding: 5px 6px; border: 1px solid var(--okraj); border-radius: 6px; font: inherit; }
+  .malé { font-size: 11px; color: var(--slabe); margin: 0; }
+  #vysledek:empty { display: none; }
+  #potvrzeni[hidden] { display: none; }
+  footer { padding: 0 12px 10px; font-size: 11px; color: #8c959f; }
+  [hidden] { display: none !important; }
+</style></head>
+<body>
+  <div class="hlava"><span class="tecka" id="tecka"></span><b>Snímkovač</b>
+    <label class="prepinac" title="Ukládání zapnuto / vypnuto"><input type="checkbox" id="prep"><span></span></label></div>
+  <div class="podhlava" id="podhlava">…</div>
+  <main>
+    <section class="karta" id="karta">
+      <h2 id="kNadpis">Načítám…</h2>
+      <p id="kText"></p>
+      <div class="urovne" id="kUrovne" hidden></div>
+      <div class="pruh" id="kPruh" hidden></div>
+      <label class="souhlas" id="kSouhlas" hidden><input type="checkbox" id="kRozumim">
+        <span>Rozumím: ukládám na vlastní odpovědnost, jen pro své bádání, nezveřejním.</span></label>
+      <div class="tlacitka"><button class="hlavni" id="kHlavni" hidden></button><button id="kDruhe" hidden></button></div>
+      <button class="odkaz" id="kOdkaz" hidden></button>
+    </section>
+    <div class="pruh" id="vysledek"></div>
+    <div class="pruh pozor" id="potvrzeni" hidden><div id="potvrzeniText"></div>
+      <div class="tlacitka" style="margin-top:6px"><button class="hlavni" id="potvrzeniAno"></button><button id="potvrzeniNe">Zpět</button></div></div>
+    <div class="souhrn" id="souhrn">Dnes uloženo: <b id="pocet">0</b> snímků · složka Stažené / rodokmen-snimky</div>
+    <details id="pokrocile"><summary>Pokročilé</summary>
+      <div class="obsah">
+        <div class="obsah" id="pDlazdice" hidden style="margin:0">
+          <button id="pVyrez" title="Uloží jen to, co je teď vidět v prohlížeči">Uložit jen to, co je vidět</button>
+          <button id="pSmaz" class="nebezpecne" title="Minimapa začne znovu. Uložené soubory zůstanou.">Smazat rozpracovanou stránku</button>
+        </div>
+        <div title="Od kolika % plného rozlišení platí úroveň"><p class="malé">Hranice úrovní (% plného rozlišení)</p>
+          <div class="prahy"><label>Přehled <input id="pmin" type="number" min="5" max="100"></label>
+          <label>Čtení <input id="pideal" type="number" min="10" max="200"></label>
+          <label>Záznam <input id="pzapis" type="number" min="10" max="200"></label></div></div>
+        <button id="pFoceni" hidden>Povolit focení natrvalo</button>
+        <button id="pZapomen" class="nebezpecne">Zapomenout, co už je uložené</button>
+        <details><summary>Pro ladění</summary>
+          <div class="obsah">
+            <button id="analyza">Analyzovat stránku</button>
+            <button id="pStatistika">Uložit dnešní statistiku</button>
+            <p class="malé" id="pPocitadlo"></p>
+            <div id="pPrejdiBlok" hidden><input type="text" id="osdkam" placeholder="Přejít na výřez: 0.10,0.55,0.60,0.75">
+              <button id="osdprejdi" style="margin-top:4px;width:100%">Přejít</button></div>
+          </div>
+        </details>
+      </div>
+    </details>
+  </main>
+  <footer id="pata"></footer>
+  <script src="weby.js"></script>
+  <script src="analyza.js"></script>
+  <script src="popup.js"></script>
+</body></html>

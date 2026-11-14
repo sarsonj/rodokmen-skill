@@ -47,6 +47,7 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Ber ohled na server: stahuj jen to, co čteš; žádné hromadné stahování celých svazků.
 
 ## SOA Třeboň (digi.ceskearchivy.cz) – jen v prohlížeči
+- **Rozšíření Snímkovač** (`reference/snimkovac.md`): uživatel listuje sám v prohlížeči, rozšíření skládá stránku z vykreslených pohledů (Zoomify ve vloženém rámu; „Snímek N“ = adresa `/<kniha>/N+1`); pak `tools/snimky_import.py`.
 - **Od 2. 11. 2026 archiv nástroj odmítá** (HTTP 403 podle User-Agentu „rodokmen“), `trebon.py` je odstraněn a brzda
   skripty na digi.ceskearchivy.cz zastaví. Neobcházej to (jiný User-Agent, vlastní skript). Matriky čti v prohlížeči
   (nejlépe Playwright) stejně jako u MZA: přiblížit zápis, uložit snímek obrazovky, `vyrez.py`. Tempo 5–10 s mezi
@@ -107,6 +108,7 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   (`*i`, `ooi`, `+i` v seznamu knih fary).
 
 ## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – jen v prohlížeči
+- **Rozšíření Snímkovač** (`reference/snimkovac.md`): uživatel listuje sám v prohlížeči, rozšíření uloží každý zobrazený snímek celý (funguje bez nastavení); pak `tools/snimky_import.py`.
 - **Od listopadu 2026 archiv omezuje i automatizovaný provoz** (oznámení na úvodní stránce: „automatizované bezpečnostní
   opatření a limity“). Čtení v prohlížeči tempem člověka dál funguje (ověřeno 13. 11. 2026 v Playwrightu). Narazíš-li
   na stránku s omezením, „Forbidden“ nebo snímek, který se nenačte, skonči: `python3 -I tools/slusne.py zastav
@@ -157,6 +159,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   Denní údržba portálu kolem 4:44 (asi 2 minuty); večer a v noci bývá nedostupná (zhruba 22:45–0:45 a kolem 2:00).
 
 ## AHMP Praha – `tools/ahmp_search.sh`, `tools/ahmp_scan.py`
+- robots.txt `katalog.ahmp.cz`, `digi.ahmp.cz` i `images.ahmp.cz` je `Disallow: /` (ověřeno 14. 11. 2026). Kdyby skripty
+  přestaly fungovat: **Rozšíření Snímkovač** (`reference/snimkovac.md`): uživatel listuje sám v prohlížeči, rozšíření fotí viditelnou část záložky (dlaždice z cizího serveru nejdou přečíst) a skládá stránku; pak `tools/snimky_import.py`.
 - `bash tools/ahmp_search.sh "Smíchov"` → svazky Sbírky matrik: popis | farnost | (XID, id, počet snímků).
 - `python3 -I tools/ahmp_scan.py <XID> <snímek> pracovni/x.jpg [1] [x0,y0,x1,y1]` → snímek (1 = poloviční rozlišení).
 - Trvalý odkaz `https://katalog.ahmp.cz/pragapublica/permalink?xid=<XID>&scan=<N>`.
@@ -299,6 +303,7 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   Do `odkaz` dej snímek, ze kterého jsi opravdu četl.
 
 ## MZA Brno (jižní Morava, Acta Publica) – jen v prohlížeči
+- **Rozšíření Snímkovač** (`reference/snimkovac.md`): uživatel listuje sám v prohlížeči, rozšíření skládá stránku z dlaždic, které prohlížeč sám načetl (OpenSeadragon), bez stahování navíc; podmínky MZA zakazují snímky zveřejňovat bez písemného souhlasu; pak `tools/snimky_import.py`.
 - Portál `https://www.mza.cz/actapublica/`, bez přihlášení. **Od 2. 11. 2026 MZA blokuje stahovací skripty** (ověření
   Altcha, adresy dlaždic s tokenem) a výjimky nedělá. Skriptem jen hledání knih (níže, brzda 1 dotaz za 4 s, jiné
   adresy MZA brzda zastaví). Snímky jen v jejich prohlížeči: přiblížit zápis a uložit snímek obrazovky. Žádné
@@ -361,6 +366,8 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 - **Nepokrývá Smíchov, Vinohrady, Žižkov, Karlín a další předměstí před 1922** (byla to samostatná města). Náboženství karty neuvádějí.
 
 ## Matricula (Rakousko, Bavorsko, Polsko…; data.matricula-online.eu) – `tools/matricula_*.sh`
+- robots.txt (14. 11. 2026) zakazuje robotům stránky snímků `/*?pg=` a AI crawlerům celý web; snímky jsou pod licencí
+  CC BY-NC-ND 2.0 (podmínky užití). **Rozšíření Snímkovač** (`reference/snimkovac.md`): uživatel listuje sám v prohlížeči, rozšíření uloží celý snímek v plném rozlišení, jakmile ho prohlížeč zobrazí; pak `tools/snimky_import.py`.
 - Bez přihlášení. Seznam knih: `…/de/oesterreich/<diecéze>/<farnost>/?page=N`; snímek knihy `…/<id>/?pg=<snímek>`
   (zároveň trvalý odkaz).
 - URL obrázku obsahuje `csrf` a `ctrl` počítané JavaScriptem → je potřeba prohlížeč (Playwright / Claude in Chrome):
