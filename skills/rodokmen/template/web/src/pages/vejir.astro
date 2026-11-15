@@ -49,7 +49,8 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
       let d = e.deltaY;
       if (e.deltaMode === 1) d *= 33; else if (e.deltaMode === 2) d *= 300;   // řádky / stránky → px
       d = Math.max(-120, Math.min(120, d));
-      zoomAt(Math.exp(-d * (e.ctrlKey ? 0.012 : 0.0022)), e.clientX, e.clientY);
+      // Kolečko zachovává aktuální střed pohledu i po posunutí nebo vyhledání předka.
+      zoomAt(Math.exp(-d * (e.ctrlKey ? 0.012 : 0.0022)));
     }, { passive: false });
 
     // drag to pan (mouse + one finger), pinch to zoom (two fingers)
