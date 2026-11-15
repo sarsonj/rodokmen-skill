@@ -193,7 +193,8 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   1 = poloviční, 2 = čtvrtinové na orientaci). Obrázkový server images.soalitomerice.cz neomezuje a cookies nepotřebuje.
 - **POZOR na blokaci aplikace** (obrázky ne): přijde už po 25–100 rychlých krocích (listování výsledky, Zpět, rychlé
   `fetch`). Ohlásí ji stránka „!“ s **HTTP 200** (asi 116 bajtů) – kontroluj obsah, ne stavový kód. Dotazy jen postupně
-  (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka; po blokaci 35 minut nic (další pokusy ji prodlužují).
+  (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka. Bez blokace pracuj dál bez denního limitu; po blokaci tento archiv 35 minut
+  nech být (další pokusy ji prodlužují) a mezitím pokračuj jinde – nezastavuj se kvůli tomu.
   Pomocníkům to napiš do zadání.
 ## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – `tools/soal_zoomify.py`
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
