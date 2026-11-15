@@ -23,6 +23,15 @@ k tomu AHMP pro index; ostatní nástroj vynechá a řekne to.
 """
 import datetime, json, os, re, shutil, subprocess, sys, tempfile, time, unicodedata, urllib.error, urllib.request
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda (tools/slusne.py)
+for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows: -I ignoruje PYTHONIOENCODING a cp1250 neumí „→“
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")
+
+
+def cislo_snimku(snimek):
+    """„34 (str. 62)“ → („34“, „str. 62“): index chce čisté číslo (se stranou, „12L“), poznámka patří do ostatni."""
+    m = re.match(r"\s*(\d+[A-Za-z]?)(?![A-Za-z])\s*[(,;]?\s*(.*?)\s*\)?\s*$", str(snimek or ""))
+    return (m.group(1), m.group(2)) if m else (str(snimek or "").strip(), "")
 
 MAPA = "https://ondrnovy.github.io/mapa-matrik/v1"
 INDEX = "https://pe-pan.github.io/matriky-index"
@@ -278,7 +287,7 @@ def snimky_projektu():
     """{(kniha indexu, snímek)} zápisů, které projekt už má v zaznamy.json – ty se ve shodách nehlásí."""
     p = os.path.join(DATA, "zaznamy.json")
     sv = svazky()
-    return {(klic_indexu(sv.get(z.get("svazek"))), str(z.get("snimek"))) for z in
+    return {(klic_indexu(sv.get(z.get("svazek"))), cislo_snimku(z.get("snimek"))[0]) for z in
             (json.load(open(p, encoding="utf-8")) if os.path.exists(p) else [])}
 
 
@@ -506,8 +515,9 @@ def nove(n=None):
             mimo.add(z.get("svazek"))
             continue
         rok = rok_z(z.get("datum"))
-        if k[0] and rok and z.get("snimek"):
-            body.append({"svazek": z["svazek"], "scan": int(z["snimek"]), "type": z.get("druh"), "year": rok})
+        scan = re.match(r"\d+", cislo_snimku(z.get("snimek"))[0])   # Mapa matrik: jen číslo snímku, bez strany
+        if k[0] and rok and scan:
+            body.append({"svazek": z["svazek"], "scan": int(scan.group()), "type": z.get("druh"), "year": rok})
         if z["klic"] in prepisy and rok and rok <= datetime.date.today().year - LHUTA.get(z.get("druh"), 100):
             zapisy.append(z)
     if os.path.exists(FRONTA):
@@ -552,8 +562,9 @@ def navrh():
     with open(os.path.join(NAVRH, "zapisy.jsonl"), "w", encoding="utf-8") as f:
         for z in zapisy:
             k = kniha_z_url((svazky().get(z["svazek"]) or {}).get("url"))
-            f.write(json.dumps({"klic": z["klic"], "archiv": k[1], "kniha": k[2], "snimek": str(z["snimek"]), "typ": z.get("druh"),
-                                "datum": "", "obec": "", "osoby": "", "ostatni": "", "jistota": "",
+            cislo, poznamka = cislo_snimku(z["snimek"])
+            f.write(json.dumps({"klic": z["klic"], "archiv": k[1], "kniha": k[2], "snimek": cislo, "typ": z.get("druh"),
+                                "datum": "", "obec": "", "osoby": "", "ostatni": poznamka, "jistota": "",
                                 "_shrnuti": z.get("shrnuti"), "_orig": prepisy[z["klic"]].get("orig"), "_datum": z.get("datum")},
                                ensure_ascii=False) + "\n")
     print(f"pracovni/sdileni/zapisy.jsonl: {len(zapisy)} zápisů. Doplň u každého datum (ISO), obec (ves a číslo domu), "

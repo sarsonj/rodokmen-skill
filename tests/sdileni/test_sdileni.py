@@ -26,6 +26,10 @@ ok(sdileni.kniha_z_url("https://ebadatelna.soapraha.cz/d/11973/15")[2] == "11973
 ok(sdileni.kniha_z_url("https://katalog.ahmp.cz/pragapublica/permalink?xid=144286C6CCB648968F0C7879316827D0") == (None, "ahmp", "144286c6"), "AHMP")
 ok(sdileni.kniha_z_url("https://aron.vychodoceskearchivy.cz/apu/abc") is None, "ARON zatím ne")
 
+ok(sdileni.cislo_snimku("34 (str. 62)") == ("34", "str. 62"), "snímek s poznámkou")
+ok(sdileni.cislo_snimku("173 (oddíl obce Rašov, zápis č. 10)") == ("173", "oddíl obce Rašov, zápis č. 10"), "snímek s oddílem")
+ok(sdileni.cislo_snimku("12L") == ("12L", "") and sdileni.cislo_snimku(300) == ("300", ""), "snímek se stranou a číslo")
+
 body = [{"scan": 10, "year": 1800}, {"scan": 30, "year": 1810}, {"scan": 40, "year": 1812, "year_to": 1813}]
 ok(sdileni.odhad(body, 1805) == (20, "odhad mezi sn. 10 (1800) a 30 (1810)"), "interpolace")
 ok(sdileni.odhad(body, 1813)[0] == 40, "přímo z bodu (year_to)")
