@@ -15,7 +15,7 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | HBMa: VadeMeCum NA – vademecum.nacr.cz (Digitální badatelna → Matriky židovských náboženských obcí; stará adresa badatelna.eu už nepatří archivu); digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
 
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `metodika.md`
-(Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže.
+(Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch a Slovakiana pro Slovensko) a níže.
 
 **Claude in Chrome – výstup JavaScriptu** (platí pro všechny portály):
 - Výstup, který obsahuje adresu s parametry (`?`, `&`, `=`) nebo dlouhý hex, rozšíření zahodí jako
@@ -429,6 +429,32 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   (nebo ho se souhlasem stáhneš ty) – soubor přijde do `~/Downloads` jako `<id snímku>.jpg`, chvíli může mít
   příponu `.tmp`. Přesuň **jen soubor s očekávaným názvem**, nikdy „nejnovější soubor ve Stažených“ (je tam i cizí).
   Žádné vlastní přijímače na localhostu ani jiné obcházení ochran prohlížeče.
+
+## Slovakiana – sčítací hárky 1930–1940 (slovakiana.sk, Slovenský národný archív)
+Sčítací hárek ze sčítání lidu 1. 12. 1930 zachycuje jednu domácnost: jména, vztah k hlavě domácnosti, datum a místo
+narození, datum sňatku, počet dětí, rok přistěhování, domovskou obec, náboženství, národnost, povolání. Je to most mezi
+matrikami (online do ~1895) a vzpomínkami rodiny. Zachované je celé Slovensko (v ČR jsou operáty 1930 nepřístupné).
+- **Roky:** 1930 je nezačerněné. 1939 a 1940 jsou jen začerněné (osobní údaje skryté) – pro genealogii nepoužitelné;
+  nezačerněnou kopii vydá jen SNA na žádost (zapiš do `data/archivni_dotazy.md`).
+- **Začni přehledem obvodu:** hledej obec na `https://slovakiana.sk/scitacie-harky` (slovenský název; Slovakiana zná
+  názvy z roku 1930 i dnešní). Prvním objektem obce bývá **„Prehľad sčítacieho obvodu“** se seznamem čísel domů
+  a majitelů. Podle něj (a čísla domu z matriky nebo od rodiny) otevři rovnou hárek domu – neprocházej všechny hárky.
+  Číslo domu u hárku je v poli ulice za lomítkem (`-, -/68` = dům 68; `-/-` = bez čísla).
+- **Metadata bez hledání v síťových požadavcích prohlížeče** (JSON, přes brzdu – Slovakiana chce `Crawl-delay: 10`,
+  `slusne.py` pouští 1 požadavek za 10 s):
+  - hledání: `https://wcm.slovakiana.sk/censussheet/search?searchText=<obec>&size=200&page=0` (fulltext – vyfiltruj
+    přesnou obec v `municipality`, okres v `categories`; `blackened`, `hasImages`, ulice v `censusSheetStreet`),
+  - hárek: `https://wcm.slovakiana.sk/culturalobject/<cair-id>` (`<cair-id>` je konec adresy
+    `slovakiana.sk/scitacie-harky/cair-…`; atributy obec, ulice, škatule, hárek, datum; `digitalObjects[].id`)
+    → `https://wcm.slovakiana.sk/digitalobject/<doid>` (adresy snímků obou stran, originál JP2 v
+    `content[].images[].full.fileUrl`, asi 7000×5000 px).
+- **Snímky jen pro hárky, které čteš** (dům předků), nikdy celou obec: `content.slovakiana.sk` má v robots.txt
+  `Disallow: /` a hárky příznak `downloadable: false`. Na hledání a prohlížení stačí prohlížeč; jednotlivý snímek
+  stáhni přes brzdu (`python3 -I tools/slusne.py curl …`). IIIF server často vrací 502 (nebo „HTTP 0 / Not Found“) –
+  zkus to později, neopakuj ve smyčce. Celý obrázek IIIF jde jen zmenšený (`…/full/1688,/0/default.jpg`), plné
+  rozlišení jen po dlaždicích 1024 px – raději originál JP2 (výše) a převod na JPG (`magick x.jp2 x.jpg`, macOS `sips`).
+- Do `data/zaznamy.json` dej jako odkaz `https://slovakiana.sk/scitacie-harky/<cair-id>` a jako zdroj „Sčítanie ľudu 1930,
+  Slovenský národný archív, škatuľa X, hárok Y“.
 
 ## Hroby a hřbitovy
 - Kde jsou předci pohřbeni, víš z rozhovoru s rodinou (Fáze 1). Fotky náhrobků (jména, data, rodná příjmení) jsou
