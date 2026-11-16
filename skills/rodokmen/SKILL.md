@@ -47,7 +47,7 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
 2. Projekt ještě není → **Fáze 0**.
 
 ## Fáze 0 – Příprava (jednou)
-**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 20, ImageMagick, git), certifikáty na
+**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 22.12 (vyžaduje Astro 7), ImageMagick, git), certifikáty na
 macOS, Windows, prohlížeč pro archivy, založení projektu (`python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`,
 volitelně `--ukazka` a `--hlidac`), `git init`, „Pro koho“ ve `STAV.md` a název webu.
 **Windows:** ve všech příkazech skillu místo `python3 -I` piš `python -I -X utf8` (`python3` je tam nefunkční alias
@@ -79,7 +79,7 @@ Základní smyčka pro každou osobu:
    úmrtí nebo sňatek. Není-li nejmladší událost online, začni nejmladším svazkem, který online je (křty sourozenců,
    sňatek rodičů, rejstříky), a chybějící zápis dej do `archivni_dotazy.md`.
 2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku (narození 100 let,
-   sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
+   sňatky i úmrtí 75; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň

@@ -36,6 +36,8 @@ from urllib.parse import urlsplit
 
 DOTAZ, OBRAZEK = 2.0, 0.1            # výchozí rozestup v sekundách
 LIMITY = {                           # konec názvu webu: (dotaz, obrázek)
+    "kramerius.cbvk.cz": (10.0, 10.0),   # krajské Krameriusy (JVK, SVK Plzeň): po ~15 dotazech za 20 min 403 na hodinu (#189)
+    "kramerius.svkpk.cz": (10.0, 10.0),
     "archives.cz": (4.0, 0.3),       # ZA Opava (digi.archives.cz, images.archives.cz) – blokuje na 30 min, obrázky po ~6 snímcích 403
     "nominatim.openstreetmap.org": (1.1, 1.1),   # pravidla Nominatimu: nejvýš 1 dotaz za s
     "mza.cz": (4.0, 4.0),            # MZA Brno – skriptem jen hledání knih (ZAKAZ níže), blokuje i za rychlé dotazy na katalog

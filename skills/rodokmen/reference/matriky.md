@@ -14,7 +14,8 @@ berní rula 1654 (jen hospodáři), gruntovní/pozemkové knihy (kdo vlastnil kt
 vojenské záznamy, domovské listy, parte. Viz `portaly.md` a `metodika.md` (prameny mimo ČR).
 
 ## Lhůty (zákon 301/2000 Sb.)
-Do archivu (a tedy online) jde svazek, až od jeho **posledního** zápisu uplyne: narození **100 let**, sňatky **75**, úmrtí **30**.
+Do archivu (a tedy online) jde svazek, až od jeho **posledního** zápisu uplyne: narození **100 let**, sňatky **75**, úmrtí **75**
+(§ 23; lhůta 30 let u úmrtí platí jen pro vydání jednotlivého zápisu na úřadě, viz níže).
 Mladší knihy jsou na matričním úřadě obce s rozšířenou působností / pověřeném úřadě. **Matriční úřad ale počítá lhůtu
 u každého zápisu zvlášť** (§ 25b zákona 301/2000 Sb.): zápis starší 100 / 75 / 30 let (narození / sňatek / úmrtí) vydá
 **komukoli** i ze svazku, který je ještě na úřadě, a dovolí do knihy nahlédnout. Mladší zápis dostane jen osoba, které
