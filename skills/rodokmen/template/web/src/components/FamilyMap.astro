@@ -75,7 +75,7 @@ const payload = JSON.stringify({ places: site.places, lines, names, compact });
           .join('<br>');
         const head = line.slug ? `<a href="/rod/${esc(line.slug)}/">${esc(line.name)}</a>` : esc(line.name);
         marker.bindPopup(
-          `<strong>${esc(pl.name)}</strong>${pl.years ? ` <span class="y">${pl.years[0]}–${pl.years[1]}</span>` : ''}<br>` +
+          `<a href="/misto/${esc(pl.slug)}/"><strong>${esc(pl.name)} →</strong></a>${pl.years ? ` <span class="y">${pl.years[0]}–${pl.years[1]}</span>` : ''}<br>` +
             `<span class="pl" style="--c:${esc(line.color)}">${head}</span><br>` +
             (pl.hypothesis ? 'hypotéza – vazba zatím neprokázaná' : who),
           { maxHeight: 260 }

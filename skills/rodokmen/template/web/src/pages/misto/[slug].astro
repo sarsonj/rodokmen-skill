@@ -1,0 +1,112 @@
+---
+// Stránka obce: časová osa všech předků, kteří s ní jsou spojení, a seznam událostí v ní.
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+import { people, lineByK, href } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return site.places.map((pl) => ({ params: { slug: pl.slug }, props: { pl } }));
+}
+const { pl } = Astro.props;
+const NOW = new Date().getFullYear();
+const ROOT_COLOR = '#8a6d52';
+const lineOf = (k) => lineByK[k] ?? { name: 'rodiče a prarodiče', color: ROOT_COLOR, slug: null };
+
+/** Pruh života: od narození do úmrtí; chybějící konec doplní události a pruh tam vybledne. */
+const rows = pl.timeline.map((t) => {
+  const [b, d] = t.life;
+  const ev = t.events.map((e) => e.year).filter(Boolean);
+  const start = b ?? Math.min(...ev, d ?? Infinity);
+  const living = b && !d && b > NOW - 100;
+  const end = d ?? (living ? NOW : Math.max(...ev, start));
+  return { ...t, p: people[t.slug], start, end, fadeL: !b, fadeR: !d && !living, color: lineOf(t.line).color };
+}).filter((r) => Number.isFinite(r.start)).sort((a, b) => a.start - b.start);
+
+const all = rows.length ? rows.flatMap((r) => [r.start, r.end]) : [NOW];
+const span0 = Math.max(...all) - Math.min(...all);
+const step = span0 > 200 ? 50 : span0 > 80 ? 25 : 10;
+const lo = Math.floor(Math.min(...all) / step) * step;
+const hi = Math.ceil((Math.max(...all) + 1) / step) * step;
+const x = (y) => `${((y - lo) / (hi - lo)) * 100}%`;
+const ticks = Array.from({ length: (hi - lo) / step + 1 }, (_, i) => lo + i * step);
+
+const events = pl.timeline
+  .flatMap((t) => t.events.map((e) => ({ ...e, p: people[t.slug] })))
+  .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+const lineList = pl.lines.map((l) => lineOf(l.k));
+const SIGN = { '*': 'narození', '×': 'sňatek', '†': 'úmrtí', '·': 'zmínka' };
+---
+<Base title={pl.name} wider>
+  <p class="crumbs"><a href="/mapa/">Mapa</a></p>
+  <h1>{pl.name}</h1>
+  <p class="lead">
+    {pl.years && <>{pl.years[0]}–{pl.years[1]} · </>}
+    {rows.length} {rows.length === 1 ? 'předek' : rows.length < 5 ? 'předkové' : 'předků'} ·
+    {lineList.map((l, i) => (
+      <>{i > 0 && ', '}<span class="pdot" style={`background:${l.color}`}></span>{l.slug ? <a href={href.line(l.slug)}>{l.name}</a> : l.name}</>
+    ))}
+  </p>
+  <p class="small"><a href={`https://www.openstreetmap.org/?mlat=${pl.lat}&mlon=${pl.lon}#map=13/${pl.lat}/${pl.lon}`}>Ukázat na mapě OpenStreetMap</a></p>
+
+  {pl.hypothesis ? (
+    <p>Tohle místo je zatím jen hypotéza – vazba na rodokmen není prokázaná.</p>
+  ) : (
+    <>
+      <h2>Časová osa</h2>
+      <p class="small muted">Pruh je život člověka (vybledlý konec = datum neznáme). Značky ukazují, co se stalo přímo tady: * narození, × sňatek, † úmrtí, · jiná zmínka.</p>
+      <div class="tl">
+        <div class="tl-row tl-axis">
+          <span></span>
+          <div class="tl-track">{ticks.map((t) => <span class="tl-tick" style={`left:${x(t)}`}>{t}</span>)}</div>
+        </div>
+        {rows.map((r) => (
+          <div class="tl-row">
+            <a class="tl-name" href={href.person(r.slug)}>{r.p.name} <span class="muted">{r.p.years}</span></a>
+            <div class="tl-track">
+              {ticks.map((t) => <span class="tl-grid" style={`left:${x(t)}`}></span>)}
+              <span class:list={['tl-bar', { fadeL: r.fadeL, fadeR: r.fadeR }]}
+                style={`left:${x(r.start)};width:calc(${x(r.end)} - ${x(r.start)} + 4px);--c:${r.color}`}></span>
+              {r.events.filter((e) => e.year).map((e) => (
+                <span class="tl-ev" style={`left:${x(e.year)}`} title={e.text}>{e.sign}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h2>Co se tu stalo</h2>
+      <ul class="tl-list">
+        {events.map((e) => (
+          <li><span class="tl-y">{e.year ?? '?'}</span> <span title={SIGN[e.sign]}>{e.sign}</span>{' '}
+            <a href={href.person(e.p.slug)}>{e.p.name}</a> – <span class="small">{e.text}</span></li>
+        ))}
+      </ul>
+    </>
+  )}
+</Base>
+
+<style>
+  .pdot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; margin-right: 0.25em; border: 1px solid #3b2e22; }
+  .tl { margin: 1rem 0 2rem; }
+  .tl-row { display: grid; grid-template-columns: 15rem 1fr; gap: 0.75rem; align-items: center; min-height: 1.7rem; }
+  .tl-name { font-size: 0.88rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-name .muted { font-size: 0.8rem; }
+  .tl-track { position: relative; height: 1.4rem; margin-right: 1.5rem; }
+  .tl-axis { position: sticky; top: 0; background: var(--bg); z-index: 1; border-bottom: 1px solid var(--line); }
+  .tl-tick { position: absolute; top: 0.2rem; transform: translateX(-50%); font-size: 0.75rem; color: var(--muted); }
+  .tl-grid { position: absolute; top: -0.2rem; bottom: -0.2rem; border-left: 1px dashed var(--line); }
+  .tl-bar { position: absolute; top: 0.45rem; height: 0.5rem; border-radius: 0.25rem; background: var(--c); opacity: 0.85; }
+  .tl-bar.fadeR { background: linear-gradient(to right, var(--c) 60%, transparent); }
+  .tl-bar.fadeL { background: linear-gradient(to left, var(--c) 60%, transparent); }
+  .tl-bar.fadeL.fadeR { background: linear-gradient(to right, transparent, var(--c) 30%, var(--c) 70%, transparent); }
+  .tl-ev { position: absolute; top: 0.05rem; transform: translateX(-50%); width: 1.3rem; height: 1.3rem; display: grid; place-items: center;
+    border-radius: 50%; background: var(--paper); border: 1px solid #3b2e22; font-size: 0.8rem; line-height: 1; cursor: help; }
+  .tl-list { list-style: none; padding: 0; }
+  .tl-list li { padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
+  .tl-y { display: inline-block; min-width: 3rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+  @media (max-width: 640px) {
+    .tl-row { grid-template-columns: 1fr; gap: 0.1rem; margin-bottom: 0.4rem; }
+    .tl-axis > span { display: none; }
+    .tl-track { margin-right: 0.8rem; }
+  }
+</style>
