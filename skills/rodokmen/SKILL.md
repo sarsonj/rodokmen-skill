@@ -122,6 +122,21 @@ Pravidla, která chrání kvalitu:
   uživatel u každého klikne na odpověď (artefakt s ukládáním odpovědí, jinak HTML s tlačítkem „stáhnout odpovědi“).
   Odpovědi pak zapracuj do dat a zapiš do deníku.
 
+### Hledání v datech – rejstřík `tools/rejstrik.py`
+Deník, zápisy, přepisy a poznámky mají za pár týdnů přes megabajt. Nečti je celé ani je negrepuj naslepo – zeptej
+se rejstříku (SQLite s fulltextem bez diakritiky; sestaví se sám z textových souborů v `data/` a `kontext/` do
+`pracovni/rejstrik.sqlite`, zdrojem pravdy zůstávají textové soubory). Odpovídá krátce, stovky tokenů místo desítek tisíc:
+- **Na začátku konverzace** místo konce deníku stačí `rejstrik.py denik --posledni 3` (řádky deníku bývají dlouhé).
+- **Než začneš větev nebo osobu:** `rejstrik.py osoba 84` (fakta, zápisy, řádky deníku rozdělené podle jistoty,
+  otázky, zmínky). **Než otevřeš svazek:** `rejstrik.py svazek <id|"N Holice 05">` – které snímky už jsme prošli
+  a s jakým výsledkem. Odpověď na „nehledali jsme to už?“.
+- `hledej "kovář Novák"` (FTS5: AND/OR/NOT, `"fráze"`, `předpona*`; `--zdroj denik,kontext`), `zapis <klíč>`,
+  `denik 440-445`, `misto Holice`, `rod 8`, `tema vojáci`, `chybi` (kontrolní seznamy), `sql "SELECT …"`.
+- **Před psaním zajímavosti nebo příběhu:** `podklady rod 8` (i `osoba`, `misto`, `tema`) → `pracovni/podklady/…`.
+- **Pomocníkům** dej do zadání výstup `osoba N` / `svazek …`, ne celý deník.
+- Vazba text ↔ osoba: `citace` (klíč zápisu) a `stitek` (`<!-- osoby: 6, 13 -->` pod nadpisem zajímavosti) jsou
+  jisté; `text`, `jmeno…`, `side` (shoda jména, i v jiném pádě) jsou jen vodítko – stejnojmenní předci.
+
 ### Šetrně k archivům – brzda `tools/slusne.py`
 Archivy blokují IP adresu po sérii rychlých dotazů (MZA i celou síť na hodiny, ZA Opava na 30 minut). Blokaci
 nezpůsobují nástroje, ale rychlé dočasné skripty a smyčky `curl`. Nástroje v `tools/` mají brzdu samy: společný limit
@@ -242,6 +257,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
+| `rejstrik.py` | rejstřík dat v SQLite: `osoba`, `svazek`, `hledej`, `zapis`, `denik`, `podklady`… (Hledání v datech) |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
 | `slusne.py` | brzda proti zablokování archivem (`stav`, `zastav`, `odblokuj`) |
 | `export_web.py`, `fan_chart.py` | data → web (volá ho `npm run data`); vějíř jako plakát k tisku |
