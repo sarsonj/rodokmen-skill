@@ -103,5 +103,6 @@ Mapa slučuje datové PR automaticky, index ručně správcem. Co už odešlo, j
 
 ## Podporované archivy
 
-Mapa: SOA Plzeň (Porta fontium), SOA Praha (eBadatelna). Index: navíc AHMP. Ostatní knihy `prehled` vypíše a vynechá
-– u nich zatím jen čtení (mapa a index je mohou mít od jiných přispěvatelů).
+Mapa i index: SOA Plzeň (Porta fontium), SOA Praha (eBadatelna), SOA Třeboň (digi.ceskearchivy.cz), SOA Zámrsk
+(ARON), ZA Opava (digi.archives.cz), MZA Brno (Acta Publica). Index navíc AHMP. Ostatní knihy (SOA Litoměřice,
+knihovny) `prehled` vypíše a vynechá – u nich zatím jen čtení (mapa a index je mohou mít od jiných přispěvatelů).
