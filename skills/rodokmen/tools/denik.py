@@ -5,16 +5,19 @@ Proč: deník je na webu jedna markdown tabulka. Prázdný řádek ji ukončí (
 chybějící sloupce rozhodí zobrazení a server sloučí větev jen tehdy, když nový řádek má číslo, které v `main` ještě není.
 
 Použití (z kořene projektu):
-  denik.py pridej --zdroj "…" --rozsah "…" --hledano "…" --vysledek "…" [--citace "…"] [--datum RRRR-MM-DD]
+  denik.py pridej --zdroj "…" --rozsah "…" --hledano "…" --vysledek "…" [--citace "…"] [--datum RRRR-MM-DD | "9. 11. 2026"]
       zdroj    archiv, kniha a apu_id / číslo knihy („ARON, Choceň, zemřelí sign. 2112 (apu b156902e…)“)
       rozsah   co přesně bylo prohlédnuto („sn. 10 (fol. 14, 1791)“, „rejstřík P 1791–1810, sn. 47–48“)
       hledano  co se hledalo („úmrtí Tomáše Příhody * 1731“)
       vysledek co se našlo, i neúspěch s rozsahem („**nalezeno** … zapsáno `klíč`“ / „nenalezeno v …“)
       citace   kdo četl a odkud („Petra + Claude“, odkaz) – nepovinné
     Vypíše číslo nového řádku. Číslo = nejvyšší číslo v místním deníku i v origin/main + 1.
+    Sloupce řádku se řídí hlavičkou tabulky (starší deník se 6 sloupci bez „rozsah“: rozsah se připíše ke zdroji)
+    a datum se zapíše ve stejném tvaru, jaký má poslední řádek deníku (RRRR-MM-DD, nebo „9. 11. 2026“).
   denik.py pridej <vstup.json>     totéž, vstup {"zdroj": …, "rozsah": …, "hledano": …, "vysledek": …, "citace": …}
   denik.py dalsi                   jen vypíše, jaké číslo dostane další řádek
-  denik.py kontrola                prázdné řádky v tabulce, chybné sloupce a čísla u nových řádků (od DENIK_OD)
+  denik.py kontrola [--od N]       prázdné řádky v tabulce, chybné sloupce a zdvojená čísla (od řádku N, výchozí DENIK_OD
+                                   nebo proměnná prostředí DENIK_OD). Doplněné řádky „533b“ mezi existujícími jsou v pořádku.
 
 Svislou čáru „|“ v textu nástroj sám zapíše jako „\\|“ a konce řádků nahradí mezerou.
 """
@@ -27,10 +30,48 @@ for _s in (sys.stdout, sys.stderr):
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG = os.path.join(ROOT, "data", "research_log.md")
 SLOUPCE = ["#", "datum", "zdroj", "rozsah", "hledáno", "výsledek", "citace"]
-DENIK_OD = 1   # projekt se staršími řádky jiného tvaru může nastavit číslo, od kterého se sloupce kontrolují
-RADEK = re.compile(r"^\| (\d+) \|")
+# číslo řádku, od kterého se kontrolují sloupce (projekt se staršími řádky jiného tvaru: --od N nebo proměnná DENIK_OD)
+DENIK_OD = int(os.environ["DENIK_OD"]) if os.environ.get("DENIK_OD", "").isdigit() else 1
+RADEK = re.compile(r"^\| (\d+)([a-z]?) \|")   # „| 533 |“ i doplněný řádek „| 533b |“
 SEP = re.compile(r"(?<!\\)\|")
 ODDELOVAC = re.compile(r"^\|(\s*:?-+:?\s*\|)+\s*$")   # |---|---| pod hlavičkou (prázdný deník ze šablony)
+
+
+POLE = {"#": "#", "č.": "#", "datum": "datum", "zdroj": "zdroj", "rozsah": "rozsah", "hledáno": "hledano",
+        "hledano": "hledano", "výsledek": "vysledek", "vysledek": "vysledek", "citace": "citace"}
+CESKE_DATUM = re.compile(r"(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})")
+
+
+def hlavicka(text):
+    """Sloupce tabulky deníku podle hlavičky (řádek nad |---|); bez hlavičky výchozích 7 sloupců."""
+    radky = text.splitlines()
+    for i in range(1, len(radky)):
+        if ODDELOVAC.match(radky[i]) and radky[i - 1].lstrip().startswith("|"):
+            return [c.lower() for c in bunky(radky[i - 1])]
+    return list(SLOUPCE)
+
+
+def datum_iso(v):
+    """RRRR-MM-DD z „2026-11-09“ i „9. 11. 2026“; None, když to datum není."""
+    v = str(v or "").strip()
+    m = CESKE_DATUM.fullmatch(v)
+    if m:
+        v = f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+    try:
+        return datetime.date.fromisoformat(v).isoformat() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v) else None
+    except ValueError:
+        return None
+
+
+def tvar_data(iso, text):
+    """Datum ve tvaru, jaký má poslední řádek deníku (aby se tvary v jednom deníku nemíchaly)."""
+    posl = [l for l in text.splitlines() if RADEK.match(l)]
+    if posl:
+        b = bunky(posl[-1])
+        if len(b) > 1 and CESKE_DATUM.fullmatch(b[1]):
+            d = datetime.date.fromisoformat(iso)
+            return f"{d.day}. {d.month}. {d.year}"
+    return iso
 
 
 def bunky(radek):
@@ -66,14 +107,19 @@ def pridej(udaje):
     chybi = [k for k in ("zdroj", "rozsah", "hledano", "vysledek") if not str(udaje.get(k) or "").strip()]
     if chybi:
         sys.exit("Chybí: " + ", ".join(chybi) + " (každý řádek deníku má mít zdroj, rozsah, co se hledalo a výsledek).")
-    datum = udaje.get("datum") or datetime.date.today().isoformat()
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", datum):
-        sys.exit(f"Datum „{datum}“ musí být RRRR-MM-DD.")
+    datum = datum_iso(udaje.get("datum") or datetime.date.today().isoformat())
+    if not datum:
+        sys.exit(f"Datum „{udaje.get('datum')}“ není datum – piš RRRR-MM-DD nebo „9. 11. 2026“.")
     surovy = open(LOG, "rb").read()
     text = surovy.decode("utf-8-sig")
     eol = "\r\n" if b"\r\n" in surovy else "\n"
     cislo = dalsi_cislo(text)
-    radek = "| " + " | ".join([str(cislo), datum] + [bunka(udaje.get(k)) for k in ("zdroj", "rozsah", "hledano", "vysledek", "citace")]) + " |"
+    hodnoty = dict(udaje, datum=tvar_data(datum, text))
+    hodnoty["#"] = str(cislo)
+    sloupce = [POLE.get(s, s) for s in hlavicka(text)]
+    if "rozsah" not in sloupce and str(hodnoty.get("rozsah") or "").strip():   # starší deník bez sloupce „rozsah“
+        hodnoty["zdroj"] = f"{hodnoty.get('zdroj', '')}, {hodnoty['rozsah']}"
+    radek = "| " + " | ".join(bunka(hodnoty.get(s)) if s != "#" else hodnoty["#"] for s in sloupce) + " |"
     # konec souboru: smazat prázdné řádky za tabulkou, ať nový řádek tabulku neukončí
     zbytek = text.rstrip("\r\n \t")
     posledni = zbytek.splitlines()[-1] if zbytek else ""
@@ -102,17 +148,19 @@ def kontrola(text=None, od=DENIK_OD):
     jine = [i + 1 for i in range(idx[0], idx[-1]) if radky[i].strip() and not RADEK.match(radky[i])]
     if jine:
         warn.append(f"deník: uvnitř tabulky je řádek, který není řádkem deníku (řádek souboru {', '.join(map(str, jine[:5]))})")
+    sloupce = hlavicka(text)
     videne = {}
     for i in idx:
         c = bunky(radky[i])
-        n = int(c[0])
+        m = RADEK.match(radky[i])
+        n, oznaceni = int(m.group(1)), m.group(1) + m.group(2)
         if n >= od:
-            if len(c) != len(SLOUPCE):
-                err.append(f"deník #{n}: {len(c)} sloupců místo {len(SLOUPCE)} ({' | '.join(SLOUPCE)}) – "
+            if len(c) != len(sloupce):
+                err.append(f"deník #{oznaceni}: {len(c)} sloupců místo {len(sloupce)} ({' | '.join(sloupce)}) – "
                            "přidávej řádky přes tools/denik.py pridej")
-            if n in videne:
-                err.append(f"deník #{n}: číslo je v deníku dvakrát – přečísluj nový řádek (tools/denik.py dalsi)")
-        videne[n] = i
+            if oznaceni in videne:
+                err.append(f"deník #{oznaceni}: číslo je v deníku dvakrát – přečísluj nový řádek (tools/denik.py dalsi)")
+        videne[oznaceni] = i
     return err, warn
 
 
@@ -124,7 +172,12 @@ def main():
         print(dalsi_cislo())
         return
     if a[0] == "kontrola":
-        err, warn = kontrola()
+        od = DENIK_OD
+        if len(a) == 3 and a[1] == "--od" and a[2].isdigit():
+            od = int(a[2])
+        elif len(a) > 1:
+            sys.exit(__doc__)
+        err, warn = kontrola(od=od)
         for e in err:
             print("CHYBA:", e)
         for w in warn:

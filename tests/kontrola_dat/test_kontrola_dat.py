@@ -90,6 +90,29 @@ try:
 finally:
     shutil.rmtree(tmp)
 
+# připomínky z PR #187: doplněný řádek „533b“, starší deník se 6 sloupci, české datum
+tmp = tempfile.mkdtemp()
+try:
+    log = os.path.join(tmp, "research_log.md")
+    with open(log, "w", encoding="utf-8", newline="\n") as f:
+        f.write("# Deník\n\n| # | datum | zdroj | hledáno | výsledek | citace |\n|---|---|---|---|---|---|\n"
+                "| 532 | 8. 11. 2026 | a | c | d | e |\n| 532b | 8. 11. 2026 | a | c | d | e |\n| 533 | 9. 11. 2026 | a | c | d | e |\n")
+    denik.LOG = log
+    denik.text_main = lambda: ""
+    e, w2 = denik.kontrola()
+    VYSLEDKY.append((not e and not w2, f"denik: 6 sloupců podle hlavičky a řádek 532b bez chyby ({e} {w2})"))
+    n = denik.pridej(dict(zdroj="ARON", rozsah="sn. 5", hledano="h", vysledek="v", datum="2026-11-10"))
+    posl = open(log, encoding="utf-8").read().rstrip().splitlines()[-1]
+    VYSLEDKY.append((n == 534 and posl == "| 534 | 10. 11. 2026 | ARON, sn. 5 | h | v |  |",
+                     f"denik: 6sloupcový řádek, rozsah u zdroje, datum jako v deníku ({posl})"))
+    denik.pridej(dict(zdroj="z", rozsah="r", hledano="h", vysledek="v", datum="9. 11. 2026"))
+    VYSLEDKY.append((not denik.kontrola()[0], "denik: datum „9. 11. 2026“ na vstupu přijato"))
+    e, _ = denik.kontrola(open(log, encoding="utf-8").read() + "| 532b | x | a | c | d | e |\n")
+    VYSLEDKY.append((any("#532b" in x and "dvakrát" in x for x in e), "denik: zdvojené 532b hlášeno"))
+    VYSLEDKY.append((denik.datum_iso("31. 2. 2026") is None, "denik: nesmyslné datum odmítnuto"))
+finally:
+    shutil.rmtree(tmp)
+
 spatne = [t for ok, t in VYSLEDKY if not ok]
 for ok, t in VYSLEDKY:
     print(("OK   " if ok else "CHYBA"), t)
