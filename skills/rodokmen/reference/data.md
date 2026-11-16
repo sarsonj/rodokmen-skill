@@ -91,7 +91,9 @@ Viz `web.md`.
 
 ## Markdown poznámky
 - `research_log.md` – tabulka `| # | datum | zdroj | rozsah | hledáno | výsledek | citace |`, nové řádky na konec, i negativní.
-  Web ji zobrazuje jako „Výzkumný deník“.
+  Web ji zobrazuje jako „Výzkumný deník“. Osoby značit `č. 84`; svislítko v textu buňky nepoužívej (zalomení řádku
+  v přepisu piš `/`), posune sloupce.
+- `historie_kol.md` – starší body z „Rozpracováno“ ve `STAV.md` (nejnovější nahoře); při startu se nečte.
 - `zajimavosti.md` – `## Nadpis` + text, odkazy `[Jméno](/osoba/<slug>/)`.
 - `pribeh.md` – „Příběh <hlavního rodu>“: frontmatter `title`, `lead` + kapitoly `##`; když soubor neexistuje,
   položka menu se skryje. Jak psát: `pribehy.md`.

@@ -32,8 +32,11 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
 - Dnešní datum (do deníku, STAV.md) ber z příkazu `date`, ne z hlavy.
 
 ## Na začátku každé konverzace
-1. Jsi ve složce projektu? (`data/STAV.md` existuje.) → Přečti `data/STAV.md`, konec `data/research_log.md`
-   a pokračuj podle sekce „Rozpracováno“. Krátce uživateli shrň, kde jste skončili.
+1. Jsi ve složce projektu? (`data/STAV.md` existuje.) → Přečti `data/STAV.md` a posledních pár řádků deníku
+   (`tail -n 5 data/research_log.md | cut -c1-600`) a pokračuj podle sekce „Rozpracováno“. Krátce uživateli shrň,
+   kde jste skončili.
+   Deník ani `data/historie_kol.md` nečti celé – řádky deníku bývají dlouhé a za pár týdnů mají stovky kB
+   (desítky tisíc tokenů při každém startu). Podrobnosti k větvi dohledej, až na ní budeš pracovat.
    **Verze:** spusť `python3 -I SKILL_DIR/tools/verze.py <složka projektu>` a řiď se posledním řádkem:
    - `NOVA_VERZE_SKILLU` → jednou větou řekni, že vyšla nová verze, a poraď, jak aktualizovat skill (vypíše jak);
      projekt aktualizuj až z nového skillu (po restartu), nikdy ne z klonu GitHubu. `PROJEKT_NOVEJSI` → jen poraď
@@ -97,13 +100,15 @@ Základní smyčka pro každou osobu:
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
+   Osoby označ číslem (`č. 84`), aby šly v deníku najít.
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
 7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
 
 Pravidla, která chrání kvalitu:
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
-  (jméno, místo, rok). Snadno „objevíš“ něco, co už v datech je.
+  (jméno, místo, rok). Snadno „objevíš“ něco, co už v datech je. Velké soubory prohledávej (`grep -iE`, jméno
+  s volnou samohláskou `Háj.k` najde Hájek i Hájka, `č\. 84`, název svazku), nečti je celé.
 - **Zápis do dat:** `zaznamy`, `svazky`, `prepisy`, `dokumenty` přes `python3 -I tools/zapis.py <soubor> <klíč> pracovni/x.json`
   (objekt napiš do `pracovni/x.json`, nástroj změní jen tu položku; `--sloucit` změní jen uvedená pole); odkaz na zápis u osoby v `osoby.py` přes
   `tools/zapis.py odkaz` (ohlídá uvozovky a čárky), ostatní úpravy `osoby.py` a markdown nástrojem pro úpravu souborů.
@@ -159,6 +164,8 @@ tolik neubývají.
   související výskyty. Rejstřík ať čte po sloupcích (`mapa_knihy.py … --sloupce`, `reference/matriky.md` → Čtení
   písma) – jeho „v rejstříku není“ bez toho neber jako výsledek.
 - Pomocník píše jen do `pracovni/pom_<větev>/`, **do `data/` nikdy**. Zapisuješ ty; výstupy nemaž, dokud nejsou vytěžené.
+  `pracovni/` není v gitu: textové výstupy pomocníků a vlastní souhrny, na které se z dat odkazuješ (mapa knihy,
+  výpis z pozemkové knihy), po vytěžení přesuň do `kontext/` (v gitu) s poznámkou „neověřené čtení pomocníka“.
 - **Jejich čtení vždy ověř sám na snímku** (`python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over`, zlomky
   0–1, rozdělí zápis na dvě čitelné poloviny), než ho zapíšeš jako `doc`. Uživateli to vysvětli správně: je to stejný
   model, jde o princip čtyř očí – pomocník nemá kontext (dvě rodiny stejného jména ve vsi).
@@ -170,6 +177,11 @@ tolik neubývají.
 Linie končí, když matriky mlčí (nemanželské dítě bez otce, shořelé knihy, chybějící svazky) nebo když jsi
 v 17. století. Zapiš to do `ISSUES`/`archivni_dotazy.md` (náhradní prameny: `metodika.md` → Mrtvé body) a jdi na jinou
 větev. Průběžně aktualizuj `data/STAV.md` („Rozpracováno“), aby šlo kdykoli navázat.
+
+**`STAV.md` drž krátký** – čte se při každém startu. „Rozpracováno“ má nejvýš ~6 bodů po 2–3 větách (co dál
+a proč, ne celý průběh – ten je v deníku). Starší a hotové body přesuň **beze změny** nahoru do `data/historie_kol.md`
+(nečte se při startu, slouží k dohledání). Hypotézu v `HYPOTEZY` po uzavření kola přepiš do aktuálního shrnutí
+místo připisování „Doplněno …“ – starší věty pak odporují novějším a jdou na web.
 
 ## Fáze 3 – Zajímavosti a Příběh hlavního rodu
 Podrobně `reference/pribehy.md`. Tohle rodina na webu čte nejradši – nenechávej to na konec.
@@ -220,7 +232,8 @@ připomeň uživateli, že je může poslat správci skillu:
 ## Soubory projektu
 `data/`: `STAV.md` (vstupní bod), `osoby.py` (předci, `LINES`, `SIDE`, `ISSUES`, `HYPOTEZY`, `SAME`), `zaznamy.json`,
 `svazky.json`, `prepisy.json`, `zvyrazneni.json`, `research_log.md` (deník), `udaje_od_rodiny.md`, `archivni_dotazy.md`,
-`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json` (formát `reference/data.md`). Dál `vyrezy/`
+`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json` (formát `reference/data.md`), `historie_kol.md`
+(starší body z „Rozpracováno“). Dál `kontext/` (vytěžené souhrny a výstupy pomocníků, v gitu), `vyrezy/`
 a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od rodiny), `pracovni/` (nejde na web),
 `poznamky_pro_skill.md`, `tools/` (kopie ze skillu – aktualizuje se celý projekt přes `novy_projekt.py`), `web/`.
 
