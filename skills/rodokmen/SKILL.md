@@ -82,7 +82,8 @@ Základní smyčka pro každou osobu:
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: nejdřív se zeptej sdílené mapy a indexu – `python3 -I tools/sdileni.py najdi "Obec" rok N`
-   (kde v knize začíná rok či ves, kolik zápisů už někdo přečetl; `reference/sdileni.md`). Jinak podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
+   (kde v knize začíná rok či ves, kolik zápisů už někdo přečetl; `reference/sdileni.md`) a podle jména
+   `sdileni.py hledej "Příjmení"` (osoby projektu naráz: `sdileni.py shody`). Jinak podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
    rejstřík, začni jím.

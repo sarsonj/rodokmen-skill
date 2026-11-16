@@ -28,6 +28,17 @@ Ve smyčce Fáze 2, krok 3 (Najdi svazek), **před otevřením knihy**:
 - `python3 -I tools/sdileni.py kniha <klíč svazku | adresa knihy>` – všechny orientační body knihy a zápisy, které už
   někdo přečetl. Je-li hledaný zápis v indexu, **ověř ho na snímku** (odkaz ze snímku) – ušetříš hledání, ne čtení.
 
+**Podle jména** (dřív než se vybere svazek, #194):
+- `python3 -I tools/sdileni.py hledej "Příjmení" [křestní nebo obec] [--vse]` – zápisy z indexu s tímto příjmením,
+  i v ženském tvaru a starém pravopisu (Příhoda → Przihoda, Vick → Wick). Celé jen ty z knih a obcí projektu
+  (`svazky.json`, `mista.json`), ostatní jako počty po knihách – na běžné příjmení asi 1 kB místo desítek kB.
+- `python3 -I tools/sdileni.py shody [číslo osoby]` – projde osoby z `osoby.py` (bez žijících) a hledá jejich
+  příjmení v obcích, kde podle faktů žily. Vynechá zápisy, které projekt už má (`zaznamy.json`), a čtení uživatele.
+  U knih z obcí projektu prohledá i **strojový text** (PERO apod.) a vypíše jen čísla snímků: je to vodítko,
+  kam se podívat, ne doklad (PERO čte jméno otce obvykle dobře, jméno dítěte a obec špatně). Velká města (víc než
+  10 knih v indexu) jen v knihách projektu. Spouštěj na začátku sezení a po přidání osob nebo obcí; nový zásah ohlas
+  uživateli jednou větou „tato osoba je možná na snímku XX – odkaz“.
+
 Mapa i index jsou jen nápověda: odhad snímku může být o pár snímků vedle a cizí čtení může být chybné.
 Nemá-li mapa obec ani knihu, postupuj jako dřív (portály v `portaly.md`).
 

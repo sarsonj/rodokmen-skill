@@ -26,6 +26,10 @@ ok(sdileni.kniha_z_url("https://ebadatelna.soapraha.cz/d/11973/15")[2] == "11973
 ok(sdileni.kniha_z_url("https://katalog.ahmp.cz/pragapublica/permalink?xid=144286C6CCB648968F0C7879316827D0") == (None, "ahmp", "144286c6"), "AHMP")
 ok(sdileni.kniha_z_url("https://aron.vychodoceskearchivy.cz/apu/abc") is None, "ARON zatím ne")
 
+ok(sdileni.cislo_snimku("34 (str. 62)") == ("34", "str. 62"), "snímek s poznámkou")
+ok(sdileni.cislo_snimku("173 (oddíl obce Rašov, zápis č. 10)") == ("173", "oddíl obce Rašov, zápis č. 10"), "snímek s oddílem")
+ok(sdileni.cislo_snimku("12L") == ("12L", "") and sdileni.cislo_snimku(300) == ("300", ""), "snímek se stranou a číslo")
+
 body = [{"scan": 10, "year": 1800}, {"scan": 30, "year": 1810}, {"scan": 40, "year": 1812, "year_to": 1813}]
 ok(sdileni.odhad(body, 1805) == (20, "odhad mezi sn. 10 (1800) a 30 (1810)"), "interpolace")
 ok(sdileni.odhad(body, 1813)[0] == 40, "přímo z bodu (year_to)")
@@ -55,6 +59,42 @@ n["odeslano"]["body"] = [klic(x) for x in b2]
 n["odeslano"]["zapisy"] = ["stary"]
 b3, z3, _, _ = sdileni.nove(n)
 ok(not b3 and not z3, "odeslané se znovu nenabízí")
+
+# ---------- hledání podle jména (bez sítě: index podstrčený místo json_z / stahni) ----------
+ok(sdileni.kmen("Červenková") == "červenk" and sdileni.kmen("Veselý") == "vesel" and sdileni.kmen("Wick") == "wick", "kmen příjmení")
+ok({"prihod", "przihod", "przyhod"} <= set(sdileni.tvary("příhod")), "starý pravopis")
+ok(sdileni.shoduje(["przihoda"], sdileni.tvary("příhod")) == "przihoda", "shoda starého tvaru")
+ok(sdileni.shoduje(["musel"], ["musil"]) is None, "očima přesně")
+ok(sdileni.shoduje(["przihoga"], sdileni.tvary("příhod"), ocr=True) == "przihoga", "OCR s odchylkou")
+ok(sdileni.kniha_indexu_jinde("https://aron.vychodoceskearchivy.cz/apu/1A6D0B5C-5f05-41fe") == "vca/1a6d0b5c", "ARON klíč indexu")
+ok(sdileni.kniha_indexu_jinde("https://www.mza.cz/actapublica/matrika/detail/7122") == "mza/7122", "MZA klíč indexu")
+
+KNIHY = [{"id": "vca/1a6d0b5c", "nazev": "Choceň N 1725–1785", "farnost": "Choceň", "obsah": "", "url": "u1", "ocr_stran": 2,
+          "ocr_cteni": [{"soubor": "ocr-pero.tsv"}]},
+         {"id": "portafontium/x-01", "nazev": "Jinde 01", "farnost": "Jinde", "obsah": "", "url": "u2", "ocr_stran": 0}]
+PRECTENO = [[0, "300", "1755-01-27", "N", "Choceň", "dítě: Alžběta; otec: Tomáš Przihoda", "", "vysoká", "Někdo 2026-11-01", ""],
+            [0, "321", "1759-01-17", "N", "Choceň", "dítě: Dorota; otec: Jan Walach", "", "vysoká", "Jiný 2026-11-02", ""],
+            [1, "5", "1800-01-01", "N", "Jinde", "dítě: Jan; otec: Josef Příhoda", "", "vysoká", "X 2026-11-03", ""]]
+OCR = "snimek\tsoubor\tstrana\tradek\ttext\n319\tf\tL\t11\tbarne, Przihöda\n320\tf\tL\t12\tnic tu není\n"
+sdileni.json_z = lambda url: KNIHY if url.endswith("knihy.json") else PRECTENO if url.endswith("precteno.json") else None
+sdileni.stahni = lambda url, max_stari=0: OCR if url.endswith("ocr-pero.tsv") else None
+json.dump({"ch": {"url": "https://aron.vychodoceskearchivy.cz/apu/1a6d0b5c-5f05"}}, open("data/svazky.json", "w"))
+json.dump([{"klic": "a1755", "svazek": "ch", "snimek": 300, "druh": "N", "datum": "27. 1. 1755"}], open("data/zaznamy.json", "w"))
+json.dump({"Choceň": {"re": "Choc(eň|ni|ně)", "lat": 50, "lon": 16}}, open("data/mista.json", "w", encoding="utf-8"), ensure_ascii=False)
+open("data/osoby.py", "w", encoding="utf-8").write('P = {1: dict(n="Petr Novák", note="Žijící – údaje jen základní."), '
+                                                    '4: dict(n="Tomáš Příhoda", f=["* 1731 Choceň"])}\nSIDE = []\n')
+import io, contextlib  # noqa: E402
+out = io.StringIO()
+with contextlib.redirect_stdout(out):
+    sdileni.hledej(["Příhoda"])
+t = out.getvalue()
+ok("z knih a obcí projektu 1" in t and "vca/1a6d0b5c sn. 300" in t and "portafontium/x-01" in t, "hledej: projekt celý, jinde počet\n" + t)
+out = io.StringIO()
+with contextlib.redirect_stdout(out):
+    sdileni.shody()
+t = out.getvalue()
+ok("4 Tomáš Příhoda" in t and "sn. 300" not in t and "OCR vca/1a6d0b5c: sn. 319" in t and "Novák" not in t,
+   "shody: bez zápisu projektu a žijících, OCR jen snímek\n" + t)
 
 print("\n".join(chyby) or "sdileni: vše v pořádku")
 sys.exit(1 if chyby else 0)

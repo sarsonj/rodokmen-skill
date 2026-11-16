@@ -3,6 +3,11 @@
 Použití (z kořene projektu `python3 -I tools/sdileni.py …`):
   sdileni.py najdi <obec> [rok] [N|O|Z]   -> knihy z Mapy matrik s odhadem snímku a kolik zápisů z knihy už je v indexu
   sdileni.py kniha <klíč svazku | url>     -> orientační body knihy z mapy a zápisy z knihy, které už někdo přečetl
+  sdileni.py hledej <příjmení> [slovo…] [--vse]
+                                         -> zápisy z indexu s tímto příjmením (i ženský tvar a starý pravopis: Příhoda →
+                                            Przihoda); z knih a obcí projektu celé, ostatní jen počty po knihách
+  sdileni.py shody [číslo osoby]         -> osoby z osoby.py × index: stejné příjmení v obci, kde osoba žila (mista.json);
+                                            u knih z obcí projektu i strojový text (jen čísla snímků jako vodítko)
   sdileni.py bod <klíč svazku> <snímek> [rok=1785] [rok_do=1787] [druh=N] [strana=fol. 12] [ves=Lhota] [rejstrik=A–C]
                                          -> orientační bod do fronty (rok, ves, začátek rejstříku na snímku, který čteš)
   sdileni.py prehled                     -> co je nového k nasdílení, souhlas uživatele (data/sdileni.json)
@@ -18,6 +23,15 @@ k tomu AHMP pro index; ostatní nástroj vynechá a řekne to.
 """
 import datetime, json, os, re, shutil, subprocess, sys, tempfile, time, unicodedata, urllib.error, urllib.request
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda (tools/slusne.py)
+for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows: -I ignoruje PYTHONIOENCODING a cp1250 neumí „→“
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")
+
+
+def cislo_snimku(snimek):
+    """„34 (str. 62)“ → („34“, „str. 62“): index chce čisté číslo (se stranou, „12L“), poznámka patří do ostatni."""
+    m = re.match(r"\s*(\d+[A-Za-z]?)(?![A-Za-z])\s*[(,;]?\s*(.*?)\s*\)?\s*$", str(snimek or ""))
+    return (m.group(1), m.group(2)) if m else (str(snimek or "").strip(), "")
 
 MAPA = "https://ondrnovy.github.io/mapa-matrik/v1"
 INDEX = "https://pe-pan.github.io/matriky-index"
@@ -196,6 +210,249 @@ def kniha(klic_nebo_url):
     return 0
 
 
+# ---------- hledání podle jména (index matrik) ----------
+# Krok 1 smyčky, než se vybere svazek (#194): co už někdo přečetl. Celý index má na běžné příjmení stovky zásahů
+# z celé republiky; vypíše se celé jen to, co je z knih a obcí projektu, ostatní jako počty po knihách (kvůli tokenům).
+
+STARY_PRAVOPIS = [("ř", ("r", "rz")), ("š", ("s", "ss", "sch")), ("č", ("c", "cz", "tsch")), ("ž", ("z", "zs")),
+                  ("í", ("i", "y", "ie")), ("ý", ("y", "i")), ("v", ("v", "w")), ("j", ("j", "g"))]
+
+
+def hnorm(text):
+    return norm((text or "").replace("ſ", "s").replace("ʃ", "s"))
+
+
+def kmen(prijmeni):
+    """Kmen příjmení pro oba rody: Červenková → červenk, Přibylová → přibyl, Veselá → vesel."""
+    s = prijmeni.lower()
+    for kon in ("ová", "ovi", "a", "á", "y", "ý", "e"):
+        if s.endswith(kon) and len(s) - len(kon) >= 4:
+            return s[: -len(kon)]
+    return s
+
+
+def tvary(slovo):
+    """Slovo bez diakritiky a jeho podoby z matrik 17.–19. století (příhod → prihod, przihod, przyhod…)."""
+    t = {slovo.lower()}
+    for nove_, stare in STARY_PRAVOPIS:
+        for x in sorted(t):
+            if nove_ in x:
+                for s in stare:
+                    if len(t) < 24:
+                        t.add(x.replace(nove_, s))
+    return sorted({hnorm(x) for x in t if len(x) >= 3})
+
+
+def lev(a, b, mez):
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        if min(cur) > mez:
+            return mez + 1
+        prev = cur
+    return prev[-1]
+
+
+def shoduje(slova, cile, ocr=False):
+    """Slovo textu, které začíná některým tvarem. Přečtené očima přesně (staré podoby už jsou v tvarech), strojový text
+    od 6 znaků s jednou odchylkou (PERO komolí). Vrátí shodné slovo nebo None."""
+    for w in slova:
+        for c in cile:
+            d = 1 if ocr and len(c) >= 6 else 0
+            if len(c) - d <= len(w) <= len(c) + 4 and lev(w[: len(c)], c, d) <= d:
+                return w
+    return None
+
+
+def kniha_indexu_jinde(url):
+    """Klíč knihy v indexu u archivů, které kniha_z_url zatím nezná (složky indexu podle pe-pan v #185):
+    ARON apu/<uuid> → vca/<8 znaků>, MZA detail/<id> → mza/<id>, SOA Třeboň → soatrebon/<id>, ZA Opava → zaopava/<8>.
+    Až je kniha_z_url pozná sama, tahle funkce odpadne."""
+    url = url or ""
+    for vzor, archiv in ((r"vychodoceskearchivy\.cz/apu/([0-9a-f]{8})", "vca"), (r"actapublica/matrika/detail/(\d+)", "mza"),
+                         (r"digi\.ceskearchivy\.cz/(\d+)", "soatrebon"), (r"archives\.cz/.*?xid=([0-9a-fA-F]{8})", "zaopava")):
+        if m := re.search(vzor, url, re.I):
+            return f"{archiv}/{m.group(1).lower()}"
+    return None
+
+
+def klic_indexu(svazek):
+    k = kniha_z_url((svazek or {}).get("url"))
+    return f"{k[1]}/{k[2]}" if k else kniha_indexu_jinde((svazek or {}).get("url"))
+
+
+def snimky_projektu():
+    """{(kniha indexu, snímek)} zápisů, které projekt už má v zaznamy.json – ty se ve shodách nehlásí."""
+    p = os.path.join(DATA, "zaznamy.json")
+    sv = svazky()
+    return {(klic_indexu(sv.get(z.get("svazek"))), cislo_snimku(z.get("snimek"))[0]) for z in
+            (json.load(open(p, encoding="utf-8")) if os.path.exists(p) else [])}
+
+
+def projekt():
+    """(klíče knih indexu projektu, [(obec, regulární výraz)] z data/mista.json)."""
+    knihy = {k for k in (klic_indexu(s) for s in svazky().values()) if k}
+    p = os.path.join(DATA, "mista.json")
+    mista = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
+    vzory = []
+    for n, e in mista.items():
+        try:
+            vzory.append((n, re.compile(r"(?<!\w)(?:" + (e.get("re") or re.escape(n)) + ")", re.I)))
+        except re.error:
+            pass
+    return knihy, vzory
+
+
+def obec_sedi(text, vzory):
+    return any(v.search(text or "") or v.search(hnorm(text)) for _, v in vzory)
+
+
+_JMENO = []
+
+
+def cte_uzivatel(cetl):
+    """Zápis přečetl sám uživatel (jméno ze souhlasu ke sdílení) – ve shodách ho není třeba hlásit."""
+    if not _JMENO:
+        _JMENO.append(hnorm(nastaveni().get("jmeno") or ""))
+    return bool(_JMENO[0]) and _JMENO[0] in hnorm(cetl)
+
+
+def zapisy_indexu():
+    """[(kniha z knihy.json, řádek precteno.tsv jako dict)] – precteno.json odkazuje na knihu pořadím v knihy.json."""
+    knihy = json_z(f"{INDEX}/data/knihy.json") or []
+    sloupce = ("snimek", "datum", "typ", "obec", "osoby", "ostatni", "jistota", "cetl", "odkaz")
+    return [(knihy[r[0]], dict(zip(sloupce, r[1:]))) for r in (json_z(f"{INDEX}/data/precteno.json") or [])
+            if isinstance(r, list) and r and r[0] < len(knihy)]
+
+
+def radek_zapisu(k, z):
+    return (f"{k['id']} sn. {z['snimek']} {z['datum']} {z['typ']} {z['obec']} | {(z['osoby'] or '')[:140]}"
+            + (" [čtení uživatele]" if cte_uzivatel(z["cetl"]) else "") + f" | {z.get('odkaz') or k.get('url_snimku') or k.get('url')}")
+
+
+def hledej(slova, vse=False, limit=15):
+    cile = tvary(kmen(slova[0]))
+    dalsi = [hnorm(s) for s in slova[1:]]
+    knihy, vzory = projekt()
+    nase, jinde = [], {}
+    for k, z in zapisy_indexu():
+        text = " ".join(z.get(x) or "" for x in ("obec", "osoby", "ostatni"))
+        w = re.findall(r"[a-z]{3,}", hnorm(text))
+        if not shoduje(w, cile) or any(d not in hnorm(text) for d in dalsi):
+            continue
+        if k["id"] in knihy or obec_sedi(z["obec"], vzory):
+            nase.append((k, z))
+        else:
+            jinde.setdefault(k["id"], [k, 0])[1] += 1
+    print(f"„{' '.join(slova)}“ (tvary {', '.join(cile[:6])}{'…' if len(cile) > 6 else ''}): v indexu "
+          f"{len(nase) + sum(c for _, c in jinde.values())} zápisů, z knih a obcí projektu {len(nase)}")
+    for k, z in sorted(nase, key=lambda x: (x[0]["id"], x[1]["datum"]))[:limit]:
+        print("  " + radek_zapisu(k, z))
+    if len(nase) > limit:
+        print(f"  … a dalších {len(nase) - limit}")
+    if jinde:
+        nej = sorted(jinde.values(), key=lambda x: -x[1])
+        if vse:
+            for k, c in nej:
+                print(f"  jinde: {k['id']} ({c}) {k['nazev'][:70]}")
+        else:
+            print(f"  jinde {sum(c for _, c in nej)} v {len(nej)} knihách, nejvíc: "
+                  + "; ".join(f"{k['id']} {k['nazev'][:40]} ({c})" for k, c in nej[:5]) + " – všechny: --vse")
+    print("Prázdný výsledek nedokazuje, že jméno v knihách není. Zásah ověř na snímku.")
+    return 0
+
+
+def osoby_projektu():
+    """[(číslo nebo slug, jméno, {kmeny příjmení}, {obce z mista.json, kde osoba podle faktů žila})]; bez žijících."""
+    p = os.path.join(DATA, "osoby.py")
+    if not os.path.exists(p):
+        return []
+    ns = {}
+    exec(compile(open(p, encoding="utf-8").read(), p, "exec"), ns)
+    _, vzory = projekt()
+    vys = []
+    for c, o in list(ns.get("P", {}).items()) + [(o.get("slug") or o.get("id") or "", o) for o in ns.get("SIDE", [])]:
+        jm = re.sub(r"\(\?\)|,.*|\b(starší|mladší|st\.|ml\.)", "", o.get("n") or "").strip()
+        if len(jm.split()) < 2 or "neuveden" in jm or "Žijící" in (o.get("note") or ""):   # bez příjmení nic
+            continue
+        prijmeni = {kmen(jm.split()[-1])} | {kmen(x) for x in re.findall(r"rozen[áý] (\w+)", o.get("n") or "")}
+        text = " ".join(o.get("f") or [])
+        mista = {n for n, v in vzory if v.search(text)}
+        if mista and any(len(x) >= 4 for x in prijmeni):
+            vys.append((c, jm, {x for x in prijmeni if len(x) >= 4}, mista))
+    return vys
+
+
+def ocr_knihy(k):
+    """Řádky strojového čtení knihy z indexu (ocr-*.tsv), stažené přes brzdu a uložené na den."""
+    radky = []
+    for c in k.get("ocr_cteni") or []:
+        t = stahni(f"{INDEX}/knihy/{k['id']}/{c['soubor']}")
+        if t:
+            rr = t.splitlines()
+            hl = rr[0].split("\t")
+            radky += [dict(zip(hl, r.split("\t"))) for r in rr[1:] if r.strip()]
+    return radky
+
+
+def shody(jen=None, limit=6):
+    """Osoby projektu × index: stejné příjmení v obci, kde osoba žila, nebo v knize projektu; u knih z obcí projektu
+    i strojový text (jen čísla snímků – vodítko ke čtení, ne doklad)."""
+    knihy, vzory = projekt()
+    vz = dict(vzory)
+    zapisy = zapisy_indexu()
+    knihy_indexu = {k["id"]: k for k in (json_z(f"{INDEX}/data/knihy.json") or [])}   # i knihy jen s OCR
+    popis = {i: " ".join((k["nazev"], k["farnost"], k["obsah"])) for i, k in knihy_indexu.items()}
+    # velké město (Praha, Vídeň) má v indexu desítky knih: shody tam jen v knihách projektu, strojový text vůbec
+    velke = {m for m, v in vzory if sum(1 for t in popis.values() if v.search(t)) > 10}
+    mame = snimky_projektu()
+    ocr_cache = {}
+    nic, vypsano = 0, {}
+    for c, jm, prijmeni, mista in osoby_projektu():
+        if jen and str(c) != str(jen):
+            continue
+        cile = sorted({t for p in prijmeni for t in tvary(p)})
+        nalez = []
+        for k, z in zapisy:
+            if cte_uzivatel(z["cetl"]) or (k["id"], str(z["snimek"])) in mame:
+                continue
+            v_obci = any(vz[m].search(z["obec"] or "") or vz[m].search(hnorm(z["obec"])) for m in mista - velke)
+            v_knize = k["id"] in knihy and any(vz[m].search(popis.get(k["id"], "")) for m in mista)
+            if not (v_obci or v_knize):
+                continue
+            if shoduje(re.findall(r"[a-z]{3,}", hnorm(" ".join((z["osoby"] or "", z["ostatni"] or "")))), cile):
+                nalez.append((k, z))
+        ocr = {}
+        for k in knihy_indexu.values():
+            if not k.get("ocr_stran") or not any(vz[m].search(popis[k["id"]]) for m in mista - velke):
+                continue
+            if k["id"] not in ocr_cache:
+                ocr_cache[k["id"]] = ocr_knihy(k)
+            for r in ocr_cache[k["id"]]:
+                if shoduje(re.findall(r"[a-z]{3,}", hnorm(r.get("text"))), cile, ocr=True):
+                    ocr.setdefault(k["id"], set()).add(str(r.get("snimek")))
+        if not nalez and not ocr:
+            nic += 1
+            continue
+        klic = (tuple(sorted(prijmeni)), tuple(sorted(mista)))
+        if klic in vypsano:
+            print(f"{c} {jm}: viz {vypsano[klic]}")
+            continue
+        vypsano[klic] = f"{c} {jm}"
+        print(f"{c} {jm} ({', '.join(sorted(mista))}; {', '.join(sorted(prijmeni))}*): očima {len(nalez)}"
+              + (f", strojově v {len(ocr)} knihách" if ocr else ""))
+        for k, z in sorted(nalez, key=lambda x: x[1]["datum"])[:limit]:
+            print("    " + radek_zapisu(k, z))
+        for kn, sn in ocr.items():
+            sn = sorted(sn, key=lambda x: int(re.sub(r"\D", "", x) or 0))
+            print(f"    OCR {kn}: " + (f"{len(sn)} snímků – kmen je asi běžné slovo, nevypisuji" if len(sn) > 40
+                                       else "sn. " + ", ".join(sn)))
+    print(f"(bez shody {nic} osob; shoda příjmení a obce není ztotožnění – rozhodne snímek, rodiče a dům)")
+    return 0
+
+
 # ---------- fronta, souhlas, návrh ----------
 
 def nastaveni():
@@ -258,8 +515,9 @@ def nove(n=None):
             mimo.add(z.get("svazek"))
             continue
         rok = rok_z(z.get("datum"))
-        if k[0] and rok and z.get("snimek"):
-            body.append({"svazek": z["svazek"], "scan": int(z["snimek"]), "type": z.get("druh"), "year": rok})
+        scan = re.match(r"\d+", cislo_snimku(z.get("snimek"))[0])   # Mapa matrik: jen číslo snímku, bez strany
+        if k[0] and rok and scan:
+            body.append({"svazek": z["svazek"], "scan": int(scan.group()), "type": z.get("druh"), "year": rok})
         if z["klic"] in prepisy and rok and rok <= datetime.date.today().year - LHUTA.get(z.get("druh"), 100):
             zapisy.append(z)
     if os.path.exists(FRONTA):
@@ -304,8 +562,9 @@ def navrh():
     with open(os.path.join(NAVRH, "zapisy.jsonl"), "w", encoding="utf-8") as f:
         for z in zapisy:
             k = kniha_z_url((svazky().get(z["svazek"]) or {}).get("url"))
-            f.write(json.dumps({"klic": z["klic"], "archiv": k[1], "kniha": k[2], "snimek": str(z["snimek"]), "typ": z.get("druh"),
-                                "datum": "", "obec": "", "osoby": "", "ostatni": "", "jistota": "",
+            cislo, poznamka = cislo_snimku(z["snimek"])
+            f.write(json.dumps({"klic": z["klic"], "archiv": k[1], "kniha": k[2], "snimek": cislo, "typ": z.get("druh"),
+                                "datum": "", "obec": "", "osoby": "", "ostatni": poznamka, "jistota": "",
                                 "_shrnuti": z.get("shrnuti"), "_orig": prepisy[z["klic"]].get("orig"), "_datum": z.get("datum")},
                                ensure_ascii=False) + "\n")
     print(f"pracovni/sdileni/zapisy.jsonl: {len(zapisy)} zápisů. Doplň u každého datum (ISO), obec (ves a číslo domu), "
@@ -550,6 +809,10 @@ def main(a):
             return najdi(args[0], rok, druh)
         if prikaz == "kniha" and args:
             return kniha(args[0])
+        if prikaz == "hledej" and args:
+            return hledej([x for x in args if not x.startswith("--")], vse="--vse" in args)
+        if prikaz == "shody":
+            return shody(args[0] if args else None)
         if prikaz == "bod" and len(args) >= 2:
             return bod(*args)
         if prikaz == "prehled":
