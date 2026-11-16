@@ -1,86 +1,21 @@
 #!/usr/bin/env python3
 """Časová návaznost v rodokmenu: data narození, sňatku a úmrtí z data/osoby.py jako intervaly.
 
-Modul bez vlastního spouštění. Používá ho tools/kontrola.py (upozornění v terminálu)
-a tools/export_web.py (stránka Časová osa na webu). Jen standardní knihovna.
+Používá ho tools/kontrola.py (upozornění v terminálu), tools/export_web.py (stránka Časová osa na webu)
+a tools/graf.py (stejná pravidla pro strom z GEDCOMu). Jediné místo s pravidly o věku rodičů.
+Samostatně: `python -I -X utf8 tools/chronologie.py` vypíše jen tato upozornění. Jen standardní knihovna.
 
-Každé datum je interval „nejdřív – nejpozději“ podle toho, jak přesně je zapsané:
-„14. 2. 1890“ jeden den, „3/1867“ celý měsíc, „1890“ celý rok, „asi 1720“ ± ASI_ROKY let,
-„před 1740“ cokoli do konce roku 1740, „po 1921“ cokoli od roku 1921.
+Data čte tools/datumy.py (společné pro všechny kontroly): každé datum je interval „nejdřív – nejpozději“ podle toho,
+jak přesně je zapsané: „14. 2. 1890“ jeden den, „3/1867“ celý měsíc, „1890“ celý rok, „asi 1720“ ± ASI_ROKY let,
+„před 1740“ cokoli do konce roku 1740, „po 1921“ cokoli od roku 1921, „asi 1760–64“ rozmezí. Hlásí se jen rozpor,
+který platí pro všechna možná data. Ověřený neobvyklý údaj se odškrtne polem `overeno` u osoby (reference/data.md).
 """
-import calendar, re
+import calendar, os, sys
 from fractions import Fraction
 from dataclasses import dataclass
-from datetime import date
 
-MIN, MAX = date(1, 1, 1), date(9999, 12, 31)   # otevřené meze („před“, „po“)
-ASI_ROKY = 5                                    # tolerance údaje „asi 1720“ (rok dopočítaný z věku bývá o pár let vedle)
-
-_DATUM = re.compile(r"(?:(?P<pre>asi|≈|kolem|cca|před|po)\s*)?"
-                    r"(?:(?P<d>\d{1,2})\.\s*(?P<m>\d{1,2})\.\s*(?P<y>\d{4})|(?P<mm>\d{1,2})/(?P<my>\d{4})|(?P<r>\d{4}))\b")
-
-
-@dataclass(frozen=True)
-class Datum:
-    od: date      # nejdřívější možné datum
-    do: date      # nejpozdější možné datum
-    approx: bool  # „asi“, „≈“, „kolem“, „před“, „po“
-    text: str     # zápis data bez místa: „14. 2. 1890“, „asi 1720“, „před 1740“
-
-
-def _cast(text):
-    """Datum na začátku textu (po případné předponě), jinak None."""
-    m = _DATUM.match(text.strip())
-    if not m:
-        return None
-    try:
-        return _interval(m)
-    except ValueError:   # rok 0000, „asi 0003“ – překlep, ne datum
-        return None
-
-
-def _interval(m):
-    if m["r"]:
-        y = int(m["r"])
-        od, do = date(y, 1, 1), date(y, 12, 31)
-    else:
-        y, mes = (int(m["y"]), int(m["m"])) if m["y"] else (int(m["my"]), int(m["mm"]))
-        if not 1 <= mes <= 12:
-            od, do = date(y, 1, 1), date(y, 12, 31)
-        else:
-            od, do = date(y, mes, 1), date(y, mes, calendar.monthrange(y, mes)[1])
-            if m["d"] and 1 <= int(m["d"]) <= do.day:   # neplatný den („30. 2.“) → celý měsíc
-                od = do = date(y, mes, int(m["d"]))
-    pre = m["pre"]
-    if pre == "před":
-        od = MIN
-    elif pre == "po":
-        do = MAX
-    elif pre:
-        od, do = date(od.year - ASI_ROKY, 1, 1), date(do.year + ASI_ROKY, 12, 31)
-    return Datum(od, do, bool(pre), re.sub(r"\s+", " ", m.group(0)))
-
-
-def datum(fakt):
-    """Datum hned za značkou faktu (* narození, × sňatek, † úmrtí). Číslo domu dál ve větě rok není."""
-    fakt = fakt.lstrip()
-    return _cast(fakt[1:]) if fakt[:1] in ("*", "×", "†") else None
-
-
-def _z_y(y):
-    """Narození a úmrtí z pole y („asi 1720–1785“, „1680 – před 1740“, „† 1940“, „* 1895“)."""
-    y = (y or "").strip()
-    if not re.search(r"\d{4}", y):
-        return None, None
-    if y.startswith("†"):
-        return None, _cast(y[1:])
-    if y.startswith("*"):
-        return _cast(y[1:]), None
-    y = re.sub(r"(?<=\d)\s*-\s*", " – ", y.replace("—", "–"))   # „1930-2015“, „1930—2015“ jako „1930–2015“
-    head, dash, tail = y.partition("–")
-    if not dash and re.match(r"po\b", y):   # „po 1921“ = ještě žil, zemřel až po roce 1921
-        return None, _cast(y)
-    return _cast(head), (_cast(tail) if dash else None)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I nepřidává složku skriptu
+from datumy import ASI_ROKY, MAX, MIN, Datum, datum, fakt, vek as _vek, z_y as _z_y  # noqa: E402,F401
 
 
 def zastupna(p):
@@ -90,25 +25,30 @@ def zastupna(p):
 
 
 def udalosti(P, k):
-    """Narození, sňatek s druhým rodičem z rodokmenu a úmrtí osoby k: {"narozeni", "snatek", "umrti"} → Datum | None."""
-    p = P[k]
-    fakty = [x for x in p.get("f", []) if isinstance(x, str)]
+    """Narození, sňatek s druhým rodičem z rodokmenu a úmrtí osoby k: {"narozeni", "snatek", "umrti"} → Datum | None.
 
-    def prvni(znak, fakty=fakty):
-        return next((d for x in fakty if x.lstrip().startswith(znak) for d in [datum(x)] if d), None)
+    Fakta mají přednost před y; za narození se bere i „pokřtěn 4. 12. 1786“, za úmrtí „pohřben …“."""
+    p = P[k]
+    fakty = [(f, x) for f in p.get("f", []) for x in [fakt(f)] if x and x[1]]
+
+    def prvni(znak):
+        return next((d for _f, (z, d) in fakty if z == znak), None)
 
     yb, yd = _z_y(p.get("y"))
-    snatky = [x for x in fakty if x.lstrip().startswith("×") and datum(x)]
+    snatky = [(f, d) for f, (z, d) in fakty if z == "×"]
     druhy = P.get(k ^ 1) if k > 1 else None
     prijmeni = (druhy or {}).get("n", "").split()[-1:] or [""]
     prijmeni = prijmeni[0].strip("()?")[:5]
-    snatek = [x for x in snatky if prijmeni and prijmeni in x] or snatky
-    return {"narozeni": prvni("*") or yb, "snatek": datum(snatek[0]) if snatek else None, "umrti": prvni("†") or yd}
+    snatek = [x for x in snatky if prijmeni and prijmeni in x[0]] or snatky
+    return {"narozeni": prvni("*") or yb, "snatek": snatek[0][1] if snatek else None, "umrti": prvni("†") or yd}
 
 
 PRAVIDLA = ("umrti-pred-narozenim", "snatek-mlady", "snatek-po-umrti", "otec-zemrel", "matka-zemrela",
-            "vek-matky", "vek-otce")
+            "vek-matky", "vek-otce", "vysoky-vek")
 POHROBEK_DNI = 280                    # dítě se může narodit až ~9 měsíců po smrti otce
+MATKA_VEK, OTEC_VEK = (15, 50), (15, 75)   # věk rodiče při narození dítěte, mimo rozsah = upozornění
+SNATEK_VEK = 15
+NEJVYSSI_VEK = 105
 NEJISTE_STAVY = ("prob", "mh", "fam")
 _JISTE, _NEJISTE = " – jeden z údajů asi nesedí.", " – údaje jsou nejisté, možná nesedí."
 
@@ -122,9 +62,34 @@ class Varovani:
     osoby: tuple            # dotčené osoby (hlavní čísla): k a případně rodič
 
 
-def _vek(od, do):
-    """Celé roky mezi dvěma daty (u otevřených mezí vyjde nesmyslně velké nebo záporné číslo – pravidlo pak nevyjde)."""
-    return do.year - od.year - ((do.month, do.day) < (od.month, od.day))
+# ---- pravidla nad dvojicí dat (sdílí kontrola() pro osoby.py i graf.py pro GEDCOM) -------------------------------
+
+def vek_rodice(b, rb, zena):
+    """Věk rodiče narozeného `rb` při narození dítěte `b`: None (možné), ("pred", None) – rodič se narodil až po
+    dítěti, ("mlady", nejvýš let), ("stary", nejméně let). Hranice MATKA_VEK, OTEC_VEK."""
+    lo, hi = MATKA_VEK if zena else OTEC_VEK
+    if b.do < rb.od:
+        return "pred", None
+    if _vek(rb.od, b.do) < lo:
+        return "mlady", _vek(rb.od, b.do)
+    if _vek(rb.do, b.od) > hi:
+        return "stary", _vek(rb.do, b.od)
+    return None
+
+
+def po_smrti_rodice(b, rd, zena):
+    """Dní mezi úmrtím rodiče `rd` a narozením dítěte `b`, když je to víc, než jde (matka 0, otec POHROBEK_DNI)."""
+    dni = (b.od - rd.do).days
+    return dni if dni > (0 if zena else POHROBEK_DNI) else None
+
+
+def zivot(b, d):
+    """Rozpor narození × úmrtí jedné osoby: None, ("umrti-pred-narozenim", None), ("vysoky-vek", nejméně let)."""
+    if d.do < b.od:
+        return "umrti-pred-narozenim", None
+    if _vek(b.do, d.od) > NEJVYSSI_VEK:
+        return "vysoky-vek", _vek(b.do, d.od)
+    return None
 
 
 def _let(n):
@@ -160,9 +125,12 @@ def kontrola(P, SAME=None):
         n, u = P[k]["n"], ud[k]
         b, m, d = u["narozeni"], u["snatek"], u["umrti"]
         jemu = "mu" if muz(k) else "jí"
-        if b and d and d.do < b.od:
-            pridej(k, "umrti-pred-narozenim", f"{n}: úmrtí ({d.text}) je dřív než narození ({b.text})", (b, d), (k,))
-        if b and m and _vek(b.od, m.do) < 15:
+        z = zivot(b, d) if b and d else None
+        if z and z[0] == "umrti-pred-narozenim":
+            pridej(k, z[0], f"{n}: úmrtí ({d.text}) je dřív než narození ({b.text})", (b, d), (k,))
+        elif z:
+            pridej(k, z[0], f"{n}: mezi narozením ({b.text}) a úmrtím ({d.text}) je nejméně {_let(z[1])}", (b, d), (k,))
+        if b and m and _vek(b.od, m.do) < SNATEK_VEK:
             pridej(k, "snatek-mlady", f"{n}: sňatek ({m.text}) je dřív než narození ({b.text})" if m.do < b.od else
                    f"{n}: při sňatku ({m.text}) by {jemu} bylo nejvýš {_let(_vek(b.od, m.do))}", (b, m), (k,))
         if m and d and m.od > d.do:
@@ -170,29 +138,25 @@ def kontrola(P, SAME=None):
         if not b:
             continue
         syn, syna, narodil = ("syn", "syna", "narodil") if muz(k) else ("dcera", "dcery", "narodila")
-        o, ma = rodic(2 * k), rodic(2 * k + 1)
-        if o:
-            ob, od_ = ud[o]["narozeni"], ud[o]["umrti"]
-            on = P[o]["n"]
-            if od_ and (b.od - od_.do).days > POHROBEK_DNI:
-                pridej(k, "otec-zemrel", f"{on} zemřel {od_.text}, {syn} {n} se {narodil} {b.text}", (b, od_), (k, o))
-            if ob and _vek(ob.od, b.do) < 15:
-                pridej(k, "vek-otce", f"{on} se podle údajů narodil ({ob.text}) až po narození {syna} ({n}, {b.text})"
-                       if b.do < ob.od else
-                       f"{on}: při narození {syna} ({n}, {b.text}) by mu bylo nejvýš {_let(_vek(ob.od, b.do))}", (b, ob), (k, o))
-        if ma:
-            mb, md = ud[ma]["narozeni"], ud[ma]["umrti"]
-            mn = P[ma]["n"]
-            if md and b.od > md.do:
-                pridej(k, "matka-zemrela", f"{mn} zemřela {md.text}, {syn} {n} se {narodil} {b.text}", (b, md), (k, ma))
-            if mb:
-                kolik = (f"nejvýš {_let(_vek(mb.od, b.do))}" if _vek(mb.od, b.do) < 15 else
-                         f"nejméně {_let(_vek(mb.do, b.od))}" if _vek(mb.do, b.od) > 50 else None)
-                if b.do < mb.od:
-                    pridej(k, "vek-matky", f"{mn} se podle údajů narodila ({mb.text}) až po narození {syna} ({n}, {b.text})",
-                           (b, mb), (k, ma))
-                elif kolik:
-                    pridej(k, "vek-matky", f"{mn}: při narození {syna} ({n}, {b.text}) by jí bylo {kolik}", (b, mb), (k, ma))
+        for pozice, zena in ((2 * k, False), (2 * k + 1, True)):
+            r = rodic(pozice)
+            if not r:
+                continue
+            rb, rd, rn = ud[r]["narozeni"], ud[r]["umrti"], P[r]["n"]
+            if rd and po_smrti_rodice(b, rd, zena):
+                pridej(k, "matka-zemrela" if zena else "otec-zemrel",
+                       f"{rn} {'zemřela' if zena else 'zemřel'} {rd.text}, {syn} {n} se {narodil} {b.text}", (b, rd), (k, r))
+            v = vek_rodice(b, rb, zena) if rb else None
+            if not v:
+                continue
+            pravidlo, jemu_r = ("vek-matky", "jí") if zena else ("vek-otce", "mu")
+            if v[0] == "pred":
+                text = (f"{rn} se podle údajů {'narodila' if zena else 'narodil'} ({rb.text}) až po narození "
+                        f"{syna} ({n}, {b.text})")
+            else:
+                text = (f"{rn}: při narození {syna} ({n}, {b.text}) by {jemu_r} bylo "
+                        f"{'nejvýš' if v[0] == 'mlady' else 'nejméně'} {_let(v[1])}")
+            pridej(k, pravidlo, text, (b, rb), (k, r))
     return out
 
 
@@ -228,3 +192,22 @@ def zije(p, ud, dnes):
         return True
     b = ud.get("narozeni")
     return ud.get("umrti") is None and b is not None and b.od != MIN and b.od.year >= dnes.year - 100
+
+
+def main():
+    if sys.argv[1:2] in (["-h"], ["--help"]):
+        sys.exit(__doc__.strip())
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    ns = {}
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    exec(open(os.path.join(root, "data", "osoby.py"), encoding="utf-8-sig").read(), ns)
+    v = kontrola(ns.get("P", {}), ns.get("SAME", {}))
+    for x in v:
+        print(f"upozornění: časová návaznost u osoby {x.k}: {x.text} Pokud údaj platí, přidej k osobě {x.k} "
+              f"do overeno: \"{x.pravidlo}\": \"proč údaj platí\"")
+    print(f"{len(v)} upozornění" if v else "Časová návaznost bez nálezů.")
+
+
+if __name__ == "__main__":
+    main()

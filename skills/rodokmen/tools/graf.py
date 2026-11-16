@@ -7,14 +7,14 @@ Použití (z kořene projektu):
       - osoba svým vlastním předkem (cyklus – chyba ve stromu, návratový kód 1)
       - dítě ve dvou rodinách (cizí strom ho vede třeba u obou manželek otce); ged_import.py bere první rodinu,
         nástroj ukáže, která je podle dat možná
-      - chronologie: věk rodiče při narození dítěte, dítě narozené po smrti matky nebo víc než rok po smrti otce,
-        úmrtí před narozením, věk přes 105 let
+      - chronologie: věk rodiče při narození dítěte, dítě narozené po smrti matky nebo víc než 9 měsíců po smrti
+        otce, úmrtí před narozením, věk přes 105 let (pravidla z tools/chronologie.py, stejná jako pro osoby.py)
       - možní dvojníci: stejné křestní jméno (Jan = Johann, Marie = Maria) a příjmení (Novák = Nowak, -ová),
         rok narození ±2, ne sourozenci ani předek a potomek
       - se jménem výchozí osoby: předek, který je v rodokmenu víckrát (vzdálení příbuzní se vzali), a návrh SAME
   python3 -I tools/graf.py predci
-      totéž pro data/osoby.py: věk rodičů 2k a 2k+1 při narození dítěte k, úmrtí rodiče před narozením a stejná
-      osoba na dvou číslech bez SAME. Tyto hlášky vypisuje i kontrola.py.
+      data/osoby.py: stejná osoba na dvou číslech bez SAME (stejné jméno a rok narození). Hlásí i kontrola.py.
+      Věk rodičů a další časovou návaznost v osoby.py hlídá tools/chronologie.py (taky součást kontrola.py).
 
 Všechno jsou upozornění k ověření v matrice, ne opravy. Nic nestahuje, jen standardní knihovna.
 """
@@ -22,22 +22,14 @@ import os, re, sys, unicodedata
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import ged_import as gi
+import ged_import as gi  # noqa: E402
+import chronologie as ch  # noqa: E402 – pravidla časové návaznosti (jediné místo s věkem rodičů)
+from datumy import MAX, MIN, ged as ged_datum  # noqa: E402 – čtení dat (společné pro všechny kontroly)
+from jmena import krestni_klic, prijmeni_klic  # noqa: E402 – volné porovnání jmen (i rodiny.py)
 
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
-
-MATKA, OTEC = (15, 50), (16, 75)      # věk rodiče při narození dítěte, mimo rozsah = upozornění
-JMENA = [g.split() for g in (
-    "jan johann johannes joannes hans", "josef joseph josephus", "frantisek franz franciscus", "marie maria",
-    "anna", "antonin anton antonius", "antonie antonia", "karel karl carl carolus", "matej mathias matthias",
-    "katerina katharina catharina", "alzbeta elisabeth elisabetha", "vaclav wenzel wenceslaus", "jakub jakob jacob",
-    "terezie theresia therese", "barbora barbara", "johana johanna", "filip philipp", "pavel paul paulus",
-    "tomas thomas", "vojtech adalbert", "rozalie rosalia", "ludmila ludmilla", "anezka agnes", "vavrinec lorenz",
-    "mikulas nikolaus", "jiri georg", "petr peter", "ondrej andreas", "ignac ignaz", "marketa margaretha")]
-KANON = {v: g[0] for g in JMENA for v in g}
-
 
 def fold(s):
     s = "".join(c for c in unicodedata.normalize("NFD", (s or "").lower()) if unicodedata.category(c) != "Mn")
@@ -46,22 +38,16 @@ def fold(s):
 
 def klic_jmena(givn, surn):
     """('Johann', 'Nowak') a ('Jan', 'Nováková') → ('jan', 'novak')."""
-    g = fold(givn).split()
-    s = fold(surn).replace("w", "v").replace(" ", "")
-    for suf in ("ova", "a"):
-        if s.endswith(suf) and len(s) > 4:
-            s = s[: -len(suf)]
-            break
-    return (KANON.get(g[0], g[0]) if g else ""), s
+    return krestni_klic(givn), prijmeni_klic(surn)
 
 
 # ---- strom z GEDCOMu --------------------------------------------------------------------------------------------
 
-def _rok(datum):
-    """Rok z data GEDCOMu; rozmezí a meze (BEF, AFT, BET … AND …, FROM, TO) nejsou přesný rok → None."""
-    if re.match(r"\s*(BEF|AFT|BET|FROM|TO)\b", datum or "", re.I):
+def _rok(d):
+    """Rok pro porovnání dvojníků; rozmezí a meze (BEF, AFT, BET … AND …, FROM, TO) nejsou přesný rok → None."""
+    if not d or d.rok is None or d.od == MIN or d.do == MAX or d.do.year - d.od.year > 2 * ch.ASI_ROKY:
         return None
-    return gi.year(datum)
+    return d.rok
 
 
 def nacti_strom(path):
@@ -73,9 +59,11 @@ def nacti_strom(path):
         if r["_type"] == "INDI":
             raw = gi.first(r, "NAME")
             m = re.match(r"^([^/]*)/([^/]*)/", raw)
-            ev = {n["tag"]: _rok(gi.first(n, "DATE")) for n in r["_sub"] if n["tag"] in ("BIRT", "CHR", "DEAT", "BURI")}
+            ev = {n["tag"]: ged_datum(gi.first(n, "DATE")) for n in r["_sub"]
+                  if n["tag"] in ("BIRT", "CHR", "DEAT", "BURI")}
+            dn, dz = ev.get("BIRT") or ev.get("CHR"), ev.get("DEAT") or ev.get("BURI")
             osoby[i] = dict(jmeno=gi.name(r), givn=(m.group(1) if m else raw).strip(), surn=(m.group(2) if m else "").strip(),
-                            sex=gi.first(r, "SEX"), nar=ev.get("BIRT") or ev.get("CHR"), zem=ev.get("DEAT") or ev.get("BURI"))
+                            sex=gi.first(r, "SEX"), nar=_rok(dn), zem=_rok(dz), dnar=dn, dzem=dz)
             for n in gi.sub(r, "FAMC"):
                 if n["val"].strip() not in puvod[i]:
                     puvod[i].append(n["val"].strip())
@@ -109,16 +97,21 @@ def _zena(t, rodic, dite):
 
 
 def _chybi_vek(t, rodic, dite):
-    """Důvod, proč `rodic` nemohl být rodičem `dite` (nebo None)."""
+    """Důvod, proč `rodic` nemohl být rodičem `dite` (nebo None) – pravidla z chronologie.py.
+    Hodnota: věk rodiče (záporná, když se narodil až po dítěti), u úmrtí rodiče počet let po něm."""
     r, d = t["osoby"][rodic], t["osoby"][dite]
-    if not d["nar"]:
+    b = d["dnar"]
+    if not b:
         return None
     zena = _zena(t, rodic, dite)
-    lo, hi = MATKA if zena else OTEC
-    if r["nar"] and not lo <= d["nar"] - r["nar"] <= hi:
-        return ("věk matky" if zena else "věk otce"), d["nar"] - r["nar"]
-    if r["zem"] and d["nar"] > r["zem"] + (0 if zena else 1):
-        return ("narozen(a) po smrti matky" if zena else "narozen(a) po smrti otce"), d["nar"] - r["zem"]
+    if r["dnar"]:
+        v = ch.vek_rodice(b, r["dnar"], zena)
+        if v:
+            return ("věk matky" if zena else "věk otce"), (v[1] if v[1] is not None else b.do.year - r["dnar"].od.year)
+    if r["dzem"]:
+        dni = ch.po_smrti_rodice(b, r["dzem"], zena)
+        if dni:
+            return ("narozen(a) po smrti matky" if zena else "narozen(a) po smrti otce"), round(dni / 365.25, 1)
     return None
 
 
@@ -131,10 +124,11 @@ def chronologie(t):
             if why:
                 out.append((why[0], why[1], p, c))
     for i, o in t["osoby"].items():
-        if o["nar"] and o["zem"] and o["zem"] < o["nar"]:
-            out.append(("úmrtí před narozením", o["zem"] - o["nar"], i, i))
-        elif o["nar"] and o["zem"] and o["zem"] - o["nar"] > 105:
-            out.append(("věk přes 105 let", o["zem"] - o["nar"], i, i))
+        z = ch.zivot(o["dnar"], o["dzem"]) if o["dnar"] and o["dzem"] else None
+        if z and z[0] == "umrti-pred-narozenim":
+            out.append(("úmrtí před narozením", o["dzem"].do.year - o["dnar"].od.year, i, i))
+        elif z:
+            out.append((f"věk přes {ch.NEJVYSSI_VEK} let", z[1], i, i))
     return out
 
 
@@ -235,25 +229,9 @@ def navrh_same(kek):
 # ---- data/osoby.py ----------------------------------------------------------------------------------------------
 
 def _roky(p):
-    """(rok narození, rok úmrtí) z y ("1850–1910", "asi 1720–1785", "* 1931", "† 1773") a z faktů * a †."""
-    nar = zem = None
-    y = p.get("y") or ""
-    if y.strip().startswith("†"):
-        zem = gi.year(y)
-    else:
-        casti = re.split(r"\s*[–—-]\s*", y.lstrip("* "), maxsplit=1)
-        if casti and not re.search(r"před|po\b", casti[0]):
-            nar = gi.year(casti[0])
-        if len(casti) > 1 and not re.search(r"před|po\b", casti[1]):
-            zem = gi.year(casti[1])
-    for f in p.get("f", []):
-        m = re.match(r"^\s*([*†])\s*(?!.*(?:před|po)\s)(.*)", f)
-        if m and gi.year(m.group(2)):
-            if m.group(1) == "*":
-                nar = gi.year(m.group(2))
-            else:
-                zem = gi.year(m.group(2))
-    return nar, zem
+    """(rok narození, rok úmrtí) z faktů * a † a z y (fakta mají přednost), jak je čte tools/datumy.py."""
+    u = ch.udalosti({1: p}, 1)
+    return tuple(d.rok if d and d.rok and not d.otevrene else None for d in (u["narozeni"], u["umrti"]))
 
 
 def _neznamy(p):
@@ -261,29 +239,8 @@ def _neznamy(p):
 
 
 def predci(P, SAME):
-    """Upozornění pro kontrola.py: věk rodičů a stejná osoba na dvou číslech bez SAME."""
-    out = []
-    hlavni = lambda k: SAME.get(k, k)
-    for k, p in sorted(P.items()):
-        if not isinstance(k, int) or k in SAME or _neznamy(p):
-            continue
-        nar, _ = _roky(p)
-        if not nar:
-            continue
-        for pk, zena in ((2 * k, False), (2 * k + 1, True)):
-            h = hlavni(pk)
-            r = P.get(h)
-            if not r or _neznamy(r):
-                continue
-            rn, rz = _roky(r)
-            lo, hi = MATKA if zena else OTEC
-            if rn and not lo <= nar - rn <= hi:
-                out.append(f"osoba {h} ({r.get('n')}) by při narození dítěte {k} ({p.get('n')}, * {nar}) bylo "
-                           f"{nar - rn} let – ověřit rok narození nebo vazbu (graf.py)")
-            if rz and nar > rz + (0 if zena else 1):
-                out.append(f"osoba {h} ({r.get('n')}) {'zemřela' if zena else 'zemřel'} {rz}, před narozením dítěte "
-                           f"{k} ({p.get('n')}, * {nar}) – ověřit (graf.py)")
-    skupiny = defaultdict(list)
+    """Upozornění pro kontrola.py: stejná osoba na dvou číslech bez SAME. Věk rodičů hlídá chronologie.py."""
+    out, skupiny = [], defaultdict(list)
     for k, p in P.items():
         if isinstance(k, int) and k > 1 and k not in SAME and not _neznamy(p) and _roky(p)[0]:
             skupiny[(fold(p.get("n")), _roky(p)[0])].append(k)
@@ -299,7 +256,8 @@ def predci(P, SAME):
 
 def _popis(t, i):
     o = t["osoby"][i]
-    return f"{o['jmeno']} ({o['nar'] or '?'}–{o['zem'] or '?'}) {i}"
+    nar, zem = (o[k] or (o["d" + k].text if o["d" + k] else "?") for k in ("nar", "zem"))
+    return f"{o['jmeno']} ({nar}–{zem}) {i}"
 
 
 def _rodina_popis(t, f):
@@ -313,7 +271,7 @@ def main(argv):
     if argv[0] == "predci":
         ns = {}
         exec(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "osoby.py"),
-                  encoding="utf-8").read(), ns)
+                  encoding="utf-8-sig").read(), ns)
         u = predci(ns.get("P", {}), ns.get("SAME", {}))
         print("\n".join(f"upozornění: {x}" for x in u) or "Vše v pořádku.")
         return 0

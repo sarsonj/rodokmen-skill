@@ -40,6 +40,8 @@ def main():
     try:
         os.makedirs(os.path.join(tmp, "tools"))
         shutil.copy(NASTROJ, os.path.join(tmp, "tools", "rodiny.py"))
+        for f in ("datumy.py", "jmena.py"):   # sdílené čtení dat a jmen
+            shutil.copy(os.path.join(os.path.dirname(NASTROJ), f), os.path.join(tmp, "tools", f))
         zapis(os.path.join(tmp, "data", "osoby.py"),
               'P = {16: dict(n="Josef Novák", y="1760–1830", f=["* 1760 Lhota č. 5"]),\n'
               '     32: dict(n="Matěj Novák", y="", f=[]),\n'

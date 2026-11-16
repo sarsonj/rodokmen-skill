@@ -160,7 +160,7 @@ def osoba(i, jmeno, sex, *radky):
 def test_okrajove():
     text = ("0 HEAD\n"
             + osoba("@A@", "Josef /Malý/", "M", "1 BIRT", "2 DATE 1770")
-            + osoba("@B@", "Anna /Malá/", "F", "1 BIRT", "2 DATE BET 1700 AND 1750", "1 DEAT", "2 DATE AFT 1800")
+            + osoba("@B@", "Anna /Malá/", "F", "1 BIRT", "2 DATE BET 1750 AND 1790", "1 DEAT", "2 DATE AFT 1800")
             + osoba("@C@", "Marie /Bílá/", "", "1 BIRT", "2 DATE 1760")             # manželka bez SEX
             + osoba("@D@", "Jan /Malý/", "M", "1 BIRT", "2 DATE 1803", "1 FAMC @F1@", "1 FAMC @F1@")
             + osoba("@E@", "Jan /Malý/", "M", "1 BIRT", "2 DATE 1803", "1 FAMC @F2@")   # dvojník u druhé ženy
@@ -175,6 +175,7 @@ def test_okrajove():
         chrono = graf.chronologie(t)
         pripad("AFT u úmrtí a BET u narození nejsou přesné roky", not any(p == "@B@" for _d, _h, p, _c in chrono),
                str(chrono))
+        pripad("BET a AFT nejsou přesné roky ani pro dvojníky", t["osoby"]["@B@"]["nar"] is None, str(t["osoby"]["@B@"]))
         pripad("manželka bez SEX se kontroluje jako matka (60 let)",
                any(d == "věk matky" and p == "@C@" for d, _h, p, _c in chrono), str(chrono))
         pripad("dvakrát stejná FAMC není dvojí rodina", graf.vic_rodin(t) == [], str(graf.vic_rodin(t)))
@@ -184,6 +185,8 @@ def test_okrajove():
         kek = graf.kekule(t, "@K@")
         pripad("vazba jen přes CHIL se do čísel nepočítá (ged_import ji nevidí)", kek == {"@K@": {1}}, str(kek))
         pripad("rok s pomlčkou i spojovníkem", graf._roky({"y": "1850-1910"}) == (1850, 1910))
+        pripad("„* asi 1620–1630“ je rozmezí narození, ne úmrtí 1630 (č. 512 v našich datech)",
+               graf._roky({"y": "* asi 1620–1630"})[1] is None, str(graf._roky({"y": "* asi 1620–1630"})))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -218,13 +221,19 @@ def test_predci():
     u = graf.predci(P, {})
     t = "\n".join(u)
     pripad("Matěj na 8 a 12 bez SAME", "osoba 12" in t and "jako 8" in t and "SAME = {12: 8}" in t, t)
-    pripad("Jan † 1869 a syn * 1870 je v pořádku (otec smí zemřít rok před)", "osoba 4" not in t, t)
-    pripad("Marie Malá matkou ve 14 letech hlášena", "osoba 5" in t and "14" in t, t)
+    pripad("predci věk rodičů nehlásí (to dělá jen chronologie.py)", "osoba 5" not in t and "osoba 4" not in t, t)
     u = graf.predci(P, {12: 8, 13: 9})
     pripad("s SAME implex nehlásí", not any("SAME" in x for x in u), "\n".join(u))
+    # věk rodičů hlídá jediné místo – chronologie.py (graf ji používá i pro GEDCOM)
+    v = {(x.k, x.pravidlo) for x in graf.ch.kontrola(P, {12: 8, 13: 9})}
+    pripad("Marie Malá matkou ve 14 letech hlášena (chronologie)", (2, "vek-matky") in v, str(v))
+    pripad("Jan † 2. 1. 1869 a syn * 3. 4. 1870 = 15 měsíců po smrti otce (chronologie)", (2, "otec-zemrel") in v, str(v))
     P2 = {**P, 9: dict(P[9], y="1815–1844")}
-    pripad("matka zemřela před narozením syna Karla (* 1845)",
-           any("osoba 9" in x and "zemřela" in x for x in graf.predci(P2, {12: 8, 13: 9})), "\n".join(graf.predci(P2, {})))
+    v = {(x.k, x.pravidlo) for x in graf.ch.kontrola(P2, {12: 8, 13: 9})}
+    pripad("matka zemřela před narozením syna Karla (* 1845)", (6, "matka-zemrela") in v, str(v))
+    P3 = {512: dict(n="Jan Hájek", y="* asi 1620–1630", st="fam", f=["* asi 1620–1630 Přeštice (odhad)"]),
+          256: dict(n="Jan Hájek", y="* asi 1661", st="doc", f=["* asi 1661 Přeštice"])}
+    pripad("„* asi 1620–1630“ u otce není úmrtí 1630", graf.ch.kontrola(P3) == [], str(graf.ch.kontrola(P3)))
 
 
 def test_kontrola():
@@ -234,12 +243,13 @@ def test_kontrola():
         for f in ("zaznamy.json", "prepisy.json"):
             zapis(os.path.join(tmp, "data", f), "[]" if f == "zaznamy.json" else "{}")
         os.makedirs(os.path.join(tmp, "tools"))
-        for f in ("kontrola.py", "graf.py", "ged_import.py"):
+        for f in ("kontrola.py", "graf.py", "ged_import.py", "chronologie.py", "datumy.py", "jmena.py"):
             shutil.copy(os.path.join(TOOLS, f), os.path.join(tmp, "tools", f))
         r = subprocess.run(PY + [os.path.join(tmp, "tools", "kontrola.py")], capture_output=True, text=True,
                            encoding="utf-8")
-        pripad("kontrola.py hlásí implex a věk rodiče z graf.py",
-               "upozornění: osoba 12" in r.stdout and "osoba 5" in r.stdout, r.stdout + r.stderr)
+        pripad("kontrola.py hlásí implex z graf.py a věk rodiče z chronologie.py",
+               "upozornění: osoba 12" in r.stdout and "Marie Malá: při narození syna" in r.stdout
+               and r.stdout.count("Marie Malá: při narození") == 1, r.stdout + r.stderr)
         os.remove(os.path.join(tmp, "tools", "graf.py"))
         r = subprocess.run(PY + [os.path.join(tmp, "tools", "kontrola.py")], capture_output=True, text=True,
                            encoding="utf-8")

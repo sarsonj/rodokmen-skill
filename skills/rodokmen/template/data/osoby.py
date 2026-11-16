@@ -14,6 +14,8 @@
 #   r    klíče zápisů z data/zaznamy.json, které osobu dokládají
 #   note poznámka: proč je údaj nejistý, rozpory, odkud se vzal
 #   sex  jen u osoby 1: "M" nebo "F" (u ostatních plyne z čísla)
+#   overeno  neobvyklý, ale ověřený údaj – varování časové návaznosti pak zmizí z kontroly i z webu:
+#        overeno={"vek-matky": "věk 51 let potvrzuje křest i úmrtí matky"} (klíč vypíše tools/kontrola.py)
 # Žijící lidé: jen jméno a rok narození (soukromí), note="Žijící – údaje jen základní."
 # Neznámý otec nemanželského dítěte: dict(n="otec neuveden", st="unk", f=[], note="…")
 

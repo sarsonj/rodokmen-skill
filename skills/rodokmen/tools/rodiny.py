@@ -30,8 +30,13 @@ svedek, baba, zemrely, manzel, manzelka, rodic, jiny. Jména piš česky v 1. p�
 Nástroj jména porovnává volně (latinská a německá křestní jména, -ová, w/v, cz/č…), proto jsou shody jen NÁMĚTY:
 každou ověř v zápisu. Rozhoduje doklad, ne počet shod. Do data/osoby.py jde až potvrzený kandidát.
 """
-import json, os, re, sys, unicodedata
+import json, os, re, sys
 from collections import defaultdict
+from datetime import date
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I nepřidává složku skriptu
+from datumy import najdi  # noqa: E402 – data čte stejně jako ostatní kontroly (tools/datumy.py)
+from jmena import krestni_klic, osoba_klic, prijmeni_klic  # noqa: E402,F401 – volné porovnání jmen (tools/jmena.py)
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8
     if hasattr(_s, "reconfigure"):
         _s.reconfigure(encoding="utf-8", errors="replace")
@@ -41,62 +46,6 @@ SLOZKA = os.path.join(ROOT, "data", "rodiny")   # stav výzkumu – patří do g
 ROLE = {"dite", "otec", "matka", "zenich", "nevesta", "otec_zenicha", "matka_zenicha", "otec_nevesty", "matka_nevesty",
         "kmotr", "kmotra", "svedek", "baba", "zemrely", "manzel", "manzelka", "rodic", "jiny"}
 STAVY = ("otevreny", "vyloucen", "potvrzen")
-
-# Křestní jména: latinské a německé tvary z matrik → český tvar (bez diakritiky, malá písmena).
-KRESTNI = {
-    "vaclav": "wenceslaus wenzel wenzl wentzel venceslaus wenceslai", "jan": "joannes johannes johann hans joanne joannis",
-    "katerina": "catharina katharina katharine catherina", "ondrej": "andreas andre andreae", "jiri": "georgius georg georgii",
-    "antonin": "antonius anton antoni", "frantisek": "franciscus franz francisci", "frantiska": "francisca franziska",
-    "josef": "josephus joseph josephi", "josefa": "josepha", "rozalie": "rosalia rozalia", "anna": "anne", "marie": "maria",
-    "terezie": "theresia teresia theresa terezia", "vavrinec": "laurentius lorenz laurenz", "mikulas": "nicolaus nikolaus nicolai",
-    "martin": "martinus", "matej": "matthias mathias matthaeus", "petr": "petrus peter", "pavel": "paulus paul",
-    "tomas": "thomas", "jakub": "jacobus jakob jacob", "vojtech": "adalbertus adalbert", "augustin": "augustinus",
-    "dorota": "dorothea", "magdalena": "magdalene", "veronika": "veronica", "barbora": "barbara", "alzbeta": "elisabetha elisabeth",
-    "ludmila": "ludmilla", "justina": "justine", "judita": "judith", "tobias": "tobiae", "karel": "carolus karl",
-    "ignac": "ignatius ignaz", "alois": "aloysius aloys", "simon": "simeon", "stepan": "stephanus stephan",
-    "vit": "vitus veit", "zuzana": "susanna susana zuzanna", "eva": "eva", "kristina": "christina", "jindrich": "henricus heinrich",
-    "bartolomej": "bartholomaeus", "filip": "philippus philipp", "rehor": "gregorius gregor", "michal": "michael",
-    "jakub_": "", "lukas": "lucas", "marek": "marcus", "daniel": "danielus", "adam": "adamus", "eliska": "",
-}
-_KR = {}
-for cz, vs in KRESTNI.items():
-    _KR[cz.rstrip("_")] = cz.rstrip("_")
-    for v in vs.split():
-        _KR[v] = cz.rstrip("_")
-
-
-def bez_diakritiky(s):
-    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
-
-
-def krestni_klic(s):
-    s = re.sub(r"[^a-z ]", " ", bez_diakritiky(s)).split()
-    return _KR.get(s[0], s[0]) if s else ""
-
-
-def prijmeni_klic(s):
-    """Volný klíč příjmení: Novák, Nowak, Nowák, Nováková, Nováčka → novak; Petráček, Petráčková → petrak."""
-    s = re.sub(r"[^a-z]", "", bez_diakritiky(s))
-    s = s.replace("sch", "s").replace("cz", "c").replace("w", "v").replace("y", "i").replace("ia", "a")
-    s = s.replace("tz", "c").replace("ch", "#").replace("c", "k").replace("#", "ch")
-    for kon in ("ovich", "ova", "ovi", "ove", "a"):     # ženský tvar a koncovky → kmen
-        if len(s) > 4 and s.endswith(kon):
-            s = s[: -len(kon)]
-            break
-    if s.endswith("ek"):                                # pohyblivé e: Javůrek / Javůrková, Doleček / Dolečková
-        s = s[:-2] + "k"
-    s = re.sub(r"(.)\1+", r"\1", s)
-    return s
-
-
-def osoba_klic(jmeno):
-    cast = [c for c in re.sub(r"\(\?\)|\[.*?\]|†|\+", " ", jmeno).split() if c]
-    if not cast:
-        return None
-    if len(cast) == 1:
-        return (krestni_klic(cast[0]), "")
-    return (krestni_klic(cast[0]), prijmeni_klic(cast[-1]))
-
 
 def dum_klic(obec, dum):
     if not dum:
@@ -442,18 +391,19 @@ def cmd_rodiny(a):
 
 def den(datum):
     """„18. 1. 1764“ → (1764, 1, 18); neúplné datum → None."""
-    m = re.search(r"(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})", datum or "")
-    return (int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None
+    d = najdi(datum)
+    return (d.od.year, d.od.month, d.od.day) if d and d.od == d.do else None
 
 
 def dny(d):
-    """Přibližný počet dní od začátku letopočtu – stačí na rozdíl porodů."""
-    return int(d[0] * 365 + d[0] // 4 + (d[1] - 1) * 30.44 + d[2])
+    """Počet dní od začátku letopočtu – na rozdíl porodů."""
+    return date(*d).toordinal()
 
 
 def rok(datum):
-    m = re.search(r"\d{4}", datum or "")
-    return int(m.group()) if m else 0
+    """Rok prvního data v textu („asi 1760“ → 1760), bez data 0."""
+    d = najdi(datum)
+    return (d.rok or d.od.year) if d else 0
 
 
 def cmd_seznam(a):
