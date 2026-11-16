@@ -372,8 +372,10 @@ def main():
     stats = dict(ancestors=len(known), documented=sum(p["st"] == "doc" for p in known), records=len(records),
                  generations=max(p["gen"] for p in people.values()) + 1)
     hypotheses = [dict(line=h.get("rod"), title=h.get("nadpis", "Hypotéza"), text=h.get("text", ""),
-                       items=[dict(name=a, text=b) for a, b in h.get("polozky", [])],
-                       records=[r for r in h.get("zaznamy", []) if r in recs]) for h in ns["HYPOTEZY"]]
+                       items=[dict(name=x[0], text=x[1]) for x in h.get("polozky", [])
+                              if isinstance(x, (tuple, list)) and len(x) == 2],
+                       records=[r for r in h.get("zaznamy", []) if r in recs])
+                  for h in ns["HYPOTEZY"] if isinstance(h, dict)]   # jiný zápis hlásí kontrola.py
 
     has_story = os.path.exists(os.path.join(DATA, "pribeh.md"))
     public_cfg = {k: v for k, v in cfg.items() if k != "prihlaseni"}

@@ -6,6 +6,26 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.10.2 – 16. 11. 2026
+
+Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není
+tam“ od pomocníka neschovalo předka.
+
+**Opravy**
+- Založení a aktualizace projektu už nemůžou zapsat mimo projekt, když je `.claude/` nebo `.skill_verze` symbolický
+  odkaz jinam (#193). Komentář v hlídači sítě, který skener Hermes Agent mylně bral jako nebezpečný kód, je
+  přeformulovaný.
+- Web potřebuje Node 22.12 nebo novější (Astro 7) – návod chtěl jen Node 20 a s ním web nešel sestavit. `npm run data`
+  teď starší Node hned srozumitelně ohlásí.
+- `kontrola.py` upozorní na hypotézu (`HYPOTEZY`) zapsanou jinak než `dict(…)` – export webu na ní padal.
+- Brzda už nezastaví celý Kramerius na hodiny kvůli HTTP 403 u neveřejného díla (OCR, stránky, obrázky) – to není
+  blokace, dílo jen není volně dostupné.
+
+**Návody**
+- Záporný výsledek pomocníka („prošel jsem snímky 20–60, není tam“) Claude přijme jen s dokladem – první a poslední
+  jméno a data z každého snímku, čtené ve zvětšení – a v deníku rozliší úsek prošlý s dokladem a jen orientačně.
+  Chybné „není“ dřív mohlo předka schovat natrvalo.
+
 ## 0.10.1 – 13. 11. 2026
 
 Hlavní změna: **ZA Opava a SOA Praha omezily automatizovaný přístup.** ZA Opava od listopadu nepouští nástroje ani

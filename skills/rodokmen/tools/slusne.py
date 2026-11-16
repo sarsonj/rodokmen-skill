@@ -289,11 +289,21 @@ def _spojeni_selhalo(host, e):
         zastav(host, f"3 nepovedená spojení za sebou ({type(e).__name__}) – archiv neodpovídá nebo nás zablokoval")
 
 
-def kontroluj_odpoved(host, status, obrazek, telo=None):
+# Kramerius: 403 u stránek, OCR a obrázků neveřejného díla (autorský zákon, licence) není blokace – dílo jen není
+# volně dostupné; zastavit kvůli němu celý web na hodiny by zastavilo i veřejná díla.
+KRAMERIUS = re.compile(r"kramerius|(^|\.)(ndk|digitalniknihovna)\.cz$", re.I)
+KRAMERIUS_DILO = re.compile(r"/(item|uuid)[/:].*/(ocr|streams|full|image|thumb|preview|foxml)|/iiif/|/ocr\b|/img\b", re.I)
+
+
+def kontroluj_odpoved(host, status, obrazek, telo=None, cesta=None):
     skupina, _ = _skupina(host)
     if not skupina:
         return
     _selhani.pop(skupina, None)
+    if status == 403 and cesta and KRAMERIUS.search(host or "") and KRAMERIUS_DILO.search(cesta):
+        print(f"slusne: HTTP 403 u {host} – dílo není veřejně dostupné (licence), nejde o blokaci; web nezastavuji. "
+              "Neveřejná díla jdou číst jen v badatelně knihovny.", file=sys.stderr)
+        return
     if status in (429, 503) or (status == 403 and not obrazek):
         zastav(host, f"HTTP {status}")
     vzor = BAN_TEXT.get(skupina)
@@ -375,6 +385,7 @@ def _zapni():
 
     def putrequest(self, method, url, *a, **k):
         self._slusne_obr = je_obrazek(url)
+        self._slusne_cesta = url
         self._slusne_disk = self._slusne_ulozit = None
         zakaz(_host(self), url)
         if _mezipamet and method == "GET" and self._slusne_obr and _skupina(_host(self))[0]:
@@ -423,7 +434,7 @@ def _zapni():
         if skupina in BAN_TEXT and r.status == 200 and "html" in (r.getheader("Content-Type") or ""):
             telo = r.read()             # přečíst a vrátit zpět, aby volající dostal celé tělo
             r.fp, r.length, r.chunked, r.will_close = io.BytesIO(telo), len(telo), False, True
-        kontroluj_odpoved(host, r.status, obr, telo)
+        kontroluj_odpoved(host, r.status, obr, telo, getattr(self, "_slusne_cesta", None))
         plna = getattr(self, "_slusne_ulozit", None)
         if plna and r.status == 200 and not r.getheader("Content-Encoding"):
             delka = r.getheader("Content-Length")
@@ -607,7 +618,7 @@ def _curl(args):
     kody = re.findall(r"^@@slusne (\d+) (\S*)$", err, re.M)
     sys.stderr.write(re.sub(r"\n?@@slusne \d+ \S*\n", "", err))
     for kod, url in kody:
-        kontroluj_odpoved(urlsplit(url).hostname, int(kod), je_obrazek(url))
+        kontroluj_odpoved(urlsplit(url).hostname, int(kod), je_obrazek(url), cesta=urlsplit(url).path)
     if p.returncode in (7, 28, 35, 56) and urls:   # nepřipojil se / timeout / spojení přerušeno
         _spojeni_selhalo(urlsplit(urls[0]).hostname, ConnectionError(f"curl kód {p.returncode}"))
     return p.returncode
