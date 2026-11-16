@@ -135,8 +135,8 @@ pro každý web pro všechny procesy na počítači.
   `python3 -I tools/slusne.py curl …` (jedna adresa na příkaz), shellový skript `python3 -I tools/slusne.py bash pracovni/x.sh`.
   Přímé `curl`/`wget` má projekt zakázané (`.claude/settings.json`); i místní náhled webu zkoušej přes `slusne.py curl`.
 - **Hláška „slusne: … je zastavený“ (kód 3)** = archiv dal najevo, že ho zatěžujeme (429/503/403, stránka
-  „zablokováno“, spojení odmítnuto). Nezkoušej to znovu a neobcházej to (jiný nástroj, prohlížeč), ale **nezastavuj
-  se a neptej se** – plynule přejdi na jiný archiv nebo jinou větev a k tomuto se vrať později. Stav: `slusne.py stav`. `slusne.py odblokuj` jen když víš, že šlo o tvou chybu (špatná adresa).
+  „zablokováno“, spojení odmítnuto). Nezkoušej to znovu, neobcházej to (jiný nástroj, prohlížeč), řekni to uživateli
+  a dělej jinou práci. Stav: `slusne.py stav`. `slusne.py odblokuj` jen když víš, že šlo o tvou chybu (špatná adresa).
 - **Výpadky** (večer a v noci, údržba, prošlý certifikát): nástroj hlásí „neodpovídá“ a brzda po 3 neúspěšných
   spojeních za sebou web zastaví. Přepni na jiný archiv nebo práci. Kontrolu certifikátu nikdy nevypínej, na prošlý jen počkej.
 - **V prohlížeči brzda neplatí, hlídáš se sám:** při cíleném hledání (konkrétní snímek, rejstřík) aspoň 5 s mezi
@@ -144,13 +144,10 @@ pro každý web pro všechny procesy na počítači.
   archivu jen jeden prohlížeč, žádní pomocníci, žádné souběžné dotazy (`Promise.all`) ani smyčky přes celé svazky.
   Postupná smyčka `fetch` jen pro snímky, které opravdu čteš, a jen tam, kde ji `portaly.md` u archivu uvádí.
 - **Archiv může zablokovat i prohlížeč** (403 po stovkách snímků za den). Když se snímek nenačte nebo stránka hlásí
-  chybu, podívej se do síťových požadavků prohlížeče. Při 403, 429 nebo 503 na tom archivu přestaň, zapiš to
-  brzdě (`python3 -I tools/slusne.py zastav <web> "HTTP 403 v prohlížeči"` – zastaví i skripty a pomocníky) a bez
-  ptaní pokračuj jiným archivem nebo větví. Když nejde ani prohlížeč, ať uživatel snímek uloží sám do
+  chybu, podívej se do síťových požadavků prohlížeče. Při 403, 429 nebo 503 hned skonči, zapiš to brzdě
+  (`python3 -I tools/slusne.py zastav <web> "HTTP 403 v prohlížeči"` – zastaví i skripty a pomocníky), řekni to
+  uživateli a na tom archivu ten den už nepokračuj. Když nejde ani prohlížeč, ať uživatel snímek uloží sám do
   `pracovni/` a pošle adresu stránky (z ní je kniha a číslo snímku pro `odkaz`).
-- **Opatrnost kvůli blokaci není důvod k přestávce.** Bez skutečné blokace (403/429/503, stránka „!“) pracuj dál
-  normálním tempem; žádné „dnes už jsem dotazů udělal dost, pokračuji zítra“. Ani skutečná blokace práci nekončí –
-  jen se na chvíli přepne archiv.
 - **Na jeden archiv nejvýš jeden pomocník.** Víc projektů na jednom počítači má jednu IP adresu.
 - **Mezipaměť obrázků:** co se stáhne přes brzdu, uloží se a příště se vezme z disku (`tools/cache.py`, společná pro
   všechny projekty; `cache.py stav` ukáže úsporu). Snímky eBadatelny ukládej z prohlížeče (`portaly.md`).
