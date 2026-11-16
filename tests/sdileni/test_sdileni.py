@@ -96,5 +96,11 @@ t = out.getvalue()
 ok("4 Tomáš Příhoda" in t and "sn. 300" not in t and "OCR vca/1a6d0b5c: sn. 319" in t and "Novák" not in t,
    "shody: bez zápisu projektu a žijících, OCR jen snímek\n" + t)
 
+r = ["74", "1918-01-17", "Z", "", "x", "", "vysoká", "claude-opus-5-5/high 2026-11-11 (Ondra)", ""]
+ok(sdileni.stejne_cteni(r, ["74", "1918-01-17", "Z"], "claude-opus-5-5/high 2026-11-16 (Ondra)"), "totéž čtení jiný den se nepřidá")
+ok(not sdileni.stejne_cteni(r, ["74", "1918-01-17", "Z"], "claude-sonnet-5-5/high 2026-11-16 (Ondra)"), "jiný model = druhé čtení")
+ok(not sdileni.stejne_cteni(r, ["74", "1918-01-17", "Z"], "claude-opus-5-5/high 2026-11-16 (Petr)"), "jiný čtenář = druhé čtení")
+ok(not sdileni.stejne_cteni(r, ["75", "1918-01-17", "Z"], "claude-opus-5-5/high 2026-11-11 (Ondra)"), "jiný snímek")
+
 print("\n".join(chyby) or "sdileni: vše v pořádku")
 sys.exit(1 if chyby else 0)

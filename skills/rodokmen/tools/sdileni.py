@@ -676,6 +676,17 @@ def pripravene_zapisy(n):
     return zapisy, f"{kdo}{model} (z rodokmenu, přeneseno {datetime.date.today().isoformat()})", model
 
 
+def ctenar(cetl):
+    """Kdo a čím četl, bez data: „claude-opus-5-5/high 2026-11-11 (Ondra)“ → „claude-opus-5-5/high (ondra)“."""
+    return " ".join(re.sub(r"\d{4}-\d{2}-\d{2}", "", cetl or "").lower().split())
+
+
+def stejne_cteni(radek, zapis, cetl):
+    """Řádek indexu je tentýž zápis (snímek, datum, druh) přečtený týmž čtenářem. Nezávislé druhé čtení jiného
+    člověka nebo jiného modelu se posílá jako další řádek: shoda ho potvrzuje, rozpor ukáže, co přečíst znovu."""
+    return radek[:3] == zapis and len(radek) > 7 and ctenar(radek[7]) == ctenar(cetl)
+
+
 def odeslat_index(n):
     zapisy, cetl, model = pripravene_zapisy(n)
     d, vetev, login = klon(REPO_INDEX)
@@ -696,8 +707,9 @@ def odeslat_index(n):
             zmenene.add(os.path.relpath(ky, d))
         tsv = os.path.join(kd, "precteno.tsv")
         nova = not os.path.exists(tsv)
-        if not nova and any(r.split("\t")[:3] == [z["snimek"], z["datum"], z["typ"]] for r in open(tsv, encoding="utf-8")):
-            continue   # stejný zápis (snímek, datum, druh) už v indexu je – nepřidávat podruhé
+        if not nova and any(stejne_cteni(r.rstrip("\n").split("\t"), [z["snimek"], z["datum"], z["typ"]], cetl)
+                            for r in open(tsv, encoding="utf-8")):
+            continue   # tentýž zápis od téhož čtenáře už v indexu je; čtení někoho jiného nebo jiným modelem se přidá vedle
         with open(tsv, "a", encoding="utf-8", newline="") as f:
             if nova:
                 f.write("\t".join(hlav) + "\n")

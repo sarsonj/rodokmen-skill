@@ -50,7 +50,9 @@ Nemá-li mapa obec ani knihu, postupuj jako dřív (portály v `portaly.md`).
   rejstříku, skok ve stránkování: `python3 -I tools/sdileni.py bod <klíč svazku> <snímek> rok=1785 ves=Lhota strana=fol. 12`
   (`rejstrik=A–C` u rejstříku). Jeden příkaz na snímek, který jsi stejně otevřel; bez jmen osob.
 - **Zápisy pro index** jsou zápisy se záznamem v `zaznamy.json` a přepisem v `prepisy.json`, starší lhůt indexu
-  (narození 100 let, sňatky a úmrtí 75 let).
+  (narození 100 let, sňatky a úmrtí 75 let). Zápis, který už v indexu je od někoho jiného nebo čtený jiným modelem,
+  se pošle jako **další čtení** vedle (shoda ho potvrzuje, rozpor ukáže, co přečíst znovu); totéž čtení podruhé ne.
+  Druhé čtení vzniká jen u snímků, které stejně potřebuješ pro rodokmen – nikdy nečti snímek jen kvůli ověření.
 
 ## Jak se zeptat (jednou za projekt)
 
