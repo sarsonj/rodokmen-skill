@@ -10,8 +10,9 @@ const gens = [...new Set(list.map((p) => p.gen))];
   <p class="lead">Po generacích, v pořadí podle Kekulého čísla (otec má číslo 2n, matka 2n + 1). U každé generace vidíte, kolik předků z možného počtu už známe – ty ostatní teprve hledáme. Podívejte se, <a href="/hledame/">co ještě hledáme</a>, třeba víte víc.</p>
   {gens.map((g) => (
     <>
-      <h2>{genName(g)} <span class="muted small">({list.filter((p) => p.gen === g).length} z {2 ** g})</span></h2>
-      <div class="table-box"><table>
+      <h2 class="predci-gen">{genName(g)} <span class="muted small">({list.filter((p) => p.gen === g).length} z {2 ** g})</span></h2>
+      <div class="table-box"><table class="predci-table">
+        <colgroup><col class="c-k" /><col class="c-name" /><col class="c-rel" /><col class="c-line" /><col class="c-st" /></colgroup>
         <thead><tr><th>#</th><th>Jméno</th><th>Vztah</th><th>Rod</th><th>Stav</th></tr></thead>
         <tbody>
           {list.filter((p) => p.gen === g).map((p) => (
@@ -19,7 +20,7 @@ const gens = [...new Set(list.map((p) => p.gen))];
               <td class="small muted">{p.k}</td>
               <td><PersonLink slug={p.slug} /></td>
               <td class="small">{p.rel}</td>
-              <td class="small">{p.line && lineByK[p.line] && <><span class="dot" style={`display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:${lineByK[p.line].color};margin-right:.3rem`}></span>{lineByK[p.line].name}</>}</td>
+              <td class="small">{p.line && lineByK[p.line] && <><span class="dot" style={`display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:${lineByK[p.line].color};margin-right:.3rem`} title={lineByK[p.line].name}></span><span class="line-name">{lineByK[p.line].name}</span></>}</td>
               <td><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
             </tr>
           ))}
