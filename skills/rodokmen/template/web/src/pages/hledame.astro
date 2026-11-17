@@ -5,7 +5,7 @@ import { Content as Dotazy } from '../generated/dotazy.md';
 ---
 <Base title="Co hledáme">
   <h1>Co ještě hledáme</h1>
-  <p class="lead">Otevřené otázky a hypotézy. Pokud o něčem z toho víte z rodinné paměti nebo dokumentů, ozvěte se{config.kontakt?.email ? <> na <a href={`mailto:${config.kontakt.email}`}>{config.kontakt.email}</a></> : ' autorovi rodokmenu'}.</p>
+  <p class="lead">Otevřené otázky a hypotézy. Pokud o něčem z toho víte z rodinné paměti nebo dokumentů, ozvěte se{config.kontakt?.email || config.kontakt?.telefon ? <>{config.kontakt.jmeno ? ` ${config.kontakt.jmeno}` : ''}{config.kontakt.email && <> na <a href={`mailto:${config.kontakt.email}`}>{config.kontakt.email}</a></>}{config.kontakt.email && config.kontakt.telefon && ' nebo'}{config.kontakt.telefon && <> na tel. <a href={`tel:${config.kontakt.telefon.replace(/\s/g, '')}`}>{config.kontakt.telefon}</a></>}</> : ' autorovi rodokmenu'}.</p>
   <h2>Otevřené otázky</h2>
   <div class="grid2">
     {issues.filter((i) => !i.text.startsWith('Vyřešeno')).map((i) => (
