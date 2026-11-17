@@ -164,7 +164,12 @@ def login_files(cfg):
     hint = ""
     if contact.get("email"):
         hint = (f'Neznáte odpověď? Napište {html.escape(contact.get("jmeno", ""))} na '
-                f'<a href="mailto:{html.escape(contact["email"])}">{html.escape(contact["email"])}</a>.')
+                f'<a href="mailto:{html.escape(contact["email"])}">{html.escape(contact["email"])}</a>')
+        if contact.get("telefon"):
+            hint += f' nebo zavolejte na tel. {html.escape(str(contact["telefon"]))}'
+        hint += "."
+    elif contact.get("telefon"):
+        hint = f'Neznáte odpověď? Zavolejte {html.escape(contact.get("jmeno", ""))} na tel. {html.escape(str(contact["telefon"]))}.'
     page = (tpl.replace("{{NAZEV}}", html.escape(cfg.get("nazev", "Rodokmen")))
                .replace("{{UVOD}}", html.escape(login.get("uvod", "Tenhle web je jen pro rodinu a příbuzné.")))
                .replace("{{OTAZKA}}", html.escape(login.get("otazka", "Odpověď na rodinnou otázku")))

@@ -25,14 +25,16 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
  "nazev": "Rodokmen Novákových",
  "popis": "Popis pro vyhledávače a sdílení (web je ale noindex).",
  "zapati": "Dohledáno v digitalizovaných matrikách SOA Zámrsk (portál ARON)",
- "kontakt": {"jmeno": "Petrovi", "email": "petr@example.cz"},
+ "kontakt": {"jmeno": "Petrovi", "email": "petr@example.cz", "telefon": "777 123 456"},
  "prihlaseni": {"uvod": "Tenhle web je jen pro rodinu.", "otazka": "Jak se jmenoval pes u babičky v Holicích?", "odpoved": "Alík"},
  "uvod": {"nadpis": "Lákavý nadpis", "odstavce": ["2–3 věty, které chytí"], "foto": "klic_obrazku_ve_vyrezech", "foto_popis": "…"},
  "pribeh": {"menu": "Příběh Nováků", "rod": 8, "tlacitko": "Přečíst příběh Nováků"},
  "zajimavosti_na_uvodu": [{"nadpis": "Nejstarší předek", "text": "Kovář Jan, asi 1825."}]
 }
 ```
-- `kontakt.jmeno` je ve 3. pádě („Napište Petrovi na …“).
+- `kontakt.jmeno` je ve 3. pádě („Napište Petrovi na …“). E-mail a telefon (oba nepovinné) se ukážou v patičce
+  každé stránky, na stránce „Hledáme“ a na přihlašovací stránce – telefon tam uvidí každý, kdo zná přihlašovací
+  otázku, proto ho vyplň, jen když s tím majitel čísla souhlasí.
 - **Přihlášení:** otázka, na kterou zná odpověď jen rodina (ne snadno dohledatelná na sociálních sítích).
   Odpověď se porovnává bez diakritiky a velkých písmen a musí obsahovat písmena nebo číslice z latinky (azbuka
   a samotné symboly nejdou). Na serveru i v cookie prohlížeče je jen její otisk (SHA-256),
