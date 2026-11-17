@@ -118,6 +118,9 @@ Ostatní archivy jsou většinou jen na písemnou žádost – zapiš do `archiv
 - **Sčítání 1869** na FamilySearch („Slovakia, Census, 1869“): celé domácnosti s roky a místy narození, náboženstvím
   a povoláním; jen snímky bez jmenného rejstříku a jen z archivů Bytča, Banská Bystrica a Nitra. Dobrá náhrada za
   neindexované matriky.
+- **Sčítání 1930** na Slovakianě (slovakiana.sk/scitacie-harky, Slovenský národný archív): celé Slovensko, hárek =
+  domácnost s daty narození, sňatku, rodištěm a rokem přistěhování – most mezi matrikami (do ~1895) a pamětí rodiny.
+  Hárky 1939 a 1940 jsou jen začerněné. Postup v `portaly.md` → Slovakiana.
 - **Matriční úřad:** dokud je kniha na úřadě (100 let od posledního zápisu), výpis dostane jen osoba, které se zápis
   týká, nebo člen rodiny (manžel, rodiče, děti, vnuci, pravnuci, prapravnuci, sourozenci a jejich děti) – bez ohledu
   na stáří zápisu (zákon 154/1994 Z. z., § 18). Doslovný výpis jen pro úřady; soukromá osoba může v přítomnosti
