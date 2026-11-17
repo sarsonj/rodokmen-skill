@@ -4,7 +4,10 @@
 """
 import json, os, sys, tempfile
 
-TOOLS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "skills", "rodokmen", "tools")
+TOOLS = os.environ.get("SDILENI_TOOLS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "skills", "rodokmen", "tools")
+# slusne.py (brzda) bere z adresáře nástrojů skillu, je-li sdileni.py mimo něj: SKILL_TOOLS=…/skills/rodokmen/tools
+if os.environ.get("SKILL_TOOLS"):
+    sys.path.insert(0, os.environ["SKILL_TOOLS"])
 projekt = tempfile.mkdtemp(prefix="sdileni_test_")
 os.chdir(projekt)
 os.makedirs("data")
@@ -24,7 +27,14 @@ ok(sdileni.kniha_z_url("https://www.portafontium.eu/iipimage/30074619/kralovice-
 ok(sdileni.kniha_z_url("https://ebadatelna.soapraha.cz/pages/MatrikaPage/matrikaId/4888") == ("soa-praha", "soapraha", "4888"), "eBadatelna")
 ok(sdileni.kniha_z_url("https://ebadatelna.soapraha.cz/d/11973/15")[2] == "11973", "eBadatelna /d/")
 ok(sdileni.kniha_z_url("https://katalog.ahmp.cz/pragapublica/permalink?xid=144286C6CCB648968F0C7879316827D0") == (None, "ahmp", "144286c6"), "AHMP")
-ok(sdileni.kniha_z_url("https://aron.vychodoceskearchivy.cz/apu/abc") is None, "ARON zatím ne")
+ok(sdileni.kniha_z_url("https://aron.vychodoceskearchivy.cz/apu/abc") is None, "ARON bez uuid ne")
+ok(sdileni.kniha_z_url("https://digi.ceskearchivy.cz/8123") == ("soa-trebon", "soatrebon", "8123"), "SOA Třeboň")
+k = sdileni.kniha_z_url("https://aron.vychodoceskearchivy.cz/apu/3C5B5B19-a97f-4fa1-a438-ab74ff84c186")
+ok(k == ("soa-zamrsk", "vca", "3c5b5b19-a97f-4fa1-a438-ab74ff84c186", "3c5b5b19") and sdileni.id_indexu(k) == "3c5b5b19", "ARON")
+k = sdileni.kniha_z_url("https://digi.archives.cz/da/permalink?xid=be926b90-f13c-102f-8255-0050568c0263")
+ok(k[:2] == ("za-opava", "zaopava") and sdileni.id_indexu(k) == "be926b90", "ZA Opava")
+ok(sdileni.kniha_z_url("https://www.mza.cz/actapublica/matrika/detail/10034") == ("mza-brno", "mza", "10034"), "MZA")
+ok(sdileni.kniha_z_url("https://digi.soalitomerice.cz/digitalnibadatelna/vysledekDetail/09ddd7cea03b9b8d:4e496e4e:12216bae987:-6d40") is None, "Litoměřice zatím ne")
 
 ok(sdileni.cislo_snimku("34 (str. 62)") == ("34", "str. 62"), "snímek s poznámkou")
 ok(sdileni.cislo_snimku("173 (oddíl obce Rašov, zápis č. 10)") == ("173", "oddíl obce Rašov, zápis č. 10"), "snímek s oddílem")
@@ -42,7 +52,7 @@ ok(sdileni.rozsah_svazku({"svazek": "Kožlany 21, Matrika oddaných"}) == {}, "b
 ok(sdileni.rozsah_svazku({"roky": {"N": "1900–1905", "X": "1"}, "svazek": "Z 1700–1710"}) == {"N": "1900–1905"}, "pole roky má přednost")
 
 json.dump({"pf_k22": {"url": "https://www.portafontium.eu/register/soap-pn/kozlany-22", "svazek": "Kožlany 22, Matrika zemřelých"},
-           "aron_x": {"url": "https://aron.vychodoceskearchivy.cz/apu/x"}}, open("data/svazky.json", "w"))
+           "aron_x": {"url": "https://ndk.cz/uuid/uuid:9d2bc5d0-9864-11e3-8e84-005056827e51"}}, open("data/svazky.json", "w"))
 json.dump([{"klic": "stary", "svazek": "pf_k22", "snimek": 74, "druh": "Z", "datum": "17. 1. 1918", "shrnuti": "…"},
            {"klic": "mlady", "svazek": "pf_k22", "snimek": 140, "druh": "Z", "datum": "3. 2. 1960", "shrnuti": "…"},
            {"klic": "aron", "svazek": "aron_x", "snimek": 5, "druh": "N", "datum": "1. 1. 1800", "shrnuti": "…"}], open("data/zaznamy.json", "w"))
