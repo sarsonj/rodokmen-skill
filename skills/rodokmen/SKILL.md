@@ -82,7 +82,8 @@ Základní smyčka pro každou osobu:
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
-   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
+   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`, Slovensko – hroby po roce 1900:
+   `tools/cintoriny.py`; SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
    rejstřík, začni jím.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš.
@@ -240,6 +241,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) |
 | `policie_prihlasky.py` | pražské policejní přihlášky 1850–1914 |
 | `soal_zoomify.py` | snímek SOA Litoměřice (knihu najdi v prohlížeči); ZA Opava jen v prohlížeči (`portaly.md`) |
+| `cintoriny.py` | hroby na slovenských hřbitovech (cintoriny.sk): kdo leží v hrobě, data narození a úmrtí |
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko, Bavorsko, Polsko…) |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské, `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `mapa_knihy.py` | mapa knihy po vsích a montáž sloupce jmen (`matriky.md`) |
