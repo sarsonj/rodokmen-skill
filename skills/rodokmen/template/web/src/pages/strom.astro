@@ -1,0 +1,101 @@
+---
+// Klasický rodokmen: výchozí osoba vlevo, předci doprava. Generace se dají rozbalovat a sbalovat.
+import Base from '../layouts/Base.astro';
+import { byK, href, statusClass } from '../lib/data.js';
+
+const OPEN = 4; // kolik generací je rozbaleno při načtení
+const gen = (k) => Math.floor(Math.log2(k));
+const node = (k) => {
+  const p = byK[k];
+  if (!p) return null;
+  const parents = [2 * k, 2 * k + 1].map(node);
+  return { k, p, parents: parents.some(Boolean) ? parents : [] };
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const role = (k) => (k === 1 ? '' : k % 2 ? 'matka' : 'otec');
+function render(n) {
+  const { k, p, parents } = n;
+  const box = `<a class="tbox ${statusClass(p.st)}" href="${href.person(p.slug)}"><span class="w">${role(k)}</span>${esc(p.name)}<span class="y">${esc(p.years || ' ')}</span></a>`;
+  const tog = parents.length ? '<button type="button" class="tog" aria-label="Rozbalit rodiče">▸</button>' : '';
+  const kids = parents.length
+    ? `<ul>${parents.map((c) => (c ? render(c) : '<li><span class="tnode"><span class="tbox empty">?</span></span></li>')).join('')}</ul>`
+    : '';
+  return `<li data-g="${gen(k)}"><span class="tnode">${box}${tog}</span>${kids}</li>`;
+}
+const tree = node(1);
+const maxGen = Math.max(...Object.keys(byK).map((k) => gen(+k)));
+---
+<Base title="Strom předků" full>
+  <div class="tree-bar">
+    <strong>Strom předků</strong>
+    <span class="tree-btns">
+      <button type="button" data-g="-1" aria-label="Méně generací">−</button>
+      <span class="tree-g"></span>
+      <button type="button" data-g="1" aria-label="Více generací">+</button>
+      <button type="button" data-g="all">Vše</button>
+    </span>
+    <span class="small muted">Klepnutím na ▸ rozbalíte rodiče, na jméno otevřete stránku osoby. Stránku lze posouvat do strany.</span>
+    <span class="tree-legend small">
+      <i class="st-doc"></i>doloženo matrikou <i class="st-prob"></i>pravděpodobné <i class="st-fam"></i>od rodiny
+    </span>
+  </div>
+
+  <div class="tree-stage" data-open={OPEN} data-max={maxGen}>
+    {tree && (
+      <ul class="tree"><Fragment set:html={render(tree)} /></ul>
+    )}
+  </div>
+</Base>
+
+<script>
+  const stage = document.querySelector<HTMLElement>('.tree-stage')!;
+  const max = +stage.dataset.max!;
+  let open = +stage.dataset.open!;
+  const label = document.querySelector('.tree-g')!;
+  const setGen = (g: number) => {
+    open = Math.max(1, Math.min(max + 1, g));
+    stage.querySelectorAll<HTMLLIElement>('li[data-g]').forEach((li) => {
+      li.classList.toggle('closed', +li.dataset.g! >= open - 1);
+    });
+    label.textContent = `${open} generace`;
+  };
+  setGen(open);
+  document.querySelectorAll<HTMLButtonElement>('.tree-btns button').forEach((b) =>
+    b.addEventListener('click', () => setGen(b.dataset.g === 'all' ? max + 1 : open + +b.dataset.g!)));
+  stage.addEventListener('click', (e) => {
+    const t = (e.target as HTMLElement).closest('.tog');
+    if (t) t.closest('li')!.classList.toggle('closed');
+  });
+</script>
+
+<style is:global>
+  .tree-bar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .6rem 1rem; border-bottom: 1px solid var(--line, #ddd); }
+  .tree-btns button { min-width: 2.2rem; padding: .2rem .5rem; cursor: pointer; }
+  .tree-g { display: inline-block; min-width: 6.5rem; text-align: center; }
+  .tree-legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin: 0 .25rem 0 .6rem; vertical-align: -1px; }
+  .tree-stage { overflow: auto; padding: 1.5rem 1rem 3rem; }
+  .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+  .tree li { display: flex; align-items: center; position: relative; }
+  .tree li > ul { display: flex; flex-direction: column; padding-left: 2rem; position: relative; }
+  .tree li.closed > ul { display: none; }
+  /* spojnice */
+  .tree li > ul::before { content: ''; position: absolute; left: 0; top: 50%; width: 1rem; border-top: 1px solid var(--muted, #999); }
+  .tree li > ul > li { padding: .3rem 0 .3rem 1rem; }
+  .tree li > ul > li::before { content: ''; position: absolute; left: 0; top: 50%; width: 1rem; border-top: 1px solid var(--muted, #999); }
+  .tree li > ul > li::after { content: ''; position: absolute; left: 0; border-left: 1px solid var(--muted, #999); }
+  .tree li > ul > li:first-child::after { top: 50%; bottom: 0; }
+  .tree li > ul > li:last-child::after { top: 0; bottom: 50%; }
+  .tree li > ul > li:only-child::after { display: none; }
+  .tnode { display: flex; align-items: center; gap: .3rem; }
+  .tbox { display: block; min-width: 12rem; max-width: 15rem; padding: .35rem .6rem; border: 1px solid var(--line, #ccc); border-left-width: 5px; border-radius: 6px; background: var(--card, #fff); color: inherit; text-decoration: none; line-height: 1.25; }
+  .tbox:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .tbox .y { display: block; font-size: .8em; opacity: .75; }
+  .tbox .w { display: block; font-size: .75em; opacity: .6; }
+  .tbox.empty { border-style: dashed; opacity: .5; min-width: 8rem; }
+  .tog { cursor: pointer; border: 0; background: none; font-size: 1rem; padding: 0 .2rem; color: var(--muted, #888); transition: transform .15s; }
+  li:not(.closed) > .tnode .tog { transform: rotate(90deg); }
+  .tbox.st-doc, .tree-legend .st-doc { border-left-color: #2e7d4f; } .tree-legend i.st-doc { background: #2e7d4f; }
+  .tbox.st-prob, .tree-legend .st-prob { border-left-color: #c58b1b; } .tree-legend i.st-prob { background: #c58b1b; }
+  .tbox.st-fam, .tree-legend .st-fam { border-left-color: #5b7fb5; } .tree-legend i.st-fam { background: #5b7fb5; }
+  .tbox.st-mh, .tbox.st-unk { border-left-color: #999; }
+</style>
