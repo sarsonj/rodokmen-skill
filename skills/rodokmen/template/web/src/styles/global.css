@@ -84,6 +84,30 @@ main.wider { max-width: none; }   /* mapa: přes celou šířku okna (Česko a S
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; background: var(--paper); }
 th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; color: #5a4632; background: #f6f0e6; }
+/* Předci: všechny tabulky generací mají stejné sloupce, aby byly pod sebou */
+.predci-table { table-layout: fixed; }
+.predci-table td { overflow-wrap: break-word; }
+.predci-table td:nth-child(3) { hyphens: auto; }
+.predci-table td:first-child { white-space: nowrap; }
+.predci-table .c-k { width: 4rem; }
+.predci-table .c-name { width: 32%; }
+.predci-table .c-rel { width: 28%; }
+.predci-table .c-line { width: 20%; }
+.predci-table .c-st { width: 9.5rem; }
+.predci-gen { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .predci-table { font-size: 0.85rem; }
+  .predci-table th, .predci-table td { padding: 0.4rem 0.3rem; }
+  .predci-table .c-k { width: 2.5rem; }
+  .predci-table td:first-child { font-size: 0.75rem; }
+  .predci-table .c-name { width: 36%; }
+  .predci-table .c-rel { width: auto; }
+  .predci-table .c-line { width: 1.3rem; }
+  .predci-table .c-st { width: 5.2rem; }
+  .predci-table th:nth-child(4) { font-size: 0; }
+  .predci-table .line-name { display: none; }
+  .predci-table .chip { white-space: normal; font-size: 0.72rem; padding-left: 0.4rem; padding-right: 0.4rem; }
+}
 
 /* fan */
 .fan-wrap { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: auto; max-height: 92vh; }
