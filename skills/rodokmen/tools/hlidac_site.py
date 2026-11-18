@@ -110,7 +110,7 @@ def posoudit(tool, cmd, cwd):
             if SIT_PY.search(obsah) and not jen_volne(obsah):   # síť jen na povolené weby (verze.py → GitHub) projde
                 return f"Python skript {args[0]} používá síť"
         c_kod, heredocy = python_kod(cmd, m.end())   # jen kód, který Python opravdu spustí, ne zbytek příkazu
-        if args and args[0] == "-" and not heredocy:   # kód rourou („echo … | python -“): posoudit celý příkaz
+        if args and args[0] == "-" and not heredocy:   # kód na standardním vstupu z roury (python -): posoudit celý příkaz
             c_kod.append(cmd)
         if any(SIT_PY.search(k) and not jen_volne(k) for k in c_kod) or \
                 any(SIT_PY_RADEK.search(t) and not jen_volne(t) for t in heredocy):

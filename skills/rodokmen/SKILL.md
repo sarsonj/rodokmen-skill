@@ -47,7 +47,7 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
 2. Projekt ještě není → **Fáze 0**.
 
 ## Fáze 0 – Příprava (jednou)
-**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 20, ImageMagick, git), certifikáty na
+**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 22.12, ImageMagick, git), certifikáty na
 macOS, Windows, prohlížeč pro archivy, založení projektu (`python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`,
 volitelně `--ukazka` a `--hlidac`), `git init`, „Pro koho“ ve `STAV.md` a název webu.
 **Windows:** ve všech příkazech skillu místo `python3 -I` piš `python -I -X utf8` (`python3` je tam nefunkční alias
@@ -98,7 +98,8 @@ Základní smyčka pro každou osobu:
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
    Má-li projekt `tools/nalez.py`, udělej kroky 1–5 a řádek deníku jedním příkazem: `nalez.py nahled pracovni/x.json`
    (zkontroluje vstup a ukáže výřez a rámeček), pak `nalez.py zapis pracovni/x.json`.
-6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
+6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel)
+   a u neúspěšného, jestli s dokladem, nebo jen orientačně (Pomocníci níže).
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
    Řádek přidávej `python3 -I tools/denik.py pridej --zdroj … --rozsah … --hledano … --vysledek …` (vezme další číslo,
@@ -165,6 +166,12 @@ tolik neubývají.
   související výskyty. Rejstřík ať čte po sloupcích (`mapa_knihy.py … --sloupce`, `reference/matriky.md` → Čtení
   písma) – jeho „v rejstříku není“ bez toho neber jako výsledek.
 - Pomocník píše jen do `pracovni/pom_<větev>/`, **do `data/` nikdy**. Zapisuješ ty; výstupy nemaž, dokud nejsou vytěžené.
+- **Záporný výsledek pomocníka („prošel jsem snímky 20–60, není tam“) není hotový výsledek** – chybné „není“ schová
+  předka natrvalo. Přijmi ho jen s dokladem: u každého snímku první a poslední jméno a rozsah dat, čtené ve zvětšení
+  (celá strana zmenšená na obrazovku nestačí); navazující úseky ať se o snímek překrývají. Do zadání mu napiš strukturu
+  pramene (co je v kterém sloupci, jestli je rejstřík jen zemřelých, nebo společný). V deníku rozliš úsek prošlý
+  **s dokladem** a jen **orientačně** – „už prošlé, znovu nehledat“ platí jen pro první. Čtení knihy bez rejstříku
+  (hledání naslepo) dej silnějšímu modelu, ne levnějšímu.
 - **Jejich čtení vždy ověř sám na snímku** (`python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over`, zlomky
   0–1, rozdělí zápis na dvě čitelné poloviny), než ho zapíšeš jako `doc`. Uživateli to vysvětli správně: je to stejný
   model, jde o princip čtyř očí – pomocník nemá kontext (dvě rodiny stejného jména ve vsi).

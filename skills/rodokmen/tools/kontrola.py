@@ -99,6 +99,12 @@ def main():
                                        and all(isinstance(y, str) for y in x))):
             err.append(f"ISSUES[{i}]: má být text, nebo dvojice (\"Otázka\", \"Stav…\"), ne {type(x).__name__} "
                        f"{str(x)[:60]} – export webu by na tom spadl")
+    for i, h in enumerate(ns.get("HYPOTEZY", [])):
+        if not isinstance(h, dict):
+            err.append(f"HYPOTEZY[{i}]: má být dict(rod=…, nadpis=…, text=…, polozky=[…], zaznamy=[…]), ne "
+                       f"{type(h).__name__} {str(h)[:60]} – na webu by se nezobrazila (reference/data.md)")
+        elif any(not (isinstance(x, (tuple, list)) and len(x) == 2) for x in h.get("polozky", [])):
+            err.append(f"HYPOTEZY[{i}]: každá položka v „polozky“ má být dvojice (\"jméno\", \"text\") – export by spadl")
     for k, t in jload("prepisy.json", {}).items():
         if not isinstance(t, dict):
             err.append(f"prepisy.json „{k}“: má být {{\"orig\": …, \"cs\": …}}")

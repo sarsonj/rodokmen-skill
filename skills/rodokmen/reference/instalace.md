@@ -3,7 +3,7 @@
 Čti při zakládání projektu nebo když nějaký nástroj chybí či padá na instalaci.
 
 ## Nástroje
-Zkontroluj: `python3 --version` (≥ 3.9), `node --version` (≥ 20), `magick -version` (ImageMagick 7; je-li jen verze 6
+Zkontroluj: `python3 --version` (≥ 3.9), `node --version` (≥ 22.12, kvůli Astru 7), `magick -version` (ImageMagick 7; je-li jen verze 6
 s příkazem `convert`, nástroje ji mimo Windows použijí samy), `git --version`.
 Co chybí, pomoz nainstalovat. Instalace systémových věcí nech uživatele potvrdit; interaktivní příkazy mu dej
 s předponou `!`, ať je spustí sám.
