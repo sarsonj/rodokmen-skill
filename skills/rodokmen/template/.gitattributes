@@ -6,6 +6,8 @@
 *.md   text eol=lf
 *.mjs  text eol=lf
 *.astro text eol=lf
+# rejstřík prohlížených snímků: víc AI / počítačů přidává řádky zároveň – sloučit po řádcích bez konfliktu
+data/snimky.tsv merge=union
 *.jpg  binary
 *.png  binary
 *.pdf  binary

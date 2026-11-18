@@ -5,6 +5,9 @@ __pycache__/
 Thumbs.db
 desktop.ini
 *.tar.gz
+# přehledy, které tools/snimky.py vždy vyrobí znovu
+data/SNIMKY.md
+data/K_OVERENI.md
 # web – závislosti, build a vše, co generuje `npm run data`
 web/node_modules/
 web/dist/
