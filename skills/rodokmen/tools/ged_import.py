@@ -15,7 +15,7 @@ Kódování: UTF-8; starší soubory s hlavičkou „1 CHAR ANSI“ (Brother's K
 („SRPEN 1945“, „PODZIM 1951“, „1926 NEBO 1927“, „11.11.1934“) se převedou na tvar „8. 1945“, „podzim 1951“…
 """
 import datetime, re, sys
-if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):   # nápověda místo pádu
+if __name__ == "__main__" and (len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help")):   # nápověda; import (graf.py) ne
     sys.exit(__doc__.strip())
 from collections import defaultdict
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)

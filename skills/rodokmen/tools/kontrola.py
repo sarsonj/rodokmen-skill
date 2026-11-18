@@ -3,9 +3,13 @@
 
 Použití: kontrola.py
 Vypíše CHYBY (rozbijí web nebo jsou věcně špatně) a UPOZORNĚNÍ (něco chybí, doplnit).
+Hlídá i časovou návaznost narození, sňatků a úmrtí (pravidla v tools/chronologie.py, stejná jako na webu),
+stejnou osobu na dvou číslech bez SAME (tools/graf.py).
 Návratový kód 1, pokud jsou chyby.
 """
 import datetime, json, os, re, sys, unicodedata
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # -I nepřidá složku skriptu: chronologie.py, graf.py…
 if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo pádu
     sys.exit(__doc__.strip())
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -141,6 +145,30 @@ def main():
     if chybi:   # bez LINES web neukáže rody ani barvy ve vějíři
         warn.append(f"LINES: chybí rod pro {', '.join(chybi)}"
                     " – jakmile znáš pradědečky a prababičky (8–15), vyplň v data/osoby.py LINES (reference/data.md)")
+
+    # Časová návaznost: stejná pravidla ukazuje web na stránce Časová osa; ověřený údaj se odškrtne polem overeno.
+    try:
+        import chronologie
+    except ImportError:   # projekt se starší sadou nástrojů
+        chronologie = None
+    for k in sorted(k for k in P if isinstance(k, int)) if chronologie else ():
+        o = P[k].get("overeno")
+        if o is None:
+            continue
+        if not isinstance(o, dict):
+            warn.append(f"osoba {k}: overeno má být slovník {{\"pravidlo\": \"proč údaj platí\"}}")
+            continue
+        for x in o:
+            if x not in chronologie.PRAVIDLA:
+                warn.append(f"osoba {k}: overeno – neznámé pravidlo '{x}' (platná: {', '.join(chronologie.PRAVIDLA)})")
+    for v in chronologie.kontrola(P, SAME) if chronologie else ():
+        warn.append(f"časová návaznost u osoby {v.k}: {v.text} Pokud údaj platí, přidej k osobě {v.k} "
+                    f"do overeno: \"{v.pravidlo}\": \"proč údaj platí\"")
+    try:   # stejná osoba na dvou číslech bez SAME (tools/graf.py); věk rodičů hlídá jen chronologie výš
+        import graf
+        warn += graf.predci(P, SAME)
+    except ImportError:
+        pass
 
     mista = jload("mista.json", {})
     vzory = []

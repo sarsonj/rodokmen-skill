@@ -67,6 +67,7 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - **Rodinný strom** (GEDCOM `.ged`, záloha MyHeritage `.ftb`): `tools/ged_import.py`, `tools/ftb_export.py` – postup
   v `reference/data.md` → Import rodinného stromu. Strom, který si rodina vede sama, má stav `fam`; cizí stromy
   z internetu (MyHeritage, Geni, FamilySearch, Smart Match) jsou **jen vodítko**, stav `mh`, nikdy `doc`.
+  Před importem `tools/graf.py strom strom.ged "Jméno"`: dvojníci, dítě ve dvou rodinách, nemožný věk rodičů, návrh `SAME`.
 
 ## Fáze 2 – Matriky, generace po generaci
 Podrobný postup čtení: `reference/matriky.md`. Archivy: `reference/portaly.md`. Sporná ztotožnění, mrtvé body,
@@ -101,6 +102,9 @@ Základní smyčka pro každou osobu:
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
 7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
+   Hlásí i časovou návaznost (`chronologie.py`: věk rodičů, dítě po smrti rodiče, sňatek po úmrtí…) a stejnou osobu
+   na dvou číslech bez `SAME` (`graf.py predci`). Všechny kontroly čtou data stejně (`datumy.py`: „asi 1760–64“,
+   „před 1740“, „pokřtěn 4. 12. 1786“). Ověřený neobvyklý údaj odškrtni polem `overeno` (`reference/data.md`).
 
 Pravidla, která chrání kvalitu:
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
@@ -113,6 +117,9 @@ Pravidla, která chrání kvalitu:
 - **Nic nedomýšlej.** Nejisté čtení „(?)“, rozpory zapiš do `ISSUES`. Písaři se pletli (jména sourozenců, věk, Anna/Františka).
 - **Čti celý zápis včetně okrajů** – pozdější poznámky o úmrtí, sňatku, legitimaci bývají nejcennější.
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
+- **Celá rodina a víc kandidátů** (`tools/rodiny.py`, postup v `reference/matriky.md`): křty sourozenců doplní, co v zápisu
+  předka chybí. Když na předka sedí víc lidí stejného jména (18. století), zapiš všechny jako kandidáty a čti po vrstvách,
+  dokud se jejich kmotři, svědci nebo dům nepotkají s doloženými údaji. Nevybírej prvního nalezeného.
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne
   „bey Hohenelbe“ = u Vrchlabí).
 - U úředníků, vojáků, lékařů, učitelů, farářů zkus noviny a ročenky (`portaly.md` → Noviny); pro 17. století soupis
@@ -249,6 +256,10 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
-| `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |
+| `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu, časovou návaznost a kdy psát příběh |
+| `chronologie.py` | časová návaznost (věk rodičů, dítě po smrti rodiče, sňatek mladší 15 let / po úmrtí, věk přes 105 let) – volá ji `kontrola.py` i web |
+| `graf.py strom strom.ged ["Jméno"]`, `graf.py predci` | cizí strom před importem: cykly, dítě ve dvou rodinách, dvojníci, věk rodičů, předek víckrát (návrh `SAME`); `predci` = stejná osoba na dvou číslech bez `SAME` |
+| `rodiny.py novy/kandidat/zapis/ukol/prehled/prunik/rodiny …` | rekonstrukce rodiny ze sourozenců, rozhodování mezi kandidáty stejného jména (`matriky.md`) |
+| `datumy.py "text"` | jak kontroly čtou datum nebo `y` (společné pro všechny kontroly) |
 | `slusne.py` | brzda proti zablokování archivem (`stav`, `zastav`, `odblokuj`) |
 | `export_web.py`, `fan_chart.py` | data → web (volá ho `npm run data`); vějíř jako plakát k tisku |
