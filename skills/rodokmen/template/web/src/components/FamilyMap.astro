@@ -58,12 +58,12 @@ const payload = JSON.stringify({ places: site.places, lines, names, compact });
       const n = pl.lines.length;
       pl.lines.forEach((ln: { k: number; people: string[] }, i: number) => {
         const a = (2 * Math.PI * i) / Math.max(n, 1);
-        const d = n > 1 ? 0.006 : 0;
+        const d = n > 1 ? (pl.house ? 0.00025 : 0.006) : 0; // dům: rody jen těsně vedle sebe, ať bod sedí na adrese
         const pos: L.LatLngExpression = [pl.lat + d * Math.cos(a), pl.lon + (d * Math.sin(a)) / Math.cos((pl.lat * Math.PI) / 180)];
         const line = lines[ln.k] ?? lines[0];
         const count = ln.people.length;
         const marker = L.circleMarker(pos, {
-          radius: compact ? 5 + Math.sqrt(count) * 1.6 : 7 + Math.sqrt(count) * 2.2,
+          radius: pl.house ? 6 : compact ? 5 + Math.sqrt(count) * 1.6 : 7 + Math.sqrt(count) * 2.2,
           color: '#3b2e22',
           weight: 1,
           fillColor: line.color,
