@@ -40,7 +40,9 @@
     if (!ti || !ti.source) return null;
     const s = ti.source;
     return { sirka: s.width || (s.dimensions && s.dimensions.x), vyska: s.height || (s.dimensions && s.dimensions.y),
-             maxLevel: s.maxLevel, dlazdice: s.tileSize || (s.getTileWidth && s.getTileWidth(s.maxLevel)), presah: s.tileOverlap || 0 };
+             maxLevel: s.maxLevel, dlazdice: s.tileSize || (s.getTileWidth && s.getTileWidth(s.maxLevel)), presah: s.tileOverlap || 0,
+             // adresa zdroje dlaždic (IIIF @id, DZI tilesUrl…): podle ní se pozná, který snímek prohlížeč opravdu ukazuje
+             zdroj: String(s['@id'] || s.id || s.tilesUrl || s.url || '').slice(0, 300) };
   }
 
   // Obrázek dlaždice z události / dlaždice (různé verze OpenSeadragonu)

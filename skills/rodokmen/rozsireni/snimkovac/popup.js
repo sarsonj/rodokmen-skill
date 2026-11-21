@@ -154,7 +154,8 @@ zprava({ typ: 'pocitadlo-vse' }).then(async vse => {
   let host = ''; try { host = new URL(tab.url).hostname; } catch (e) { /* nic */ }
   const z = vse && vse[den] && vse[den][host];
   if (z) $('pPocitadlo').textContent = `Dnes na ${host} od ${z.prvni || '?'}: ${z.snimku} snímků, ${z.zeServeru} dlaždic ze serveru `
-    + `(${(z.bajtu / 1048576).toFixed(1)} MB), ${z.zMezipameti} z mezipaměti` + (z.chyby ? `, chyby ${z.chyby}` : ', bez chyb') + '.';
+    + `(${(z.bajtu / 1048576).toFixed(1)} MB), ${z.zMezipameti} z mezipaměti` + (z.chyby ? `, nenačteno ${z.chyby} (server dlaždici nevrátil – když přibývá a snímky jsou bílé, přestaň)` : ', bez chyb')
+    + (z.zruseno ? `, ${z.zruseno} zrušil prohlížeč archivu sám (v pořádku)` : '') + '.';
   $('pStatistika').onclick = () => chrome.downloads.download({
     url: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(vse || {}, null, 2)),
     filename: `rodokmen-snimky/_analyza/pocitadlo_${den}.json`, conflictAction: 'overwrite', saveAs: false

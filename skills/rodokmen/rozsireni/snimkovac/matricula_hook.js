@@ -8,7 +8,7 @@
   window.__snimkovacMatricula = true;
   const TAG = 'snimkovac-matricula';
   const VZOR = /^https:\/\/img\.data\.matricula-online\.eu\/image\/([^/?]+)\//;
-  const PRODLEVA_MS = 1500;
+  const PRODLEVA_MS = 1500;   // uložit až snímek, na kterém se uživatel zastavil (rychle přelistované se přeskočí)
 
   let zapnuto = false;          // řekne content.js podle přepínače ZAP/VYP
   let cekajici = null;          // {im, url} – poslední načtený snímek
@@ -62,12 +62,25 @@
     if (cesta === posledni) return;   // prohlížeč vkládá tentýž snímek dvakrát
     posledni = cesta;
     try {
-      const bmp = await createImageBitmap(im);   // dekódování mimo hlavní vlákno
-      const c = new OffscreenCanvas(bmp.width, bmp.height);
-      c.getContext('2d').drawImage(bmp, 0, 0);
-      bmp.close();
-      const blob = await c.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
-      window.postMessage({ [TAG]: 'obraz', blob, sirka: c.width, vyska: c.height,
+      // 0.16.1: původní JPEG z mezipaměti prohlížeče (max-age 1 den, prohlížeč ho právě načetl – nic se nestahuje).
+      // Bez dekódování a nového kódování: soubor má ~0,7 MB místo ~10 MB nového JPEGu z 25MPx snímku, jehož převod
+      // a předání rozšíření občas zasekly prohlížeč Matriculy.
+      let blob = null, sirka = im.naturalWidth, vyska = im.naturalHeight;
+      try {
+        const r = await fetch(url, { cache: 'force-cache', credentials: 'omit' });
+        const b = r.ok ? await r.blob() : null;
+        if (b && /^image\//.test(b.type) && b.size > 1000) blob = b;
+      } catch (x) { /* záloha níže */ }
+      if (cekajici && cekajici.url.split('?')[0] !== cesta) { posledni = ''; return; }   // mezitím dál – přeskočit
+      if (!blob) {   // záloha: kopie z vykresleného obrázku (dekódování mimo hlavní vlákno)
+        const bmp = await createImageBitmap(im);
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        c.getContext('2d').drawImage(bmp, 0, 0);
+        bmp.close();
+        blob = await c.convertToBlob({ type: 'image/jpeg', quality: 0.92 });
+        sirka = c.width; vyska = c.height;
+      }
+      window.postMessage({ [TAG]: 'obraz', blob, sirka, vyska,
                            puvodni: puvodniSoubor(url), poradi: poradi(url) }, location.origin);
     } catch (e) {
       posledni = '';

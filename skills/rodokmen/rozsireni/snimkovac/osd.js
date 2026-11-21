@@ -77,6 +77,24 @@
              klic: `${location.hostname}|${id}|${obraz || location.pathname + location.search}` };
   }
 
+  // MZA (Acta Publica): při chybném tvaru adresy (?image=…-00170 místo …-01350) prohlížeč sám otevře snímek 1.
+  // Takový snímek nikdo nechtěl: neukládá se sám a „drž pohled“ na něm nepřibližuje (každé přiblížení stojí denní limit).
+  // Vrací důvod (text) nebo ''. Ručně („Uložit teď“) uložit jde dál.
+  function skokStranky() {
+    if (!/(^|\.)mza\.cz$/.test(location.hostname)) return '';
+    const obraz = new URL(location.href).searchParams.get('image') || '';
+    if (!obraz) return '';
+    const jmeno = obraz.replace(/\.(jp2|jpe?g|tiff?)$/i, '');
+    const zdroj = (info && info.zdroj) || '';
+    // jen když zdroj má jméno snímku ve tvaru MZA (216000010-000253-…); jinak by se nedalo porovnat
+    if (/\d{6,}-\d{6}-\d{6}-/.test(zdroj) && jmeno.length > 8) return zdroj.includes(jmeno) ? '' : 'prohlížeč ukazuje jiný snímek, než chce adresa';
+    // záloha bez adresy zdroje: adresa míří jinam, a přitom je otevřený snímek 1
+    const pole = document.getElementById('input-page');
+    const n = parseInt((jmeno.match(/-(\d+)$/) || [])[1] || '', 10);
+    if (pole && pole.value === '1' && n && n !== 1 && n !== 10) return 'adresa chce jiný snímek, prohlížeč otevřel snímek 1';
+    return '';
+  }
+
   // --- panel s minimapou -------------------------------------------------------------------------------------
   // Panel je ve stínovém DOM (Shadow DOM), aby mu styly archivu neměnily vzhled. Hlavní volba je CÍL (přehled / čtení /
   // záznam): nastaví přiblížení (práh + 1 %) a auto mřížku. Mřížka je druhá, volitelná volba (rozbalovací seznam).
@@ -218,7 +236,7 @@
       if (!info) return;
       posledniPopis = posledniPopis || { ...popisStranky(), sirka: info.sirka, vyska: info.vyska };
       novych = Math.max(novych, 1);
-      ulozPoskladany();
+      ulozPoskladany(true);
     };
     $('[data-fotit]').onclick = () => { chybaZachytu = ''; kresli(); window.postMessage({ [TAG + '-pokyn']: 'stav' }, location.origin); };
     // kolečko a klávesy v panelu nesmí ovládat prohlížeč archivu pod ním
@@ -486,13 +504,23 @@
     $('[data-souhrn]').textContent = kal ? 'kalibrace' : mrizka && poli ? `${hotovo}/${poli}` : '';
     $('[data-dalsi]').style.display = kal ? 'none' : '';
     $('[data-dalsi]').style.visibility = mrizka && hotovo === poli ? 'hidden' : '';
-    $('[data-ulozeni]').textContent = (novych ? 'Ukládám…' : ulozenoV ? `Uloženo ${ulozenoV}` : 'Zatím nic k uložení')
-      + (stavZachytu ? ` · ${stavZachytu}` : '');
+    const skok = skoky.get(obrazKlic);
+    $('[data-ulozeni]').textContent = skok ? `⚠ Sám neukládám: ${skok}. Zkontroluj adresu snímku (uložit jde tlačítkem Uložit teď).`
+      : (novych ? (mrizka && poli && hotovo < poli ? 'Uložím, až budou hotová všechna pole' : 'Ukládám…') : ulozenoV ? `Uloženo ${ulozenoV}` : 'Zatím nic k uložení') + (stavZachytu ? ` · ${stavZachytu}` : '');
+    // stav čitelný skriptem (Claude v prohlížeči): document.querySelector('[data-snimkovac-mapa]').dataset
+    try {
+      Object.assign(box.dataset, { snimek: String(snimekOtevreny ?? ''), pole: mrizka && poli ? `${hotovo}/${poli}` : '',
+        ulozeno: ulozenoV, uklada: novych ? '1' : '', skok: skok || '', verze: chrome.runtime.getManifest().version });
+    } catch (x) { /* rozšíření mezitím obnoveno – stav se nezapíše, panel se odpojí sám */ }
     $('[data-varovani]').hidden = !chybaZachytu;
     $('[data-varovani-text]').textContent = chybaZachytu;
     const pata = $('[data-pata]');
-    pata.textContent = dnes ? `Dnes ${dnes.snimku} snímků` + (dnes.chyby ? ` · chyby ${dnes.chyby}` : '') : '';
-    pata.title = dnes ? `${dnes.zeServeru} dlaždic ze serveru (${(dnes.bajtu / 1048576).toFixed(1)} MB)` : '';
+    pata.textContent = dnes ? `Dnes ${dnes.snimku} snímků` + (dnes.chyby ? ` · nenačteno ${dnes.chyby} dlaždic ⓘ` : '') : '';
+    pata.title = dnes ? `${dnes.zeServeru} dlaždic ze serveru (${(dnes.bajtu / 1048576).toFixed(1)} MB)`
+      + (dnes.zruseno ? `, ${dnes.zruseno} zrušil prohlížeč archivu sám (rychlé listování – v pořádku)` : '')
+      + (dnes.chyby ? `.\nNenačteno = server dlaždici nevrátil (výpadek sítě, 403 / blokace). Pár kusů nevadí, `
+        + `snímek se doskládá. Když jich přibývá a snímky zůstávají bílé, přestaň – archiv nejspíš blokuje.`
+        + (dnes.zpravy && dnes.zpravy.length ? `\nPoslední: ${dnes.zpravy[dnes.zpravy.length - 1]}` : '') : '') : '';
     const st = $('.hlava .stav');
     st.className = 'stav ' + (chybaZachytu ? 'chyba' : novych ? 'prace' : ulozenoV ? 'ok' : '');
   }
@@ -500,12 +528,16 @@
   // --- spojení s háčkem a workerem ----------------------------------------------------------------------------
   // --- automatické ukládání: po chvíli klidu, při přepnutí snímku a při odchodu ze stránky ---
   let novych = 0, ulozenoV = '', casovacUlozeni = null, posledniPopis = null;
+  const skoky = new Map();   // klíč snímku → důvod: snímek, na který stránka skočila sama (neukládá se sám)
+  let casOtevreni = 0, snimekOtevreny = null;
   const KLID_MS = 8000;
 
-  function ulozPoskladany() {
+  function ulozPoskladany(rucne) {
     if (!zivy()) return Promise.resolve();
     clearTimeout(casovacUlozeni);
     if (!novych || !posledniPopis || !info) return Promise.resolve();
+    // snímek, na který stránka skočila sama (MZA, chybná adresa), se neukládá – jen na „Uložit teď“
+    if (rucne !== true && skoky.has(posledniPopis.klic)) { novych = 0; kresli(); return Promise.resolve(); }
     const p = pokryti(40);
     const zprava = { typ: 'osd-sloz', obraz: obrazKlic, popis: posledniPopis, vyrez: null,
                      pokryti: { prehled_procent: p.min, ideal_procent: p.ideal, zapis_procent: p.zapis, prahy } };
@@ -517,9 +549,18 @@
     }, () => {});
   }
 
+  // Poskládání celého snímku v plném rozlišení trvá několik sekund. Při procházení polí (Další pole) se proto
+  // neskládá po každém poli, ale až když jsou všechna pole hotová (pak hned) – nebo po delším klidu, při přepnutí
+  // snímku a při odchodu ze stránky. Bez mřížky jako dřív po 8 s klidu.
+  const KLID_POLE_MS = 45000, HOTOVO_MS = 1500;
   function naplanujUlozeni() {
     clearTimeout(casovacUlozeni);
-    casovacUlozeni = setTimeout(ulozPoskladany, KLID_MS);
+    let ms = KLID_MS;
+    if (mrizka && !kalibrujeSe()) {
+      const stav = stavPoli();
+      ms = stav.length && stav.every(Boolean) ? HOTOVO_MS : KLID_POLE_MS;
+    }
+    casovacUlozeni = setTimeout(ulozPoskladany, ms);
   }
 
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') ulozPoskladany(); });
@@ -527,11 +568,11 @@
 
   // --- počítadlo (denní limity archivu): jen čísla, ukládají se lokálně v rozšíření ---
   let dnes = null;
-  const prazdny = () => ({ dlazdice: 0, zeServeru: 0, zMezipameti: 0, nevime: 0, bajtu: 0, chyby: 0, zpravy: [], snimky: [] });
+  const prazdny = () => ({ dlazdice: 0, zeServeru: 0, zMezipameti: 0, nevime: 0, bajtu: 0, chyby: 0, zruseno: 0, zpravy: [], snimky: [] });
   const sber = prazdny();
   function posliPocitadlo() {
     if (!zivy()) return;
-    if (!sber.dlazdice && !sber.chyby && !sber.snimky.length) return;
+    if (!sber.dlazdice && !sber.chyby && !sber.zruseno && !sber.snimky.length) return;
     const data = { ...sber, zpravy: sber.zpravy.slice(0, 5), snimky: [...sber.snimky] };
     Object.assign(sber, prazdny());
     chrome.runtime.sendMessage({ typ: 'pocitadlo', host: location.hostname, data }).then(r => { if (r) { dnes = r; kresli(); } }, () => {});
@@ -555,6 +596,8 @@
     casDrz = setTimeout(() => chrome.storage.local.set({ [KLIC_DRZ]: { v, klic, cas: Date.now() } }), 400);
   }
   const jePriblizeny = v => v && (v[2] - v[0] < 0.92 || v[3] - v[1] < 0.92);
+  // pohled k držení jen rozumný: aspoň 2 % stránky a ne přes 2× plné rozlišení (jinak by „drž“ přenesl extrémní přiblížení)
+  const rozumnyPohled = v => v && v[2] - v[0] >= 0.02 && v[3] - v[1] >= 0.02 && !(procent > 200);
   // Po otevření snímku: s „drž“ poslední známý pohled, jinak (když archiv otevře snímek přiblížený, např. AHMP vpravo
   // dole) celá stránka. Jen když uživatel mezitím sám nic neposunul ani nepřiblížil. Do té doby se pohled nepamatuje,
   // aby si rozšíření nezapamatovalo výchozí pohled archivu.
@@ -566,7 +609,9 @@
     setTimeout(() => {
       cekaNaObnovu = false;
       if (obrazKlic !== klic || casInterakce > start) return;   // mezitím jiný snímek nebo uživatel sám pohnul
-      const cil = drzet && drzenyPohled ? drzenyPohled : (jePriblizeny(pohled) ? [0, 0, 1, 1] : null);
+      const skok = skokStranky();   // snímek, který nikdo nechtěl: nepřibližovat (stálo by to denní limit)
+      if (skok) { skoky.set(klic, skok); kresli(); return; }
+      const cil = drzet && drzenyPohled && rozumnyPohled(drzenyPohled) ? drzenyPohled : (jePriblizeny(pohled) ? [0, 0, 1, 1] : null);
       if (cil) window.postMessage({ [TAG + '-pokyn']: 'prejdi', vyrez: cil }, location.origin);
     }, 1500);
   }
@@ -579,7 +624,10 @@
     ulozenoV = '';
     const d = popisStranky();
     obrazKlic = d.klic;
-    const r = await chrome.runtime.sendMessage({ typ: 'osd-seznam', obraz: obrazKlic });
+    snimekOtevreny = d.snimek;
+    casOtevreni = Date.now();
+    let r = null;
+    try { r = await chrome.runtime.sendMessage({ typ: 'osd-seznam', obraz: obrazKlic }); } catch (x) { /* worker se restartuje */ }
     dlazdice = (r && r.dlazdice) || [];
     kresli();
     if (predchozi !== obrazKlic) obnovPriblizeni(obrazKlic);
@@ -601,6 +649,8 @@
       aktivni = true;
       if (obrazKlic !== popisStranky().klic) await nactiUlozene();
       info = e.data.info; procent = e.data.procent; pohled = e.data.pohled; hustota = e.data.hustota || 1;
+      // až po ustálení (číslo snímku v poli stránky se po přepnutí chvíli nemění)
+      if (obrazKlic && !skoky.has(obrazKlic) && Date.now() - casOtevreni > 1500) { const s = skokStranky(); if (s) skoky.set(obrazKlic, s); }
       if (procent !== posledniProcent) { if (detailPohledu) vyhodnotUceni(); posledniProcent = procent; casZoomu = Date.now(); }
       if (info && pohled && procent) {   // oblast prohlížeče v bodech obrazovky = viditelná část snímku × přiblížení
         // velikost okna prohlížeče: přímo od háčku (stabilní), jinak odvozená z pohledu
@@ -609,7 +659,7 @@
         stupne = !!e.data.stupne;
         minPixelRatio = e.data.minPixelRatio || 0.5;
       }
-      if (jePriblizeny(pohled) && obrazKlic && !cekaNaObnovu) zapamatujPohled(pohled.map(v => Math.max(0, Math.min(1, v))));
+      if (jePriblizeny(pohled) && rozumnyPohled(pohled) && obrazKlic && !cekaNaObnovu) zapamatujPohled(pohled.map(v => Math.max(0, Math.min(1, v))));
       kresli();
     }
     if (typ === 'nacteno') {
@@ -619,6 +669,9 @@
       else sber.nevime++;
     }
     if (typ === 'chyba') {
+      // „Image load aborted“ = prohlížeč archivu sám zrušil dlaždici, která už nebyla potřeba (rychlé listování nebo
+      // přibližování). Není to chyba serveru ani blokace – počítá se zvlášť a v panelu se nestraší.
+      if (/abort/i.test(e.data.zprava || '')) { sber.zruseno++; return; }
       sber.chyby++;
       sber.zpravy.push(new Date().toLocaleTimeString('cs-CZ') + ' ' + e.data.zprava);
       posliPocitadlo();
@@ -633,10 +686,18 @@
       document.documentElement.appendChild(skryj);
       await new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)));
       let r = null;
-      try { r = await chrome.runtime.sendMessage({ typ: 'zachyt-obrazovku', klient: e.data.klient, okno: e.data.okno, rect: e.data.rect, hustota: e.data.hustota }); }
-      catch (x) { /* nic */ }
-      skryj.remove();
-      if (box) box.style.visibility = '';
+      // panel a ovládání archivu se ukážou vždy – i když rozšíření mezitím odpadne nebo focení nedoběhne (nejvýš 10 s)
+      try {
+        r = await Promise.race([
+          chrome.runtime.sendMessage({ typ: 'zachyt-obrazovku', klient: e.data.klient, okno: e.data.okno, rect: e.data.rect, hustota: e.data.hustota }),
+          new Promise(ok => setTimeout(() => ok({ chyba: 'Focení nedoběhlo do 10 s – zkus Fotit teď' }), 10000))
+        ]);
+      } catch (x) { /* nic */ }
+      finally {
+        skryj.remove();
+        for (const el of document.querySelectorAll('[data-snimkovac-skryt]')) el.removeAttribute('data-snimkovac-skryt');
+        if (box) box.style.visibility = '';
+      }
       if (!r || !r.dataUrl) {
         chybaZachytu = (r && r.chyba) || 'Nepovedlo se vyfotit – zkus to znovu';
         fotimPovoleni = !!(r && r.povoleni);
@@ -657,11 +718,19 @@
       if (d.klic !== obrazKlic) await nactiUlozene();
       if (e.data.info) info = e.data.info;
       if (!info) return;
-      const r = await chrome.runtime.sendMessage({
+      const zpr = {
         typ: 'osd-dlazdice', obraz: obrazKlic, popis: { ...d, sirka: info.sirka, vyska: info.vyska },
         level: e.data.level, x: e.data.x, y: e.data.y, skala: e.data.skala, rect: e.data.rect, prepsat: !!e.data.prepsat,
         data: await doDataUrl(e.data.blob)
-      });
+      };
+      // Pozadí rozšíření (worker) se občas uspí nebo restartuje a zpráva se ztratí („message channel closed“,
+      // „Receiving end does not exist“). Dlaždice by pak v uloženém snímku chyběla – jednou to zkusit znovu.
+      let r = null;
+      for (let pokus = 0; pokus < 2 && !r; pokus++) {
+        if (!zivy()) return;
+        try { r = await chrome.runtime.sendMessage(zpr); }
+        catch (x) { await new Promise(ok => setTimeout(ok, 1000)); }
+      }
       if (r && r.nova) {
         dlazdice.push({ skala: e.data.skala, rect: e.data.rect });
         novych++;

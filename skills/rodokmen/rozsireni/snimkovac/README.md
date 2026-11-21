@@ -77,7 +77,20 @@ sám načetl** při tvém prohlížení, do úložiště rozšíření. Nic nest
 - Tlačítko „Uložit teď“ a v části „Pro pokročilé“ uložení výřezu a „Přejít na výřez“ (souřadnice od Clauda) jsou jen záloha.
 - Při přiblížení se načítají **jen dlaždice toho, co je vidět**, ne celá stránka. Celou stránku v plném rozlišení
   bys musel projet posouváním – u MZA to zbytečně čerpá denní limit (asi 45 snímků na IP, počítá se i přibližování).
-  Doporučení: celou stránku v přehledu nebo čtení, v záznamu jen místa se zápisem.
+  **Doporučení: ukládej vždy celou stránku, ne jen řádek se zápisem** – celou stránku aspoň
+  ve **čtení** (u MZA kvůli limitu stačí **přehled**), zápis navíc v **záznamu**. Celá stránka ukáže sousední zápisy,
+  začátek roku a vsi a dá se k ní vrátit bez dalšího stahování.
+- **Od 0.16.3:** při procházení polí se snímek skládá a ukládá **až po posledním poli** (dřív po každém poli, to brzdilo);
+  jinak po 45 s klidu, při přepnutí snímku nebo odchodu. Na pole tedy nečekej na „Uloženo“, stačí počítadlo polí.
+  **Stav pro Clauda skriptem:** `document.querySelector('[data-snimkovac-mapa]').dataset` → `snimek`, `pole` („3/6“),
+  `ulozeno` (čas), `uklada` („1“ = čeká na uložení), `skok`, `verze`.
+  **MZA – snímek, na který stránka skočila sama** (chybný konec adresy `?image=…`, prohlížeč otevře snímek 1): Snímkovač ho
+  sám neuloží a „drž pohled“ na něm nepřibližuje; panel ukáže ⚠ a `skok`. Oprav adresu (konec jména se v knihách liší).
+  **„nenačteno N“** v patičce = server dlaždici nevrátil (síť, 403). Dlaždice, které prohlížeč archivu zrušil sám při rychlém
+  listování („Image load aborted“), se už jako chyby nepočítají.
+- **Po obnovení rozšíření (↻ v chrome://extensions) vždy F5 na stránce archivu** – starý skript se sám odpojí a panel zmizí.
+  **Od 0.16.4:** „Držet pohled“ nepřenese výřez menší než 2 % stránky ani přiblížení přes 2× plné rozlišení a přechod na pole
+  (Zoomify: AHMP, Třeboň) nepřiblíží víc než 2×; po focení záložky se panel a ovládání archivu ukážou vždy (i když focení selže).
 - Soubory: `rodokmen-snimky/<kniha>/<detail>_<snímek>.jpg` (+ `_vyrez_x0_y0_x1_y1`). Importér dá poskládaný snímek
   do mezipaměti a rejstříku (archiv `mza`, kniha = číslo z adresy `detail/<id>`); výřezy nechá ve složce pro Clauda.
 - **Počítadlo pro denní limity:** pod minimapou a v okénku je „Dnes: 12 snímků, 840 dlaždic ze serveru (31 MB)“,
@@ -103,6 +116,22 @@ sám načetl** při tvém prohlížení, do úložiště rozšíření. Nic nest
   (s malým překryvem) – jedno přiblížení na jedno tvoje kliknutí, jako bys přiblížil ručně. Tempo určuješ ty:
   počkej, až se pole vykreslí a na mapě zezelená, pak klikni na další. Rozšíření samo nikam nepřechází
   (pravidelné automatické procházení by server mohl vyhodnotit jako robota).
+
+## Fronta ZIPů z eBadatelny (od 0.17.0)
+Server eBadatelny pustí jen jedno stahování naráz (další vrátí chybu 500). Fronta ti hlídá, kdy ZIP doběhl, a přichystá
+další knihu. **Stahování spouštíš vždy ty kliknutím**.
+1. Otevři stránku knihy (`https://ebadatelna.soapraha.cz/pages/MatrikaPage/matrikaId/<id>`), vpravo dole je panel (tažením za zelené záhlaví ho přesuneš, poloha se pamatuje)
+   „Snímkovač – fronta ZIPů“. Klikni **Do fronty** a kartu nech otevřenou. Tak přidej nejvýš 5 knih.
+2. První kniha je hned na řadě: Snímkovač přepne na její kartu, otevře „Popis knihy“, zeleně orámuje
+   **Stáhnout knihu jako ZIP**, pípne a ukáže oznámení systému. Klikneš ty.
+3. Když ZIP doběhne, Snímkovač počká 10 s a stejně přichystá další knihu.
+4. Klik na „Stáhnout“ u jiné knihy, zatímco se ještě stahuje, Snímkovač zadrží a napíše, na co čekáš (jinak by přišla chyba 500).
+5. Když stahování selže (500, přerušení, odhlášení), fronta **stojí**. Nic se neopakuje samo, pokračuješ tlačítkem **Pokračovat**.
+
+**Hranice:** do fronty přidáváš ty a na stažení klikáš ty. Rozšíření nic nestahuje samo, nečte přihlášení ani cookies
+a nevolá odkazy `…-downloadZip`. Běží jen v otevřených kartách: zavřená karta z fronty zmizí a zavřením prohlížeče
+se fronta smaže. SOA Praha od 13. 11. 2026 omezuje automatizované nástroje, proto rozšíření jen upozorní a samo neklikne.
+Claude frontu neovládá. ZIPy se ukládají do složky stahování prohlížeče; rozbalit je jde potom zvlášť.
 
 ## Bez bubliny stahování
 Snímkovač ukládá na pozadí: na dobu ukládání vypne bublinu „stahování“ prohlížeče (oprávnění `downloads.ui`)

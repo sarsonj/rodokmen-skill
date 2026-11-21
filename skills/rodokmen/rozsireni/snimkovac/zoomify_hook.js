@@ -178,8 +178,13 @@
     if (pk === 'stav') { stav(); zachyceno = new Set(); setTimeout(zachyt, 300); }
     if (pk === 'prejdi' && Array.isArray(e.data.vyrez)) {
       const p = pohled(), i = info();
+      if (!p || !i) return;
       const [x0, y0, x1, y1] = e.data.vyrez.map((v, n) => v * (n % 2 ? i.vyska : i.sirka));
-      vp().zoomAndPanToView((x0 + x1) / 2, (y0 + y1) / 2, Math.min(p.W / (x1 - x0), p.H / (y1 - y0)));
+      // pojistka (0.16.4, AHMP 21. 11.): příliš malý nebo nesmyslný výřez by Zoomify přiblížil daleko za plné rozlišení
+      // a kolečko ho pak nevrátí – přiblížení nejvýš 2× plné rozlišení
+      if (!(x1 - x0 > 20 && y1 - y0 > 20) || ![x0, y0, x1, y1].every(isFinite)) return;
+      const zoom = Math.min(2, p.W / (x1 - x0), p.H / (y1 - y0));
+      vp().zoomAndPanToView((x0 + x1) / 2, (y0 + y1) / 2, zoom);
     }
   });
 })();

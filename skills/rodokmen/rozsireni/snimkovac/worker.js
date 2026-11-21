@@ -1,6 +1,6 @@
 // Snímkovač – service worker: dostane snímek od content scriptu a uloží ho do Stažené/rodokmen-snimky/.
 // Neodesílá nic na internet.
-importScripts('weby.js', 'dlazdice.js');
+importScripts('weby.js', 'dlazdice.js', 'fronta_worker.js');
 const SLOZKA = 'rodokmen-snimky';
 
 function dnes() {
@@ -129,7 +129,8 @@ function zapocitej(host, data) {
         const o = String([...k].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7));
         if (!z.otisky.includes(o)) { z.otisky.push(o); z.snimku++; }
       }
-      for (const k of ['dlazdice', 'zeServeru', 'zMezipameti', 'nevime', 'bajtu', 'chyby']) z[k] += data[k] || 0;
+      // chyby = server dlaždici nevrátil; zruseno = prohlížeč archivu ji sám zrušil (od 0.16.3 zvlášť, není to chyba)
+      for (const k of ['dlazdice', 'zeServeru', 'zMezipameti', 'nevime', 'bajtu', 'chyby', 'zruseno']) z[k] = (z[k] || 0) + (data[k] || 0);
       if (data.dlazdice || data.chyby) { z.prvni = z.prvni || ted; z.posledni = ted; }
       if (data.chyby && !z.prvniChyba) z.prvniChyba = { cas: ted, poSnimcich: z.snimku, poDlazdicichZeServeru: z.zeServeru, zprava: (data.zpravy || [])[0] || '' };
       z.zpravy = [...z.zpravy, ...(data.zpravy || [])].slice(-20);
