@@ -1,6 +1,6 @@
 // Údaje o životě osob odvozené z textů „faktů“ (* narození, † úmrtí, × sňatek), společné pro stránky Jména a Kalendář.
 // Fakta jsou volný text zapsaný člověkem; tady se čtou jen začátky vět a nic se nedomýšlí.
-import { people } from './data.js';
+import { people, lineByK } from './data.js';
 
 /** Rok sestavení webu (pro odhad, kdo ještě může žít). */
 export const NOW = new Date().getFullYear();
@@ -65,6 +65,85 @@ function birthYearGuess(p) {
 /** Slugy osob, které žijí nebo by mohly žít – ty se na stránkách Jména a Kalendář nezobrazují. */
 export const living = new Set(Object.values(people).filter(isLiving).map((p) => p.slug));
 
+// ---------- časová osa ----------
+
+const facts = Object.fromEntries(Object.values(people).map((p) => [p.slug, p.facts.map((f) => ({ ...parseFact(f), text: f })).filter((r) => r.t)]));
+
+function fromY(y) {
+  // rok narození a úmrtí z pole `y` (opravdu jen první výskyt; pole bývá ošklivé: „* 1746* 24. 2. 1746“)
+  const r = { b: null, bq: null, d: null, dq: null };
+  y = (y || '').trim();
+  const ys = y.match(/\d{4}/g);
+  if (!ys) return r;
+  const head = y.split('–');
+  if (y.startsWith('†')) { r.d = +ys[0]; r.dq = /před/.test(y.split('†')[1] || '') ? 'before' : 'exact'; return r; }
+  if (y.startsWith('*')) { r.b = +ys[0]; r.bq = /\*\s*(asi|≈)/.test(y.slice(0, 12)) ? 'approx' : 'exact'; return r; }
+  if (y.startsWith('–') || y.startsWith('? ')) { r.d = +ys[ys.length - 1]; r.dq = /před/.test(y) ? 'before' : 'exact'; return r; }
+  r.b = +ys[0]; r.bq = /^(asi|≈)/.test(y) ? 'approx' : 'exact';
+  if (ys.length > 1 && head.length > 1) {
+    r.d = +ys[ys.length - 1];
+    r.dq = /před/.test(head[1]) ? 'before' : /(asi|≈|\?)/.test(head[1]) ? 'approx' : 'exact';
+  }
+  return r;
+}
+
+/** Řádky časové osy (bez žijících). Chybějící roky se odhadnou z dětí, sňatku a rodičů – takové pruhy na ose bledou. */
+export function timelineRows() {
+  const list = Object.values(people).filter((p) => !living.has(p.slug));
+  const info = {};
+  for (const p of list) {
+    const fy = fromY(p.y);
+    const o = { b: fy.b, bq: fy.bq, d: fy.d, dq: fy.dq, m: [] };
+    for (const r of facts[p.slug]) {
+      if (r.t === 'b' && !o.fromFactB) { o.b = r.y; o.bq = r.approx || r.before || r.uncertain ? 'approx' : 'exact'; o.fromFactB = true; }
+      else if (r.t === 'd' && !o.fromFactD) { o.d = r.y; o.dq = r.before ? 'before' : r.approx ? 'approx' : 'exact'; o.fromFactD = true; }
+      else if (r.t === 'm') o.m.push(r.y);
+    }
+    o.m = [...new Set(o.m)].sort((a, b) => a - b);
+    info[p.slug] = o;
+  }
+  const birthOf = (s) => info[s]?.b ?? null;
+  // odhady od nejbližších generací k nejstarším, ať děti jsou odhadnuté dřív než rodiče
+  for (const p of [...list].sort((a, b) => a.gen - b.gen || a.k - b.k)) {
+    const o = info[p.slug];
+    if (o.b === null) {
+      const cands = [];
+      const kids = p.children.map(birthOf).filter((x) => x !== null);
+      if (kids.length) cands.push(Math.min(...kids) - (p.sex === 'M' ? 30 : 27));
+      if (o.m.length) cands.push(o.m[0] - (p.sex === 'M' ? 27 : 23));
+      const par = [p.father, p.mother].map(birthOf).filter((x) => x !== null);
+      if (par.length) cands.push(Math.max(...par) + 30);
+      const spb = p.spouse ? birthOf(p.spouse) : null;
+      if (spb !== null) cands.push(spb);
+      if (cands.length) { o.b = Math.round(cands.reduce((a, b) => a + b, 0) / cands.length); o.bq = 'est'; }
+    }
+  }
+  const rows = [];
+  for (const p of list) {
+    const o = info[p.slug];
+    if (o.b === null && o.d === null) continue;
+    if (o.b === null) { o.b = o.d - 55; o.bq = 'est'; }
+    if (o.d === null) {
+      const kids = p.children.map(birthOf).filter((x) => x !== null);
+      const last = Math.max(o.b + 55, ...(kids.length ? [Math.max(...kids) + 5] : []), ...(o.m.length ? [o.m[o.m.length - 1] + 10] : []));
+      o.d = Math.min(last, NOW); o.dq = 'est';
+    }
+    if (o.d < o.b) o.d = o.b + 1;
+    const spread = (q) => (q === 'est' ? 12 : q === 'approx' ? 4 : q === 'before' ? 8 : 0);
+    const x0 = o.b - spread(o.bq), x1 = o.d + spread(o.dq);
+    const w = Math.max(1, x1 - x0);
+    const line = p.line ? lineByK[p.line] : null;
+    rows.push({
+      s: p.slug, n: p.name, k: p.k, g: p.gen, b: o.b, bq: o.bq, d: o.d, dq: o.dq, x0, x1,
+      sl: +(spread(o.bq) / w).toFixed(3) || 0, sr: +(spread(o.dq) / w).toFixed(3) || 0,
+      m: o.m.filter((y) => y >= o.b && y <= o.d + 1), c: line ? line.color : '#9aa3ad', l: line ? line.name : 'Nejbližší rodina',
+      y: p.years || '', st: p.st,
+    });
+  }
+  rows.sort((a, b) => a.b - b.b || a.k - b.k);
+  return rows;
+}
+
 // ---------- jména ----------
 
 /** Křestní jména osoby (bez příjmení, závorek, otazníků; dvojité jméno = dvě jména). */
@@ -84,3 +163,6 @@ export function personLines(p) {
   const ks = [p.line, ...(p.also || []).map((a) => a.line)].filter((k) => k != null);
   return [...new Set(ks.length ? ks : [null])];
 }
+
+/** Je na časové ose aspoň jeden předek (s alespoň jedním známým rokem)? Jen pak má smysl stránka a položka v menu. */
+export const maCasovouOsu = timelineRows().length > 0;

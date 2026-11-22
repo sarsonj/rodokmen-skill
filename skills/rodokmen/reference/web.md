@@ -2,7 +2,7 @@
 
 Web je statický (Astro + vyhledávání Pagefind), data bere z `data/` přes `tools/export_web.py`.
 Stránky: úvod (lákadlo, statistiky, zajímavosti, mapa, rody, vějíř), příběh, zajímavosti, rody, stránka rodu,
-mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, jména (která se v rodě dědí), zápisy (s výřezem, rámečkem, přepisem
+mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, časová osa (pruhy života předků), jména (která se v rodě dědí), zápisy (s výřezem, rámečkem, přepisem
 a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
 
 ## Příkazy (ve složce `web/`)
@@ -46,6 +46,13 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 - Šablona `web.json` je prázdná – název nastav hned, jak znáš příjmení výchozí osoby (`kontrola.py` hlásí zbytky ukázky).
 - `citlive_schvaleno`: seznam úryvků textu, které uživatel na webu schválil (např. `["oběsil se ve stodole"]`) –
   `kontrola.py` je pak nehlásí jako `CITLIVÉ`. Úryvek musí obsahovat hlášené slovo; když se text změní, hlásí se znovu.
+
+## Časová osa (stránka bez vlastních dat)
+Stránka **Časová osa** (`/casova-osa/`) ukáže každého předka jako pruh od narození do smrti, seřazené podle roku narození
+a obarvené podle rodu; přesné roky jsou plné, odhadnuté (z dětí, sňatku nebo rodičů) vybledávají. Roky bere z pole `y`
+osoby a z faktů v `data/osoby.py` (`* narození`, `† úmrtí`, `× sňatek`), nic dalšího vyplňovat není třeba. Žijící osoby
+(poznámka začínající „Žijící“, nebo narozené před méně než 110 lety bez známého úmrtí) se na ose nezobrazují. Když není
+žádný předek s aspoň jedním známým rokem, nevznikne stránka ani položka v menu.
 
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
