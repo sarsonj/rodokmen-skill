@@ -1,0 +1,36 @@
+---
+// Jednoduchý sloupcový graf bez knihoven. rows: [{ label, vals: [číslo, …], who?: [slug, …] }], series: [{ name, color }]
+// Klepnutím na řádek (pokud má who) se zobrazí, o koho jde.
+import PersonLink from './PersonLink.astro';
+const { rows, series = [{ name: '', color: '#8a6d52' }], unit = '', labelW = '5.5rem' } = Astro.props;
+const max = Math.max(1, ...rows.flatMap((r) => r.vals));
+---
+<div class="hs-hist">
+  {series.length > 1 && (
+    <div class="hs-legend">{series.map((s) => <span><i style={`background:${s.color}`}></i>{s.name}</span>)}</div>
+  )}
+  {rows.map((r) => (
+    <details class="hs-row" open={false} style={`--lw:${labelW}`}>
+      <summary>
+        <span class="hs-l">{r.label}</span>
+        <span class="hs-b">
+          {r.vals.map((v, i) => <span class="hs-bar" style={`width:${(v / max) * 100}%;background:${series[i].color}`} title={`${series[i].name} ${v}${unit}`}></span>)}
+        </span>
+        <span class="hs-n">{r.vals.join(' / ')}</span>
+      </summary>
+      {r.who && r.who.length > 0 && <div class="small hs-kdo">{r.who.map((s, i) => <>{i > 0 && ', '}<PersonLink slug={s} /></>)}</div>}
+    </details>
+  ))}
+</div>
+<style>
+  .hs-hist { margin: .8rem 0 1.4rem; max-width: 46rem; }
+  .hs-legend { display: flex; gap: 1rem; font-size: .85rem; margin-bottom: .4rem; }
+  .hs-legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; }
+  .hs-row > summary { display: grid; grid-template-columns: var(--lw, 5.5rem) 1fr 4rem; gap: .5rem; align-items: center; cursor: pointer; list-style: none; padding: .1rem 0; }
+  .hs-row > summary::-webkit-details-marker { display: none; }
+  .hs-l { font-size: .9rem; }
+  .hs-b { display: flex; flex-direction: column; gap: 2px; }
+  .hs-bar { display: block; height: .55rem; border-radius: 2px; min-width: 1px; }
+  .hs-n { font-size: .8rem; opacity: .7; text-align: right; font-variant-numeric: tabular-nums; }
+  .hs-kdo { padding: .3rem 0 .6rem 1rem; }
+</style>

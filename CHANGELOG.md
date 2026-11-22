@@ -9,6 +9,10 @@ Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to 
 ## Nepublikováno
 
 **Nové**
+- Web: stránka **Statistiky** (`/statistiky/`) – čím se předci živili, věk při svatbě a při narození dítěte, kdy se brali,
+  délka života, rodové obce a domy, kolik předků v které generaci známe; klepnutím na řádek grafu se ukážou jména.
+  Je volitelná: vznikne a v menu je jen při aspoň 15 zemřelých osobách s doloženým rokem narození, jednotlivé části
+  se skryjí, když mají méně než 5 údajů. Žijící osoby se nepočítají.
 - Web: stránka **Jména** (`/jmena/`) – která křestní jména se v rodokmenu dědí. U každého jména je počet osob a rozpad
   po rodech, rozkliknutím se ukážou konkrétní lidé. Žijící osoby se nepočítají.
 

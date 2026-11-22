@@ -19,6 +19,15 @@ a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hle
 
 Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (snímek obrazovky přes prohlížeč, je-li k dispozici).
 
+## Stránka Statistiky (volitelná)
+`/statistiky/`: čím se předci živili, věk při svatbě a při narození dítěte, kdy se brali, délka života, dědění jmen, rodové
+obce a domy, kolik předků v které generaci známe. Počítá se jen z doložených údajů, žijící osoby se nevyužívají
+(stejné pravidlo jako u stránky Jména, `web/src/lib/zivoty.js`). Stránka **vznikne a v menu je jen tehdy**, když je
+v rodokmenu aspoň **15 zemřelých osob s doloženým rokem narození** (`MIN_OSOB` v `web/src/lib/stats.js`); jinak se
+nevygeneruje vůbec. Jednotlivé části (svatby, rodiče, děti, délka života, jména, obce) se ukážou, jen když mají aspoň
+**5 údajů** (`MIN_ROW`). Část „Rodové domy“ je jen tehdy, když existuje stránka Domy. Počet dětí se čte z faktu ve tvaru
+`děti: Jan 1820, Marie 1822`; bez něj se část „Děti v rodině“ nezobrazí.
+
 ## `data/web.json`
 ```json
 {
