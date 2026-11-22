@@ -29,6 +29,33 @@ nevygeneruje vůbec. Jednotlivé části (svatby, rodiče, děti, délka života
 `děti: Jan 1820, Marie 1822` (rodina se počítá jednou, i když fakt mají oba rodiče); bez něj se část „Děti v rodině“
 nezobrazí. Větu navrhne `python3 -I tools/deti.py <osoba>` z dětí a sourozenců v datech, tvar hlídá `kontrola.py` (`data.md`).
 
+**Povolání („Čím se živili“).** Skupiny a klíčová slova jsou v `web/src/lib/povolani.js` (24 širokých skupin inspirovaných
+hlavními skupinami klasifikace HISCO: zemědělci, drobní držitelé, nádeníci a čeleď, řemesla po oborech, hostinští a obchod,
+úředníci, učitelé a duchovní, vojáci, horníci a dělníci, lesníci, pastýři, doprava, lékaři a porodní báby, měšťané, chudí).
+Slova jsou **česky, německy i latinsky**, protože matriky píšou všemi třemi (např. kovář / Schmied / faber ferrarius,
+mlynář / Müller / molitor, chalupník / Häusler, nádeník / Tagelöhner / inquilinus). Sestavená jsou z veřejných slovníků
+(WikiTree Help:Glossary Czech, FEEFHS Czech word list), z terminologie matrik a z hlavních skupin HISCO
+(iisg.amsterdam, History of Work); v souboru jsou zdroje v komentáři. Slovo se hledá od začátku slova (pády se chytí),
+`*schmied` i uvnitř složenin (Hufschmied), `magd$` jen jako celé slovo, `/regex/` je vlastní výraz.
+Co se počítá: fakty osoby kromě `* † × ⚭` a vět o rodině (`pomáhal`, `děti`, `otec`, `svědek` …); kdo měl víc živností, je
+ve všech svých skupinách. **Povolání, které žádná skupina nezná, se neztratí:** fakt `povolání: Kolovrátkář` dá vlastní
+řádek „Kolovrátkář“ (víc povolání v jednom faktu se dělí čárkou nebo středníkem).
+
+Skupiny si projekt smí upravit v `data/web.json`, položka `povolani` (`export_web.py` ji předá do `site.json`, jinak platí
+výchozí skupiny):
+```json
+"povolani": {
+ "skupiny": [
+  {"nazev": "Kolovrátkáři", "slova": ["kolovrátkář", "Drehorgelspieler"]},
+  {"nazev": "Mlynáři", "slova": ["moučník"]},
+  {"nazev": "Vojáci a četníci", "slova": ["legionář"], "nahradit": true}
+ ],
+ "odstranit": ["Žebráci a chudí"]
+}
+```
+Nový `nazev` = nová skupina; název výchozí skupiny (bez ohledu na velikost písmen) slova **doplní**, s `"nahradit": true`
+je **nahradí**; `odstranit` skupinu vypustí. Test: `node tests/povolani/test_povolani.mjs`.
+
 ## `data/web.json`
 ```json
 {

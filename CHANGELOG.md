@@ -18,6 +18,11 @@ Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to 
   z křtu; žijící děti a děti bez roku vynechá), `--zapsat` ji zapíše, `--vse` projde všechny páry. `zapis.py fakt <osoba> "…"`
   přidá libovolný fakt k osobě beze změny formátu souboru; `kontrola.py` varuje před špatným tvarem faktu „děti“. SKILL.md
   vede agenta, aby větu o dětech zapisoval tímto nástrojem. Rodina, u které má fakt otec i matka, se počítá jednou.
+- Statistiky – **povolání** se třídí do 24 širokých skupin (podle hlavních skupin klasifikace HISCO) s klíčovými slovy
+  **česky, německy i latinsky** (Häusler, Tagelöhner, Müller, Fleischhauer, Hebamme, Totengräber, agricola, molitor,
+  faber, sutor …). Povolání, které žádná skupina nezná, se už neztratí a dostane vlastní řádek podle textu. Skupiny a slova
+  si projekt smí doplnit nebo přepsat v `data/web.json` (položka `povolani`, viz `reference/web.md`). Seznam je
+  v `web/src/lib/povolani.js`, test `tests/povolani/test_povolani.mjs`.
 - Web: stránka **Jména** (`/jmena/`) – která křestní jména se v rodokmenu dědí. U každého jména je počet osob a rozpad
   po rodech, rozkliknutím se ukážou konkrétní lidé. Žijící osoby se nepočítají.
 

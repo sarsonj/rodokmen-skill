@@ -3,6 +3,7 @@
 import site from '../data/site.json';
 import { people, families, byK } from './data.js';
 import { living, parseFact, firstNames } from './zivoty.js';
+import { sestavSkupiny, trid } from './povolani.js';
 
 const all = Object.values(people);
 const ok = (p) => p && !living.has(p.slug);
@@ -43,41 +44,11 @@ const exactAge = (bd, y1, m1, d1) =>
   bd && bd.d && bd.m ? y1 - bd.y - ((m1 || 12) < bd.m || ((m1 || 12) === bd.m && (d1 || 31) < bd.d) ? 1 : 0) : null;
 
 // ---------- povolání ----------
-const OCC = [
-  ['Sedláci, rolníci, hospodáři', /(sedlák|sedlač|rolník|hospodář|statkář|gruntovník|possessor)/iu],
-  ['Chalupníci a čtvrtláníci', /(chalupník|čtvrtláník|půlláník|zahradník)/iu],
-  ['Domkáři', /domkář/iu],
-  ['Podruzi, nádeníci, čeleď', /(podruh|nádeník|čeledín|služebn|děvečka|pacholek)/iu],
-  ['Výměnkáři', /(výměnkář|výminkář)/iu],
-  ['Kováři', /kovář/iu],
-  ['Tkalci a soukeníci', /(tkadlec|tkalec|tkalcovsk|soukeník|přadlen)/iu],
-  ['Krejčí a švadleny', /(krejčí|krejčovsk|švadlen)/iu],
-  ['Ševci a koželuzi', /(švec|ševcovsk|koželuh)/iu],
-  ['Mlynáři', /mlynář/iu],
-  ['Kameníci a zedníci', /(kameník|zedník|zednick)/iu],
-  ['Tesaři a truhláři', /(tesař|truhlář|stolař)/iu],
-  ['Šenkýři a hostinští', /(šenkýř|hostinsk|hospodsk|krčmář)/iu],
-  ['Vojáci', /(voják|vojín|pluk)/iu],
-  ['Horníci a dělníci', /(horník|dělník|továrn|hutník)/iu],
-  ['Lesníci a hajní', /(lesník|hajný|myslivec|polesn)/iu],
-  ['Řezníci a pekaři', /(řezník|pekař)/iu],
-  ['Úředníci, rychtáři, učitelé', /(rychtář|písař|učitel|úředník|purkmistr|starosta)/iu],
-  ['Šafáři a ovčáci', /(šafář|ovčák|pastýř)/iu],
-  ['Železničáři', /(železničář|výpravčí|strojvedoucí|topič)/iu],
-];
-const notOwn = /^(pomáhal|v domácnosti|sloužil|manželka|syn|dcera|děti|vdova|vdovec|z |ze |otec|matka|bratr|sestra|nemanželsk|kmotr|svědek)/iu;
+// Skupiny, klíčová slova (česky, německy, latinsky) a třídění jsou v povolani.js; projekt je smí doplnit v data/web.json
+// (položka „povolani“, viz reference/web.md). Povolání, které žádná skupina nezná, dostane vlastní řádek.
+const skupiny = sestavSkupiny(site.config?.povolani);
 export function professions() {
-  const rows = OCC.map(([name, rx]) => ({ name, rx, people: [] }));
-  let known = 0;
-  for (const p of all) {
-    if (!ok(p)) continue;
-    const texts = p.facts.filter((f) => !/^[*†×⚭]/.test(f) && !notOwn.test(f));
-    if (!texts.length) continue;
-    let hit = false;
-    for (const r of rows) if (texts.some((f) => r.rx.test(f))) { r.people.push(p.slug); hit = true; }
-    if (hit) known++;
-  }
-  return { known, rows: rows.filter((r) => r.people.length).sort((a, b) => b.people.length - a.people.length) };
+  return trid(all.filter(ok), skupiny);
 }
 
 // ---------- sňatky ----------
