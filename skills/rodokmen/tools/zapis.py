@@ -4,8 +4,8 @@
 
 Použití (z kořene projektu):
   zapis.py <soubor> <klíč> <vstup.json> [--sloucit | --prepsat]
-    soubor     zaznamy | svazky | prepisy | zvyrazneni | mista | dokumenty   (= data/<soubor>.json)
-    klíč       zaznamy: „klic“ zápisu; dokumenty: „img“; ostatní: klíč ve slovníku (id svazku, klíč zápisu, obec)
+    soubor     zaznamy | svazky | prepisy | zvyrazneni | mista | dokumenty | podpisy   (= data/<soubor>.json)
+    klíč       zaznamy: „klic“ zápisu; dokumenty: „img“; podpisy: „id“ (podpisy raději přes podpis.py); ostatní: klíč ve slovníku (id svazku, klíč zápisu, obec)
     vstup.json soubor s jedním objektem JSON (napiš ho nástrojem Write do pracovni/), „-“ = ze vstupu
     --sloucit  jen změní / doplní uvedená pole, ostatní pole položky nechá
     --prepsat  nahradí položku celou, i když nový vstup některá dosavadní pole nemá (ta se ztratí)
@@ -24,7 +24,7 @@ if hasattr(sys.stdin, "reconfigure"):   # vstup „-“ (roura, heredoc) je UTF-
     sys.stdin.reconfigure(encoding="utf-8-sig")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SEZNAMY = {"zaznamy": "klic", "dokumenty": "img"}   # soubory se seznamem: pole, podle kterého se položka pozná
+SEZNAMY = {"zaznamy": "klic", "dokumenty": "img", "podpisy": "id"}   # soubory se seznamem: pole, podle kterého se položka pozná
 SLOVNIKY = {"svazky", "prepisy", "zvyrazneni", "mista"}
 WS = re.compile(r"\s*")
 

@@ -13,6 +13,9 @@ Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to 
   rodech; u osoby sekce „Vlastnoruční podpis“. Zobrazí se jen tehdy, když jsou v `data/podpisy.json` nějaké podpisy
   (formát a obrázky v `reference/web.md`), jinak nevznikne ani stránka, ani položka v menu. Nový `tools/export_podpisy.py`
   (volá ho `export_web.py`).
+- Nový nástroj **`tools/podpis.py`**: přidá, změní nebo smaže (`--smazat`) podpis či křížky předka – vystřihne `podpisy/<id>.jpg`
+  ze snímku zápisu, ohlídá osobu i zápis a zapíše `data/podpisy.json` beze změny formátu. SKILL.md i `reference/web.md` vedou
+  agenta, aby při čtení zápisu podpisy a křížky hledal a nabídl je přidat tímto nástrojem. `zapis.py` umí i soubor `podpisy`.
 
 ## 0.10.2 – 16. 11. 2026
 

@@ -96,6 +96,12 @@ Základní smyčka pro každou osobu:
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`;
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
+   **Podpisy a křížky:** při čtení každého zápisu se podívej, jestli jsou na něm vlastnoruční podpisy nebo křížky
+   (ženich a nevěsta, svědci, kmotři, rodiče svolující k sňatku nezletilého; od josefínských dob kdo neuměl psát, udělal
+   křížky). Našel-li jsi je, **nabídni uživateli, že je přidáš na stránku Podpisy**, a když souhlasí, udělej to nástrojem,
+   ne ručním psaním souborů: `python3 -I tools/podpis.py <klíč zápisu> <číslo osoby | část jména> podpis|krizky --text "Wáclaw Nowak"
+   --vyrez x0,y0,x1,y1` (zlomky 0–1 obrázku zápisu; **prohlédni si** vzniklý `podpisy/<id>.jpg`, jestli je podpis celý).
+   Nástroj vystřihne obrázek, ohlídá osobu i zápis a zapíše `data/podpisy.json` (`--smazat <id>` záznam odstraní).
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel)
    a u neúspěšného, jestli s dokladem, nebo jen orientačně (Pomocníci níže).
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
@@ -105,7 +111,7 @@ Základní smyčka pro každou osobu:
 Pravidla, která chrání kvalitu:
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
   (jméno, místo, rok). Snadno „objevíš“ něco, co už v datech je.
-- **Zápis do dat:** `zaznamy`, `svazky`, `prepisy`, `dokumenty` přes `python3 -I tools/zapis.py <soubor> <klíč> pracovni/x.json`
+- **Zápis do dat:** `zaznamy`, `svazky`, `prepisy`, `dokumenty` (podpisy přes `tools/podpis.py`) přes `python3 -I tools/zapis.py <soubor> <klíč> pracovni/x.json`
   (objekt napiš do `pracovni/x.json`, nástroj změní jen tu položku; `--sloucit` změní jen uvedená pole); odkaz na zápis u osoby v `osoby.py` přes
   `tools/zapis.py odkaz` (ohlídá uvozovky a čárky), ostatní úpravy `osoby.py` a markdown nástrojem pro úpravu souborů.
   Nikdy `sed -i` ani skript, který soubor přepíše celý – rozbije formát a v historii je pak změněný celý soubor.
@@ -227,7 +233,7 @@ připomeň uživateli, že je může poslat správci skillu:
 ## Soubory projektu
 `data/`: `STAV.md` (vstupní bod), `osoby.py` (předci, `LINES`, `SIDE`, `ISSUES`, `HYPOTEZY`, `SAME`), `zaznamy.json`,
 `svazky.json`, `prepisy.json`, `zvyrazneni.json`, `research_log.md` (deník), `udaje_od_rodiny.md`, `archivni_dotazy.md`,
-`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json` (formát `reference/data.md`). Dál `vyrezy/`
+`zajimavosti.md`, `pribeh.md`, `web.json`, `dokumenty.json`, `mista.json`, volitelně `podpisy.json` (+ `podpisy/`) (formát `reference/data.md`). Dál `vyrezy/`
 a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od rodiny), `pracovni/` (nejde na web),
 `poznamky_pro_skill.md`, `tools/` (kopie ze skillu – aktualizuje se celý projekt přes `novy_projekt.py`), `web/`.
 
@@ -247,6 +253,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage) – `data.md` |
 | `vyrez.py`, `ramecek.py`, `overit.py` | výřez zápisu (zlomky stránky), rámeček (zlomky výřezu, `--pozn` poznámka), ověření čtení na dvou polovinách |
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
+| `podpis.py` | podpis nebo křížky předka ze zápisu: výřez `podpisy/<id>.jpg` + záznam do `data/podpisy.json` (stránka Podpisy) |
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |

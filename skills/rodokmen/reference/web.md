@@ -68,6 +68,18 @@ Je **volitelná**: bez podpisů se stránka ani položka v menu nevytvoří. Zap
   `npm run data` (`tools/export_podpisy.py`) obrázky zkopíruje do `web/public/podpisy/`, položky bez obrázku, osoby nebo
   zápisu vynechá a vypíše `POZOR`.
 
+**Jak podpisy vznikají – nástrojem, ne ručně.** Při čtení každého zápisu (`matriky.md`, krok „Přečti celý zápis“) se podívej,
+jestli jsou na něm podpisy nebo křížky – ženicha a nevěsty, svědků, kmotrů, rodičů svolujících k sňatku nezletilého – a
+**nabídni uživateli, že je přidáš**. Pak:
+```
+python3 -I tools/podpis.py <klíč zápisu> <číslo osoby | část jména> podpis --text "Wáclaw Nowak"     --vyrez 0.55,0.62,0.95,0.72 --popis "podpis ženicha pod zápisem sňatku, Holice 1884"
+python3 -I tools/podpis.py <klíč zápisu> <osoba> krizky --text "Jan Novák" --vyrez x0,y0,x1,y1   # „+++ “ doplní samo
+python3 -I tools/podpis.py --smazat <id>
+```
+Nástroj vystřihne `podpisy/<id>.jpg` ze `zdroje/<klíč>.jpg` (zlomky 0–1 obrázku zápisu, jako `vyrez.py`), ověří, že zápis i osoba
+existují a osoba má zápis v `r` (jinak nejdřív `zapis.py odkaz`), a zapíše záznam do `data/podpisy.json`; stejné `id` záznam
+nahradí. Obrázek si po vytvoření **prohlédni**. Podpis jde přiřadit jen osobě z `P` (boční příbuzní z `SIDE` stránku nemají).
+
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
 (stránka webu je asi 20–40 požadavků → tisíce zobrazení denně; po vyčerpání vrací web do půlnoci UTC chybu 429).
