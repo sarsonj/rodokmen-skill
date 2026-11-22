@@ -6,6 +6,13 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: volitelná stránka **Dvakrát ve stromě** (`/dvakrat/`) – předci, kteří jsou v rodokmenu vícekrát (sňatky příbuzných):
+  společní předci, schéma sestupu, míra příbuzenství a dispenz z oddací matriky. Zobrazí se jen tehdy, když je
+  v `data/osoby.py` aspoň jedno `SAME`, jinak nevznikne ani stránka, ani položka v menu.
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není

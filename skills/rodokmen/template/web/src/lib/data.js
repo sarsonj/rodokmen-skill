@@ -4,6 +4,8 @@ import site from '../data/site.json';
 export const { people, families, lines, stats, issues, hypotheses, docs, config } = site;
 /** Počet rodů slovem pro nadpisy („Osm rodů“). */
 export const linesTitle = (n) => (['Žádný rod', 'Jeden rod', 'Dva rody', 'Tři rody', 'Čtyři rody', 'Pět rodů', 'Šest rodů', 'Sedm rodů', 'Osm rodů'][n] ?? `${n} rodů`);
+/** Je v rodokmenu někdo vícekrát (SAME)? Jen pak má smysl stránka „Dvakrát ve stromě“ a položka v menu. */
+export const maDuplicity = Object.keys(site.aliases ?? {}).length > 0;
 export const root = people[site.root];
 export const records = Object.fromEntries(site.records.map((r) => [r.key, r]));
 export const recordList = site.records;

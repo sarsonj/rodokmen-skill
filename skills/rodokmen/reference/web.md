@@ -2,7 +2,7 @@
 
 Web je statický (Astro + vyhledávání Pagefind), data bere z `data/` přes `tools/export_web.py`.
 Stránky: úvod (lákadlo, statistiky, zajímavosti, mapa, rody, vějíř), příběh, zajímavosti, rody, stránka rodu,
-mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, zápisy (s výřezem, rámečkem, přepisem
+mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, dvakrát ve stromě (volitelná), zápisy (s výřezem, rámečkem, přepisem
 a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
 
 ## Příkazy (ve složce `web/`)
@@ -46,6 +46,13 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 - Šablona `web.json` je prázdná – název nastav hned, jak znáš příjmení výchozí osoby (`kontrola.py` hlásí zbytky ukázky).
 - `citlive_schvaleno`: seznam úryvků textu, které uživatel na webu schválil (např. `["oběsil se ve stodole"]`) –
   `kontrola.py` je pak nehlásí jako `CITLIVÉ`. Úryvek musí obsahovat hlášené slovo; když se text změní, hlásí se znovu.
+
+## Dvakrát ve stromě (volitelná stránka)
+Stránka **Dvakrát ve stromě** (`/dvakrat/`) vysvětluje, kteří předci jsou v rodokmenu vícekrát (ztráta předků, anglicky
+pedigree collapse): u každého sňatku příbuzných ukáže společné předky, schéma sestupu k oběma manželům, míru příbuzenství
+(„bratranec a sestřenice z druhého kolena, společné asi 3 %“) a – je-li v matrice zmíněn – dispenz. Je **volitelná**: ukáže
+se jen tehdy, když je v `data/osoby.py` aspoň jedno `SAME` (číslo Kekulé předka, který je ve stromě podruhé → číslo, pod
+kterým je vedený poprvé), jinak nevznikne ani stránka, ani položka v menu. Žádná zvláštní data nejsou potřeba.
 
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
