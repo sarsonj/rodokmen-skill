@@ -95,6 +95,9 @@ Základní smyčka pro každou osobu:
    5. přepis originálu a český překlad do `data/prepisy.json` (nejistá místa „(?)“, nečitelná „[…]“),
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`;
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
+   **Děti rodičů:** jakmile máš u páru přečtené křty dětí (dítě v přímé linii + sourozenci v `SIDE`), zapiš rodiči fakt
+   `děti: Jan 1820, Marie 1822` – čte ho stránka Statistiky. Větu **nepiš z hlavy**: `python3 -I tools/deti.py <číslo | jméno>`
+   ji navrhne z dat (`--zapsat` ji zapíše, `--vse` projde všechny páry); `kontrola.py` varuje, když fakt nemá tento tvar.
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
 6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel)
    a u neúspěšného, jestli s dokladem, nebo jen orientačně (Pomocníci níže).
@@ -246,7 +249,8 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `cache.py` | sdílená mezipaměť snímků; uložení snímku z prohlížeče |
 | `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage) – `data.md` |
 | `vyrez.py`, `ramecek.py`, `overit.py` | výřez zápisu (zlomky stránky), rámeček (zlomky výřezu, `--pozn` poznámka), ověření čtení na dvou polovinách |
-| `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
+| `zapis.py` | zápis do `data/*.json` a odkazů `r`, faktů `f` v `osoby.py` beze změny formátu |
+| `deti.py` | navrhne (`--zapsat` zapíše) fakt „děti: Jan 1820, Marie 1822“ pro rodiče z dětí a sourozenců v datech (stránka Statistiky) |
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |

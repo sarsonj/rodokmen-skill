@@ -15,6 +15,10 @@ nástroj nic nezmění a vypíše je (pak --sloucit, nebo --prepsat). Python skr
   zapis.py odkaz <osoba> <klíč zápisu> [<klíč> …]
     Přidá klíč(e) do seznamu `r` v data/osoby.py: osoba = Kekulého číslo (P), nebo část jména bočního příbuzného
     (SIDE, musí sedět na jediného). Zbytek souboru zůstane doslova, klíč musí být v zaznamy.json.
+
+  zapis.py fakt <osoba> "<text faktu>" […]
+    Totéž pro seznam faktů `f` v data/osoby.py: přidá fakt(y) na konec, např. "děti: Jan 1820, Marie 1822" (tvar faktu
+    o dětech viz reference/data.md; věta z už přečtených křtů dětí: tools/deti.py). Stejný fakt podruhé nepřidá.
 """
 import ast, json, os, re, sys
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -72,7 +76,8 @@ def nacti_osoby(src):
     return ns
 
 
-def odkaz(osoba, klice):
+def odkaz(osoba, klice, pole="r"):
+    """Přidá položky do seznamu `pole` osoby v data/osoby.py: "r" = klíče zápisů, "f" = fakta."""
     path = os.path.join(ROOT, "data", "osoby.py")
     src = open(path, "rb").read()
     try:
@@ -84,7 +89,7 @@ def odkaz(osoba, klice):
         zaznamy = {z.get("klic") for z in json.load(open(os.path.join(ROOT, "data", "zaznamy.json"), encoding="utf-8-sig"))}
     except (OSError, ValueError) as e:
         sys.exit(f"data/zaznamy.json nejde přečíst ({e}).")
-    chybi = [k for k in klice if k not in zaznamy]
+    chybi = [k for k in klice if k not in zaznamy] if pole == "r" else []
     if chybi:
         sys.exit(f"Zápis {', '.join(chybi)} v data/zaznamy.json není – nejdřív ho zapiš (zapis.py zaznamy …).")
 
@@ -118,15 +123,15 @@ def odkaz(osoba, klice):
     if not (jako_dict or isinstance(volani, ast.Dict)):
         sys.exit(f"{popis}: čekal jsem dict(…) nebo {{…}} – uprav ručně.")
 
-    nove = [k for k in klice if k not in (stare.get("r") or [])]
+    nove = [k for k in dict.fromkeys(klice) if k not in (stare.get(pole) or [])]
     if not nove:
-        print(f"{popis}: zápis už má, nic neměním.")
+        print(f"{popis}: " + ("zápis už má" if pole == "r" else "fakt už má") + ", nic neměním.")
         return
     pos = bajty_pozice(src)
     if jako_dict:
-        r = next((kw.value for kw in volani.keywords if kw.arg == "r"), None)
+        r = next((kw.value for kw in volani.keywords if kw.arg == pole), None)
     else:
-        r = next((v for kl, v in zip(volani.keys, volani.values) if isinstance(kl, ast.Constant) and kl.value == "r"), None)
+        r = next((v for kl, v in zip(volani.keys, volani.values) if isinstance(kl, ast.Constant) and kl.value == pole), None)
     # styl uvozovek podle souboru: první řetězec v položce (v ukázce a z importu bývají apostrofy)
     prvni = next((n for n in ast.walk(volani) if isinstance(n, ast.Constant) and isinstance(n.value, str)), None)
     apostrof = prvni is not None and src[pos(prvni.lineno, prvni.col_offset):][:1] == b"'"
@@ -134,17 +139,17 @@ def odkaz(osoba, klice):
     vlozit = ", ".join(retez(k) for k in nove).encode("utf-8")
     if r is not None:
         if not isinstance(r, ast.List):
-            sys.exit(f"{popis}: r není seznam [ … ] – uprav ručně.")
+            sys.exit(f"{popis}: {pole} není seznam [ … ] – uprav ručně.")
         konec = pos(r.end_lineno, r.end_col_offset) - 1          # pozice „]“
         pred_z = src[:konec].rstrip()
         oddel = b"" if not r.elts else (b" " if pred_z.endswith(b",") else b", ")
     else:
         konec = pos(volani.end_lineno, volani.end_col_offset) - 1   # pozice „)“ nebo „}“
         pred_z = src[:konec].rstrip()
-        klic_r = b"r=[" if jako_dict else (retez("r") + ": [").encode()
+        klic_r = (pole + "=[").encode() if jako_dict else (retez(pole) + ": [").encode()
         oddel = (b" " if pred_z.endswith(b",") else b", ") + klic_r
         vlozit += b"]"
-    if r is not None and not r.elts:   # r=[] → r=["klíč"]
+    if r is not None and not r.elts:   # r=[] → r=["klíč"] (stejně f)
         novy = src[:konec] + vlozit + src[konec:]
     else:   # za poslední prvek / argument; mezery a konec řádku před „]“ či „)“ zůstanou
         novy = pred_z + oddel + vlozit + src[len(pred_z):]
@@ -156,9 +161,9 @@ def odkaz(osoba, klice):
         sys.exit(f"Úprava by rozbila data/osoby.py ({e}) – nic jsem nezapsal, uprav ručně.")
     ocekavane = dict(pred)
     if popis.startswith("osoba"):
-        ocekavane["P"] = {**pred["P"], k: {**stare, "r": (stare.get("r") or []) + nove}}
+        ocekavane["P"] = {**pred["P"], k: {**stare, pole: (stare.get(pole) or []) + nove}}
     else:
-        ocekavane["SIDE"] = [*pred["SIDE"][:i], {**stare, "r": (stare.get("r") or []) + nove}, *pred["SIDE"][i + 1:]]
+        ocekavane["SIDE"] = [*pred["SIDE"][:i], {**stare, pole: (stare.get(pole) or []) + nove}, *pred["SIDE"][i + 1:]]
     for jmeno in ("P", "SIDE", "LINES", "ISSUES", "HYPOTEZY", "SAME"):
         if po.get(jmeno) != ocekavane.get(jmeno):
             sys.exit(f"Úprava by změnila i {jmeno} – nic jsem nezapsal, uprav ručně.")
@@ -167,7 +172,7 @@ def odkaz(osoba, klice):
     with open(tmp, "wb") as f:
         f.write(novy)
     os.replace(tmp, path)
-    print(f"data/osoby.py: {popis} – přidán zápis {', '.join(nove)}")
+    print(f"data/osoby.py: {popis} – přidán " + ("zápis " if pole == "r" else "fakt ") + ", ".join(nove))
 
 
 def main():
@@ -175,6 +180,10 @@ def main():
         if len(sys.argv) < 4:
             sys.exit(__doc__)
         return odkaz(sys.argv[2], sys.argv[3:])
+    if sys.argv[1:2] == ["fakt"]:
+        if len(sys.argv) < 4:
+            sys.exit(__doc__)
+        return odkaz(sys.argv[2], sys.argv[3:], "f")
     args = [a for a in sys.argv[1:] if a not in ("--sloucit", "--prepsat")]
     sloucit, prepsat = "--sloucit" in sys.argv, "--prepsat" in sys.argv
     if sloucit and prepsat:

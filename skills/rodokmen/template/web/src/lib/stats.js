@@ -157,16 +157,18 @@ export function parentAge() {
   }
   return rows;
 }
-/** Počet dětí z faktu „děti: Jan 1820, Marie 1822“ (počítají se jména s rokem; od dvou dětí výš). */
+/** Počet dětí z faktu „děti: Jan 1820, Marie 1822“ (počítají se jména s rokem; od dvou dětí výš; rodina se počítá jednou,
+ *  i když fakt mají oba manželé – tvar viz reference/data.md, větu navrhne tools/deti.py). */
 export function childrenCounts() {
   const rows = [];
+  const spocteno = new Set();
   for (const p of all) {
-    if (!ok(p)) continue;
+    if (!ok(p) || spocteno.has(p.slug)) continue;
     for (const f of p.facts) {
       const m = f.match(/děti[^:]*:\s*(.+)$/iu);
       if (!m) continue;
       const n = m[1].split(/,\s*/).filter((x) => /\d{4}/.test(x)).length;
-      if (n >= 2) { rows.push({ n, p }); break; }
+      if (n >= 2) { rows.push({ n, p }); if (p.spouse) spocteno.add(p.spouse); break; }
     }
   }
   return rows;

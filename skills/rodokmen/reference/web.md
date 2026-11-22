@@ -26,7 +26,8 @@ obce a domy, kolik předků v které generaci známe. Počítá se jen z dolože
 v rodokmenu aspoň **15 zemřelých osob s doloženým rokem narození** (`MIN_OSOB` v `web/src/lib/stats.js`); jinak se
 nevygeneruje vůbec. Jednotlivé části (svatby, rodiče, děti, délka života, jména, obce) se ukážou, jen když mají aspoň
 **5 údajů** (`MIN_ROW`). Část „Rodové domy“ je jen tehdy, když existuje stránka Domy. Počet dětí se čte z faktu ve tvaru
-`děti: Jan 1820, Marie 1822`; bez něj se část „Děti v rodině“ nezobrazí.
+`děti: Jan 1820, Marie 1822` (rodina se počítá jednou, i když fakt mají oba rodiče); bez něj se část „Děti v rodině“
+nezobrazí. Větu navrhne `python3 -I tools/deti.py <osoba>` z dětí a sourozenců v datech, tvar hlídá `kontrola.py` (`data.md`).
 
 ## `data/web.json`
 ```json

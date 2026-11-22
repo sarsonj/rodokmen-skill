@@ -191,6 +191,23 @@ def main():
             warn.append(f"osoba {k} ({p.get('n')}): žádný sňatek (×) nejmenuje partnera {sp} ({P[sp].get('n')})"
                         " – patří sňatek k této osobě, je číslo správně?")
 
+    # Fakt o dětech („děti: Jan 1820, Marie 1822“) čte stránka Statistiky (část „Děti v rodině“); tvar viz reference/data.md
+    # a tools/deti.py, který větu navrhne ze sourozenců v datech.
+    for k, p in P.items():
+        deti = [f for f in p.get("f", []) if isinstance(f, str) and re.match(r"děti(\s|:|$)", f.strip(), re.I)]
+        if len(deti) > 1:
+            warn.append(f"osoba {k} ({p.get('n')}): víc faktů „děti“ – stránka Statistiky čte jen první, sluč je do jednoho")
+        for f in deti:
+            m = re.match(r"děti[^:]*:\s*(.+)$", f.strip(), re.I)
+            if not m:
+                warn.append(f"osoba {k} ({p.get('n')}): fakt „{f}“ nemá tvar „děti: Jan 1820, Marie 1822“ (dvojtečka, jméno a rok, čárky)")
+                continue
+            polozky = [x.strip() for x in re.split(r",\s*", m.group(1).strip().rstrip(".")) if x.strip()]
+            spatne = [x for x in polozky if not (re.match(r"[^\W\d_]", x) and re.search(r"\d{4}", x))]
+            if spatne:
+                warn.append(f"osoba {k} ({p.get('n')}): v faktu „děti“ je {', '.join('„' + x + '“' for x in spatne[:3])}"
+                            f"{' …' if len(spatne) > 3 else ''} bez jména nebo roku – stránka Statistiky počítá jen „Jméno rok“, tvar „děti: Jan 1820, Marie 1822“")
+
     # Číslo domu v zápisu: za „čp.“, „č.“, „čís.“, „No“, „N.“, „N°“, „Nro“, „Nr.“, „Haus“, „domu“, v poli „[Dům] …“
     # nebo hned za obcí z mista.json („z Břilic 23“). Datum („5. 1. 1767“, „23. února“, „9. 9bris“), věk, rok
     # ani číslo zápisu, strany či snímku („zápis č. 23“) dům nedokládají.
