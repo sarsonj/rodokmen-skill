@@ -86,6 +86,14 @@ jen ji výraz `re` nechytí ve skloňovaném tvaru („v Přesece“ × `Přesek
 vidět jako popisek, vyplň ho (stejně jako `t` u bočních příbuzných).
 Obrázek ulož přes `vyrez.py dokumenty/<sken>.jpg foto_svatba_1919` (vznikne `vyrezy/` i `zdroje/`).
 
+**Dobová mapa** (výřez indikační skici nebo otisku stabilního katastru, `portaly.md` → Starší prameny) je položka
+s `"druh": "mapa"`: `{"img": "mapa_lhota_1841", "druh": "mapa", "rod": [8], "osoby": [], "misto": "Lhota", "rok": 1841,
+"popis": "Červeně čísla domů, zakroužkované čp. 12.", "zdroj": "Indikační skica, k. ú. Lhota, 1841 (ČÚZK)", "odkaz": "<adresa skici>"}`.
+Na webu je v sekci „Dobové mapy“ na stránce rodu – rodu z `rod` (číslo z `LINES` nebo seznam) a rodům osob z `osoby`.
+Když se `misto` přesně shoduje s názvem obce v `mista.json`, má tečka toho rodu na mapě předků v okénku odkaz na mapu.
+Mapa bez rodu není na stránce žádného rodu ani v okénku mapy (export ji ohlásí). Mezi rodinnými dokumenty
+a fotkami se mapa neopakuje, na stránce osoby z `osoby` zůstane.
+
 ## `web.json` – nastavení webu
 Viz `web.md`.
 
