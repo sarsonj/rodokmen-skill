@@ -13,6 +13,12 @@ export const byK = Object.fromEntries([
 ]);
 export const lineByK = Object.fromEntries(Object.values(lines).map((l) => [l.k, l]));
 
+// Podpisy předků: data/podpisy.json ověřuje a kopíruje tools/export_podpisy.py do web/src/data/podpisy.json (formát viz reference/web.md).
+// Bez podpisů není stránka Podpisy ani položka v menu ani sekce na stránce osoby.
+const podpisyMod = import.meta.glob('../data/podpisy.json', { eager: true });
+export const podpisy = (Object.values(podpisyMod)[0]?.default ?? []).filter((i) => people[i.osoba] && records[i.zdroj]);
+export const maPodpisy = podpisy.length > 0;
+
 export const href = {
   person: (slug) => `/osoba/${slug}/`,
   family: (id) => `/rodina/${id}/`,

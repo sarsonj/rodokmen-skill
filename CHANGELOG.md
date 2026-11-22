@@ -6,6 +6,14 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: volitelná stránka **Podpisy** (`/podpisy/`) – vlastnoruční podpisy a křížky předků vystřižené ze zápisů, řazené po
+  rodech; u osoby sekce „Vlastnoruční podpis“. Zobrazí se jen tehdy, když jsou v `data/podpisy.json` nějaké podpisy
+  (formát a obrázky v `reference/web.md`), jinak nevznikne ani stránka, ani položka v menu. Nový `tools/export_podpisy.py`
+  (volá ho `export_web.py`).
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není

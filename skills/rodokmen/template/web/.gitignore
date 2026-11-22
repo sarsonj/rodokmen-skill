@@ -4,9 +4,11 @@ dist
 .netlify
 # generuje tools/export_web.py (npm run data)
 src/data/site.json
+src/data/podpisy.json
 src/generated/
 public/img/
 public/zdroje/
+public/podpisy/
 public/prihlaseni.html
 nginx.conf
 netlify/edge-functions/

@@ -2,7 +2,7 @@
 
 Web je statický (Astro + vyhledávání Pagefind), data bere z `data/` přes `tools/export_web.py`.
 Stránky: úvod (lákadlo, statistiky, zajímavosti, mapa, rody, vějíř), příběh, zajímavosti, rody, stránka rodu,
-mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, zápisy (s výřezem, rámečkem, přepisem
+mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, podpisy předků (volitelná), zápisy (s výřezem, rámečkem, přepisem
 a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
 
 ## Příkazy (ve složce `web/`)
@@ -46,6 +46,27 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 - Šablona `web.json` je prázdná – název nastav hned, jak znáš příjmení výchozí osoby (`kontrola.py` hlásí zbytky ukázky).
 - `citlive_schvaleno`: seznam úryvků textu, které uživatel na webu schválil (např. `["oběsil se ve stodole"]`) –
   `kontrola.py` je pak nehlásí jako `CITLIVÉ`. Úryvek musí obsahovat hlášené slovo; když se text změní, hlásí se znovu.
+
+## Podpisy (volitelná stránka)
+Stránka **Podpisy** (`/podpisy/`) ukáže vlastnoruční podpisy a křížky předků, které se v zápisech našly (rodiče a svědci
+od josefínských reforem, kdo neuměl psát, udělal křížky). Řazené po rodech, u osoby je sekce „Vlastnoruční podpis“.
+Je **volitelná**: bez podpisů se stránka ani položka v menu nevytvoří. Zapnou ji data:
+
+- `data/podpisy.json` – seznam podpisů:
+```json
+[
+ {"id": "novak_jan_1884", "rok": 1884, "osoba": "vaclav-novak-1858", "kruzky": false,
+  "text": "„Wáclaw Nowak“", "popis": "podpis ženicha pod zápisem sňatku, Holice 1884",
+  "zdroj": "holice_snatek_vaclav_novak_barbora_mala_1884"}
+]
+```
+  `id` = název obrázku a kotva na stránce (písmena bez diakritiky, číslice, `_`, `-`; v seznamu jedinečné), `osoba` = adresa
+  osoby (`slug`, viz `web/src/data/site.json`), `zdroj` = klíč zápisu z `data/zaznamy.json`, `text` = jak je podpis
+  napsaný (u křížků i s křížky: `„+++ Jan Novák“`), `kruzky` = `true`, když dotyčný místo podpisu udělal křížky,
+  `popis` = kdo, kde a kdy (nepovinné).
+- `podpisy/<id>.jpg` – výřez podpisu ze snímku (lze i `.png` nebo `.webp`), v **projektu**, ne ve `web/`.
+  `npm run data` (`tools/export_podpisy.py`) obrázky zkopíruje do `web/public/podpisy/`, položky bez obrázku, osoby nebo
+  zápisu vynechá a vypíše `POZOR`.
 
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
