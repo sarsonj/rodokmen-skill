@@ -6,6 +6,26 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: stránka **Statistiky** (`/statistiky/`) – čím se předci živili, věk při svatbě a při narození dítěte, kdy se brali,
+  délka života, rodové obce a domy, kolik předků v které generaci známe; klepnutím na řádek grafu se ukážou jména.
+  Je volitelná: vznikne a v menu je jen při aspoň 15 zemřelých osobách s doloženým rokem narození, jednotlivé části
+  se skryjí, když mají méně než 5 údajů. Žijící osoby se nepočítají.
+- Statistiky – počet dětí v rodině se čte z faktu **`děti: Jan 1820, Marie 1822`** (tvar v `reference/data.md`). Nový nástroj
+  **`tools/deti.py <osoba>`** větu navrhne z dítěte v přímé linii a ze sourozenců v `data/osoby.py` (rok ze jména nebo
+  z křtu; žijící děti a děti bez roku vynechá), `--zapsat` ji zapíše, `--vse` projde všechny páry. `zapis.py fakt <osoba> "…"`
+  přidá libovolný fakt k osobě beze změny formátu souboru; `kontrola.py` varuje před špatným tvarem faktu „děti“. SKILL.md
+  vede agenta, aby větu o dětech zapisoval tímto nástrojem. Rodina, u které má fakt otec i matka, se počítá jednou.
+- Statistiky – **povolání** se třídí do 24 širokých skupin (podle hlavních skupin klasifikace HISCO) s klíčovými slovy
+  **česky, německy i latinsky** (Häusler, Tagelöhner, Müller, Fleischhauer, Hebamme, Totengräber, agricola, molitor,
+  faber, sutor …). Povolání, které žádná skupina nezná, se už neztratí a dostane vlastní řádek podle textu. Skupiny a slova
+  si projekt smí doplnit nebo přepsat v `data/web.json` (položka `povolani`, viz `reference/web.md`). Seznam je
+  v `web/src/lib/povolani.js`, test `tests/povolani/test_povolani.mjs`.
+- Web: stránka **Jména** (`/jmena/`) – která křestní jména se v rodokmenu dědí. U každého jména je počet osob a rozpad
+  po rodech, rozkliknutím se ukážou konkrétní lidé. Žijící osoby se nepočítají.
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není

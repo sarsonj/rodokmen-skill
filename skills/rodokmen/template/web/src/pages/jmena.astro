@@ -1,0 +1,88 @@
+---
+import Base from '../layouts/Base.astro';
+import PersonLink from '../components/PersonLink.astro';
+import { people, lines, lineByK } from '../lib/data.js';
+import { firstNames, personLines, living } from '../lib/zivoty.js';
+
+const GREY = '#9aa3ad';
+const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
+// pořadí rodů v rozpisu: podle rodu, nakonec „nejbližší rodina“
+const CLOSE = { name: 'Nejbližší rodina', color: GREY, k: 999 };
+const NOLINE = { name: 'Bez rodu', color: GREY, k: 998 };   // rod, který nemá v data/osoby.py (LINES) název
+const lineInfo = (k) => (k == null ? CLOSE : lineByK[k] ?? NOLINE);
+
+const used = Object.values(people).filter((p) => !living.has(p.slug));
+const byName = { M: new Map(), F: new Map() };
+let counted = 0;
+for (const p of used) {
+  const ns = firstNames(p);
+  if (!ns.length) continue;
+  counted++;
+  for (const n of new Set(ns)) {
+    const m = byName[p.sex === 'M' ? 'M' : 'F'];
+    if (!m.has(n)) m.set(n, []);
+    m.get(n).push(p);
+  }
+}
+const groups = (sex) =>
+  [...byName[sex].entries()]
+    .map(([name, ps]) => {
+      const per = new Map();
+      for (const p of ps) for (const k of personLines(p)) per.set(k, [...(per.get(k) || []), p]);
+      const rozpis = [...per.entries()].map(([k, list]) => ({ line: lineInfo(k), list })).sort((a, b) => b.list.length - a.list.length || a.line.k - b.line.k);
+      return { name, count: ps.length, rozpis };
+    })
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'cs'));
+const sections = [['Mužská jména', groups('M')], ['Ženská jména', groups('F')]];
+const usesNoline = sections.some(([, list]) => list.some((g) => g.rozpis.some((r) => r.line === NOLINE)));
+---
+<Base title="Jména">
+  <h1>Jména</h1>
+  <p class="lead">Jaká křestní jména se v rodokmenu dědí. U každého je počet všech osob s tímto jménem a pod ním, kolik jich je v jednotlivých rodech. Rozkliknutím jména se ukážou konkrétní lidé.</p>
+  <p class="small muted">Započteno {counted} osob (žijící nejsou). Dvojité jméno (např. Marie Magdalena) se počítá u každého z obou jmen. Předek, který je v rodokmenu vícekrát (patří do dvou rodů), se u jména počítá jednou, ale v rozpadu je u každého svého rodu – součet po rodech pak může být vyšší. „Nejbližší rodina“ = rodiče a prarodiče, kteří ještě nepatří do žádného z rodů. Jména jsou přepsána tak, jak stojí v rodokmenu, bez sjednocení podob (Kateřina × Catharina).</p>
+  <div class="chips">
+    {lineList.map((l) => <span class="chip"><span class="dot" style={`background:${l.color}`}></span>{l.name}</span>)}
+    <span class="chip"><span class="dot" style={`background:${GREY}`}></span>Nejbližší rodina</span>
+    {usesNoline && <span class="chip"><span class="dot" style={`background:${GREY}`}></span>Bez rodu</span>}
+  </div>
+  {sections.map(([title, list]) => (
+    <section>
+      <h2>{title} <span class="muted small">({list.length})</span></h2>
+      <div class="names">
+        {list.map((g) => (
+          <details class="card name-card">
+            <summary>
+              <span class="nm-row"><strong class="nm-big">{g.name}</strong><span class="nm-count">{g.count}×</span></span>
+              <span class="nm-bar" aria-hidden="true">{g.rozpis.map((r) => <span style={`flex:${r.list.length};background:${r.line.color}`}></span>)}</span>
+              <span class="nm-lines small">{g.rozpis.map((r) => <span><span class="dot" style={`background:${r.line.color}`}></span>{r.line.name} {r.list.length}</span>)}</span>
+            </summary>
+            <div class="nm-people">
+              {g.rozpis.map((r) => (
+                <>
+                  <p class="small muted">{r.line.name}</p>
+                  <ul>{r.list.map((p) => <li><PersonLink slug={p.slug} /></li>)}</ul>
+                </>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  ))}
+</Base>
+
+<style>
+  .names { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); align-items: start; gap: 0.8rem; margin-bottom: 1.5rem; }
+  .name-card { padding: 0.7rem 0.9rem; }
+  .name-card summary { cursor: pointer; list-style: none; display: grid; gap: 0.35rem; }
+  .name-card summary::-webkit-details-marker { display: none; }
+  .nm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .nm-big { font-size: 1.15rem; }
+  .nm-count { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+  .nm-bar { display: flex; gap: 1px; height: 6px; border-radius: 3px; overflow: hidden; }
+  .nm-lines { display: flex; flex-wrap: wrap; gap: 0.15rem 0.7rem; color: var(--muted); }
+  .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; margin-right: 0.3rem; vertical-align: baseline; }
+  .nm-people { margin-top: 0.5rem; }
+  .nm-people p { margin: 0; }
+  .nm-people ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
+</style>

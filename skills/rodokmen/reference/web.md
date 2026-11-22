@@ -2,7 +2,7 @@
 
 Web je statický (Astro + vyhledávání Pagefind), data bere z `data/` přes `tools/export_web.py`.
 Stránky: úvod (lákadlo, statistiky, zajímavosti, mapa, rody, vějíř), příběh, zajímavosti, rody, stránka rodu,
-mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, zápisy (s výřezem, rámečkem, přepisem
+mapa (OpenStreetMap), vějíř přes celou obrazovku s hledáním, seznam předků, jména (která se v rodě dědí), zápisy (s výřezem, rámečkem, přepisem
 a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hledání.
 
 ## Příkazy (ve složce `web/`)
@@ -18,6 +18,43 @@ a překladem), stránka osoby, rodiny, „Co hledáme“, výzkumný deník, hle
 | `npm run overit` | kontrola nasazeného webu bez přihlášení (rodinná otázka × ochrana týmu Netlify / stránka Cloudflare) |
 
 Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (snímek obrazovky přes prohlížeč, je-li k dispozici).
+
+## Stránka Statistiky (volitelná)
+`/statistiky/`: čím se předci živili, věk při svatbě a při narození dítěte, kdy se brali, délka života, dědění jmen, rodové
+obce a domy, kolik předků v které generaci známe. Počítá se jen z doložených údajů, žijící osoby se nevyužívají
+(stejné pravidlo jako u stránky Jména, `web/src/lib/zivoty.js`). Stránka **vznikne a v menu je jen tehdy**, když je
+v rodokmenu aspoň **15 zemřelých osob s doloženým rokem narození** (`MIN_OSOB` v `web/src/lib/stats.js`); jinak se
+nevygeneruje vůbec. Jednotlivé části (svatby, rodiče, děti, délka života, jména, obce) se ukážou, jen když mají aspoň
+**5 údajů** (`MIN_ROW`). Část „Rodové domy“ je jen tehdy, když existuje stránka Domy. Počet dětí se čte z faktu ve tvaru
+`děti: Jan 1820, Marie 1822` (rodina se počítá jednou, i když fakt mají oba rodiče); bez něj se část „Děti v rodině“
+nezobrazí. Větu navrhne `python3 -I tools/deti.py <osoba>` z dětí a sourozenců v datech, tvar hlídá `kontrola.py` (`data.md`).
+
+**Povolání („Čím se živili“).** Skupiny a klíčová slova jsou v `web/src/lib/povolani.js` (24 širokých skupin inspirovaných
+hlavními skupinami klasifikace HISCO: zemědělci, drobní držitelé, nádeníci a čeleď, řemesla po oborech, hostinští a obchod,
+úředníci, učitelé a duchovní, vojáci, horníci a dělníci, lesníci, pastýři, doprava, lékaři a porodní báby, měšťané, chudí).
+Slova jsou **česky, německy i latinsky**, protože matriky píšou všemi třemi (např. kovář / Schmied / faber ferrarius,
+mlynář / Müller / molitor, chalupník / Häusler, nádeník / Tagelöhner / inquilinus). Sestavená jsou z veřejných slovníků
+(WikiTree Help:Glossary Czech, FEEFHS Czech word list), z terminologie matrik a z hlavních skupin HISCO
+(iisg.amsterdam, History of Work); v souboru jsou zdroje v komentáři. Slovo se hledá od začátku slova (pády se chytí),
+`*schmied` i uvnitř složenin (Hufschmied), `magd$` jen jako celé slovo, `/regex/` je vlastní výraz.
+Co se počítá: fakty osoby kromě `* † × ⚭` a vět o rodině (`pomáhal`, `děti`, `otec`, `svědek` …); kdo měl víc živností, je
+ve všech svých skupinách. **Povolání, které žádná skupina nezná, se neztratí:** fakt `povolání: Kolovrátkář` dá vlastní
+řádek „Kolovrátkář“ (víc povolání v jednom faktu se dělí čárkou nebo středníkem).
+
+Skupiny si projekt smí upravit v `data/web.json`, položka `povolani` (`export_web.py` ji předá do `site.json`, jinak platí
+výchozí skupiny):
+```json
+"povolani": {
+ "skupiny": [
+  {"nazev": "Kolovrátkáři", "slova": ["kolovrátkář", "Drehorgelspieler"]},
+  {"nazev": "Mlynáři", "slova": ["moučník"]},
+  {"nazev": "Vojáci a četníci", "slova": ["legionář"], "nahradit": true}
+ ],
+ "odstranit": ["Žebráci a chudí"]
+}
+```
+Nový `nazev` = nová skupina; název výchozí skupiny (bez ohledu na velikost písmen) slova **doplní**, s `"nahradit": true`
+je **nahradí**; `odstranit` skupinu vypustí. Test: `node tests/povolani/test_povolani.mjs`.
 
 ## `data/web.json`
 ```json

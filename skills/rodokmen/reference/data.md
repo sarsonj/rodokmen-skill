@@ -30,6 +30,13 @@ P = {
   `"† 1940"` když známe jen úmrtí; nic nevíme → `""`).
 - `f` fakta: začínají `*` (narození), `×` (sňatek), `†` (úmrtí) nebo jsou volný text (řemeslo, bydliště).
   Názvy obcí ve faktech používá mapa (`mista.json` → `re`).
+  **Děti rodičů:** fakt `děti: Jan 1820, Marie 1822` (slovo „děti“, případně s upřesněním před dvojtečkou – `děti z 1. manželství:` –, pak
+  dvojtečka a děti oddělené čárkou, každé jako **křestní jméno a rok narození**; za rok smí následovat poznámka v závorce).
+  Stránka Statistiky (část „Děti v rodině“) počítá jen děti s rokem, rodinu od dvou dětí výš, a jen **první** fakt „děti“ osoby –
+  dvě manželství proto sluč do jednoho seznamu. Piš ho **jednomu z rodičů** (otci; nemá-li ho strom, matce), oba rodiče se počítají
+  jako jedna rodina. Do věty patří děti zemřelé v dětství i dospělé, ne žijící (soukromí). Větu nepiš z hlavy: `python3 -I
+  tools/deti.py <osoba>` ji navrhne z dítěte v přímé linii a ze sourozenců v `SIDE` (rok z jména v závorce nebo z křtu),
+  `--zapsat` ji zapíše přes `zapis.py fakt`; `kontrola.py` varuje před špatným tvarem.
   Sňatek jmenuje partnera (`× 1919 Holice Josefa Pokorná`); `kontrola.py` hlásí, když žádný sňatek nejmenuje osobu
   na sousedním čísle (manžel 2k, manželka 2k+1, i přes `SAME`). U `doc` hlásí `čp.`, které není v žádném citovaném
   zápisu (`shrnuti`, přepis) jako číslo domu (`čp. 23`, `No 23`, `N. 23`, `[Dům] 23`, `z Ostřetína 23`; datum, věk ani

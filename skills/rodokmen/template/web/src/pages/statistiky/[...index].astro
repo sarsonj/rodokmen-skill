@@ -1,0 +1,182 @@
+---
+import Base from '../../layouts/Base.astro';
+import Hist from '../../components/Hist.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import { stats } from '../../lib/data.js';
+import * as S from '../../lib/stats.js';
+
+// Stránka existuje jen při dostatku údajů (S.maStatistiky); jinak se nevygeneruje a není v menu.
+export function getStaticPaths() {
+  return S.maStatistiky ? [{ params: { index: undefined } }] : [];
+}
+
+const SER_MF = [{ name: 'muži', color: '#5B7FA6' }, { name: 'ženy', color: '#C0766B' }];
+const MES = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
+const DNY = ['pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota', 'neděle'];
+const avg = (a) => (a.length ? Math.round((a.reduce((s, x) => s + x, 0) / a.length) * 10) / 10 : null);
+const cs = (n) => String(n).replace('.', ',');
+const fmt = (n) => n.toLocaleString('cs');
+const MIN = S.MIN_ROW;
+/** Sloupce po `step` letech od `from` do `to` pro dvě řady (muži/ženy). */
+const buckets = (rows, from, to, step) => {
+  const out = [];
+  for (let a = from; a < to; a += step) {
+    const m = rows.M.filter((r) => r.age >= a && r.age < a + step), f = rows.F.filter((r) => r.age >= a && r.age < a + step);
+    out.push({ label: step === 1 ? String(a) : `${a}–${a + step - 1}`, vals: [m.length, f.length], who: [...m, ...f].map((r) => r.p.slug) });
+  }
+  return out;
+};
+const extremes = (rows, n = 3) => {
+  const a = [...rows.M, ...rows.F].sort((x, y) => x.age - y.age);
+  return { low: a.slice(0, n), high: a.slice(-n).reverse() };
+};
+const nM = (r) => r.M.length + r.F.length;
+
+const prof = S.professions();
+const wedAge = S.ageAtMarriage();
+const wedExt = extremes(wedAge);
+const wm = S.weddingMonths();
+const parentAge = S.parentAge();
+const parentExt = extremes(parentAge);
+const kids = S.childrenCounts();
+const life = S.lifespans();
+const lifeExt = extremes(life);
+const nap = S.nameAfterParent();
+const houses = S.maDomy ? S.houses().filter((h) => h.n >= 3).sort((a, b) => b.span - a.span || b.n - a.n) : [];
+const villages = S.villages();
+const knowAll = S.knowledge(Math.min(stats.generations, 14));
+const lastKnown = Math.max(0, ...knowAll.filter((r) => r.missing < r.total).map((r) => r.g));
+const know = knowAll.filter((r) => r.g <= lastKnown + 1);
+const pct = (n, t) => String(Math.round((n / t) * 1000) / 10).replace('.', ',');
+const kidsRows = [];
+for (let n = 2; n <= Math.max(2, ...kids.map((k) => k.n)); n++) kidsRows.push({ label: `${n} dětí`, vals: [kids.filter((k) => k.n === n).length], who: kids.filter((k) => k.n === n).map((k) => k.p.slug) });
+const lifeRows = buckets(life, 20, 100, 10);
+const topMonths = wm.mon.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
+
+// které části mají dost údajů
+const show = {
+  profese: prof.known >= MIN,
+  svatba: wedAge.M.length >= MIN && wedAge.F.length >= MIN,
+  kdy: wm.n >= MIN,
+  rodice: parentAge.M.length >= MIN && parentAge.F.length >= MIN,
+  deti: kids.length >= MIN,
+  zivot: nM(life) >= MIN,
+  jmena: nap.sons >= MIN && nap.daus >= MIN,
+  domy: houses.length >= 1,
+  obce: villages.length >= 2,
+};
+const toc = [
+  ['profese', 'Čím se živili'], ['svatba', 'Věk při svatbě'], ['kdy', 'Kdy se brali'], ['rodice', 'Věk rodičů'], ['deti', 'Děti v rodině'],
+  ['zivot', 'Délka života'], ['jmena', 'Jména'], ['domy', 'Rodové domy'], ['obce', 'Rodové obce'], ['zname', 'Kolik předků známe'],
+].filter(([id]) => id === 'zname' || show[id]);
+---
+<Base title="Statistiky">
+  <h1>Statistiky</h1>
+  <p class="lead">Co prozradí čísla o našich předcích: čím se živili, kdy se ženili a vdávaly, v kolika letech měli děti a jak dlouho žili. Počítá se jen z údajů, které jsou v rodokmenu doložené – u starších generací je jich méně, proto berte čísla jako zajímavost, ne jako vědu. Žijící osoby se nepočítají. Části, na které je údajů málo (méně než {MIN}), se nezobrazují. Klepnutím na řádek grafu zobrazíte, o koho jde.</p>
+  <ul class="stat-toc small">
+    {toc.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+  </ul>
+
+  {show.profese && <>
+  <h2 id="profese">Čím se živili</h2>
+  <p>Povolání známe u {prof.known} předků – z matrik (u sňatku, u křtu dítěte), ze sčítání lidu a od rodiny. Kdo měl víc živností, počítá se ve všech skupinách. Skupiny jsou hrubé, třeba „sedlák“ a „rolník“ jsou spolu (matriky píšou česky, německy i latinsky, rozpoznají se všechny tři). Povolání, které žádná skupina nezná, má řádek sama za sebe.</p>
+  <Hist rows={prof.rows.map((r) => ({ label: r.name, vals: [r.people.length], who: r.people }))} labelW="min(13rem, 42%)" />
+  </>}
+
+  {show.svatba && <>
+  <h2 id="svatba">Věk při svatbě</h2>
+  <p>U {wedAge.M.length} mužů a {wedAge.F.length} žen známe rok narození i sňatku. Průměrně se muži ženili v {cs(avg(wedAge.M.map((r) => r.age)))} letech a ženy vdávaly v {cs(avg(wedAge.F.map((r) => r.age)))} letech.</p>
+  <Hist rows={buckets(wedAge, 15, 55, 5)} series={SER_MF} />
+  <p class="small">Nejmladší: {wedExt.low.map((r, i) => <>{i > 0 && ', '}<PersonLink slug={r.p.slug} /> ({r.age})</>)}. Nejstarší: {wedExt.high.map((r, i) => <>{i > 0 && ', '}<PersonLink slug={r.p.slug} /> ({r.age})</>)}.</p>
+  <p class="small muted">Věk je rozdíl roků (u zapsaného úplného data narození přesně), proto může o rok kolísat. Počítá se sňatek, o kterém máme datum – nemusí být první.</p>
+  </>}
+
+  {show.kdy && <>
+  <h2 id="kdy">Kdy se brali</h2>
+  <p>{wm.n} svateb s přesným datem. {topMonths[0][0] ? `Nejvíc svateb bylo v měsíci ${MES[topMonths[0][1]]} (${topMonths[0][0]})${topMonths[1][0] ? ` a ${MES[topMonths[1][1]]} (${topMonths[1][0]})` : ''}.` : ''} Na vsi se tradičně ženilo hlavně po sklizni a v masopustu těsně před půstem.</p>
+  <Hist rows={wm.mon.map((v, i) => ({ label: MES[i], vals: [v], who: wm.who[i] }))} />
+  <h3>Den v týdnu</h3>
+  <Hist rows={wm.wd.map((v, i) => ({ label: DNY[i], vals: [v], who: wm.wdWho[i] }))} />
+  </>}
+
+  {show.rodice && <>
+  <h2 id="rodice">Věk rodičů při narození dítěte</h2>
+  <p>Kolik bylo otci a matce, když se narodil ten z jejich dětí, který je naším předkem (známe {parentAge.M.length} otců a {parentAge.F.length} matek). Průměr otců {cs(avg(parentAge.M.map((r) => r.age)))} let, matek {cs(avg(parentAge.F.map((r) => r.age)))} let. Nemusí to být první dítě.</p>
+  <Hist rows={buckets(parentAge, 15, 55, 5)} series={SER_MF} />
+  <p class="small">Nejmladší rodiče: {parentExt.low.map((r, i) => <>{i > 0 && ', '}<PersonLink slug={r.p.slug} /> ({r.age})</>)}. Nejstarší: {parentExt.high.map((r, i) => <>{i > 0 && ', '}<PersonLink slug={r.p.slug} /> ({r.age})</>)}.</p>
+  </>}
+
+  {show.deti && <>
+  <h2 id="deti">Děti v rodině</h2>
+  <p>U {kids.length} rodin předků známe z rejstříků aspoň dvě děti – průměrně {cs(avg(kids.map((k) => k.n)))} dítěte na rodinu. Skutečně jich bylo víc: známe jen ty, které jsme potkali v rejstřících, a mrtvě narozené nebo hned zemřelé děti se do nich často nedostaly.</p>
+  <Hist rows={kidsRows} />
+  </>}
+
+  {show.zivot && <>
+  <h2 id="zivot">Délka života</h2>
+  <p>Předci, u nichž známe rok narození i úmrtí ({nM(life)} lidí). Všichni se dožili aspoň dospělosti – jinak by neměli děti – takže kojenecká úmrtnost, která tehdy srážela průměr, se tu neprojeví. {life.M.length ? `Průměr mužů ${cs(avg(life.M.map((r) => r.age)))} let` : ''}{life.M.length && life.F.length ? ', ' : ''}{life.F.length ? `žen ${cs(avg(life.F.map((r) => r.age)))} let` : ''}.</p>
+  <Hist rows={lifeRows} series={SER_MF} />
+  <p class="small">Nejdéle žili: {lifeExt.high.map((r, i) => <>{i > 0 && ', '}<PersonLink slug={r.p.slug} /> ({r.age})</>)}.</p>
+  </>}
+
+  {show.jmena && <>
+  <h2 id="jmena">Jména</h2>
+  <p>Syn dostal jméno po otci v {Math.round((nap.same / nap.sons) * 100)} % případů ({nap.same} z {nap.sons}), dcera po matce v {Math.round((nap.sameD / nap.daus) * 100)} % ({nap.sameD} z {nap.daus}). Jméno se často dávalo i po kmotrovi nebo po světci dne křtu. Která jména se dědí a jak často, je na stránce <a href="/jmena/">Jména</a>.</p>
+  </>}
+
+  {show.domy && <>
+  <h2 id="domy">Rodové domy</h2>
+  <p>Číslo popisné, ke kterému se váží aspoň tři předci, je v rodokmenu {houses.length}×. Nejdéle doložené domy (rozdíl nejstaršího a nejnovějšího roku, kdy je u někoho z rodiny adresa zapsána – rodina tam mohla žít déle, jen o tom nemáme zápis):</p>
+  <div class="table-box"><table class="stat-table">
+    <thead><tr><th>Dům</th><th>Doloženo v domě</th><th>Let</th><th>Předků</th><th>Předáno rodiči dítěti</th></tr></thead>
+    <tbody>
+      {houses.slice(0, 15).map((x) => (
+        <tr><td><a href={`/dum/${x.h.slug}/`}>{x.h.obec} čp. {x.h.cp}</a></td><td>{isFinite(x.from) ? `${x.from}–${x.to}` : '–'}</td><td>{x.span}</td><td>{x.n}</td><td>{x.inherited > 0 ? `ano (${x.inherited})` : 'ne'}</td></tr>
+      ))}
+    </tbody>
+  </table></div>
+  <p class="small muted">Všechny domy předků jsou v přehledu <a href="/domy/">Domy</a>. Čísla popisná se čtou z textů o osobách a zápisů; kde se číslo domu později změnilo, může se jeden dům objevit pod dvěma čísly.</p>
+  </>}
+
+  {show.obce && <>
+  <h2 id="obce">Rodové obce</h2>
+  <p>V kolika obcích žili předci a kolik jich je z které vsi (každý předek se počítá jednou za obec, žijící ne):</p>
+  <Hist rows={villages.slice(0, 15).map((v) => ({ label: v.name, vals: [v.n] }))} labelW="8rem" />
+  <p class="small muted">Celkem {villages.length} obcí z <a href="/mapa/">mapy</a>.</p>
+  </>}
+
+  <h2 id="zname">Kolik předků známe a jak jistě</h2>
+  <p>V každé generaci se počet předků zdvojnásobí (2, 4, 8, … míst). Každý řádek ukazuje všechna místa generace: koho už známe a jak jistě, kdo je ve stromě podruhé a kdo ještě chybí. Celkem známe {stats.ancestors} předků, z toho {stats.documented} doložených přímo v matrice. Číslo před proužkem je generace: 1 = rodiče, 2 = prarodiče, 3 = praprarodiče a tak dál.</p>
+  <div class="know-legend small">
+    <span><i class="k-doc"></i>doloženo v matrice</span><span><i class="k-fam"></i>údaj od rodiny</span><span><i class="k-prob"></i>pravděpodobné</span><span><i class="k-mh"></i>převzato, neověřeno</span><span><i class="k-twice"></i>podruhé ve stromě</span><span><i class="k-miss"></i>chybí</span>
+  </div>
+  <div class="know">
+    {know.map((r) => {
+      const seg = [['doc', r.doc], ['fam', r.fam], ['prob', r.prob], ['mh', r.mh + r.unk], ['twice', r.twice], ['miss', r.missing]];
+      const have = r.total - r.missing;
+      return (
+        <div class="know-row">
+          <span class="know-g">{r.g}.</span>
+          <span class="know-bar">{seg.filter(([, n]) => n > 0).map(([c, n]) => <span class={`k-${c}`} style={`width:${(n / r.total) * 100}%`} title={`${n} z ${r.total}`}></span>)}</span>
+          <span class="know-n">{have} z {fmt(r.total)} ({pct(have, r.total)} %)</span>
+        </div>
+      );
+    })}
+  </div>
+  <p class="small muted">Řádek dává dohromady 100 % = všechna místa v generaci (2ⁿ). „Podruhé ve stromě“ je předek, který stojí na víc místech (příbuzní předků se vzali) – počítá se jako známý. Přesné počty se ukážou po najetí myší na proužek.</p>
+</Base>
+<style>
+  .stat-toc { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; list-style: none; padding: 0; margin: 1rem 0 2rem; }
+  .stat-table th, .stat-table td { padding: .3rem .6rem; text-align: left; }
+  .know-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .8rem 0 .5rem; }
+  .know-legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .3rem; vertical-align: -1px; }
+  .know { max-width: 46rem; }
+  .know-row { display: grid; grid-template-columns: 2rem 1fr 9.5rem; gap: .5rem; align-items: center; margin: .25rem 0; }
+  .know-g { font-size: .85rem; opacity: .7; text-align: right; }
+  .know-bar { display: flex; height: .9rem; background: #eee6d8; border-radius: 3px; overflow: hidden; }
+  .know-bar span { display: block; height: 100%; }
+  .know-n { font-size: .8rem; opacity: .75; font-variant-numeric: tabular-nums; }
+  .k-doc { background: #4f7f4a; } .k-fam { background: #5B7FA6; } .k-prob { background: #D9A441; }
+  .k-mh { background: #b9a98f; } .k-twice { background: #8e6ab5; } .k-miss { background: #eee6d8; }
+  .k-miss i, i.k-miss { border: 1px solid #cdbfa8; }
+</style>
