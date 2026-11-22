@@ -1,0 +1,76 @@
+---
+import Base from '../../layouts/Base.astro';
+import HouseMap from '../../components/HouseMap.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import Record from '../../components/Record.astro';
+import { domy, people, records, lineByK, href, dateKey } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return domy.map((h) => ({ params: { slug: h.slug }, props: { h } }));
+}
+const { h } = Astro.props;
+const yearOf = (d) => Number((String(d).match(/\d{4}/) || [0])[0]);
+const ppl = Object.keys(h.people).map((s) => people[s]).filter(Boolean).sort((a, b) => (a.gen - b.gen) || (a.k - b.k));
+const recs = h.records.map((k) => records[k]).filter(Boolean);
+const years = [...h.facts.map((f) => f.year), ...recs.map((r) => yearOf(r.date))].filter((y) => y > 1500);
+const from = Math.min(...years), to = Math.max(...years);
+const lineK = [...new Set(ppl.map((p) => p.line).filter((k) => k && lineByK[k]))];
+const ZNAK = { N: '*', O: '×', Z: '†', S: '⌂', J: '§' };
+const events = [
+  ...recs.map((r) => ({ key: dateKey(r.date), year: yearOf(r.date), znak: ZNAK[r.kind] ?? '·', title: r.kindName, text: r.title, href: href.record(r.key), meta: `${r.kindName ?? ''} · ${r.date}` })),
+  ...h.facts.filter((f) => f.year && !(/^[*†]/.test(f.text) && recs.some((r) => yearOf(r.date) === f.year && r.people.includes(f.person)))).map((f) => ({ key: f.year * 10000 + 9999, year: f.year, znak: '⌂', title: 'údaj o osobě', fakt: true, who: people[f.person], text: f.text })),
+].sort((a, b) => a.key - b.key);
+const dalsi = domy.filter((x) => x.obec === h.obec && x.slug !== h.slug);
+---
+<Base title={`${h.obec} čp. ${h.cp}`} wider>
+  <div class="crumbs"><a href="/domy/">Domy předků</a> → <span>{h.obec}</span></div>
+  <h1>{h.obec} čp. {h.cp}</h1>
+  <div class="chips">
+    {isFinite(from) && <span class="chip">{from === to ? from : `${from}–${to}`}</span>}
+    <span class="chip">{ppl.length} {ppl.length >= 2 && ppl.length <= 4 ? 'předci' : 'předků'}</span>
+    {lineK.map((k) => <a class="chip" href={href.line(lineByK[k].slug)}><span class="dot" style={`display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:${lineByK[k].color};margin-right:.3rem`}></span>rod {lineByK[k].name}</a>)}
+  </div>
+  {h.lat && <HouseMap points={[{ lat: h.lat, lon: h.lon, label: `${h.obec} čp. ${h.cp}`, n: 2 }]} height="320px" zoom={14} />}
+  <p class="small muted">Poloha je střed dnešní obce {h.obec} (OpenStreetMap) – přesnou polohu domu neznáme. Čísla domů se v 19. století občas měnila, dnešní stavení nemusí být to původní.</p>
+
+  <h2>Kdo tu žil</h2>
+  <ul class="lide">
+    {ppl.map((p) => (
+      <li><PersonLink slug={p.slug} /> <span class="muted small"> · {p.rel}</span>
+        <div class="small muted">{h.people[p.slug].map((f, i) => <>{i > 0 && '; '}{f}</>)}</div></li>
+    ))}
+  </ul>
+
+  <h2>Časová osa domu</h2>
+  <ol class="osa">
+    {events.map((e) => (
+      <li class={e.fakt ? 'fakt' : ''}>
+        <span class="osa-rok">{e.year || ''}</span>
+        <span class="osa-znak" title={e.title}>{e.znak}</span>
+        <span class="osa-text">
+          {e.href ? <a href={e.href}>{e.text}</a> : <><PersonLink slug={e.who.slug} showYears={false} />: {e.text}</>}
+          {e.meta && <span class="osa-meta">{e.meta}</span>}
+        </span>
+      </li>
+    ))}
+  </ol>
+
+  {recs.length > 0 && <>
+    <h2>Zápisy, které dům zmiňují</h2>
+    {recs.map((r) => <Record id={r.key} />)}
+  </>}
+
+  {dalsi.length > 0 && <p>Další domy předků v obci {h.obec}: {dalsi.map((x, i) => <>{i > 0 && ', '}<a href={`/dum/${x.slug}/`}>čp. {x.cp}</a></>)}.</p>}
+</Base>
+<style>
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 1rem; }
+  .lide { list-style: none; padding: 0; }
+  .lide li { margin-bottom: .6rem; }
+  .osa { list-style: none; padding: 0; margin: 1rem 0; border-left: 2px solid #d9cfc0; }
+  .osa li { display: grid; grid-template-columns: 3.4rem 1.6rem 1fr; gap: .3rem; padding: .3rem 0 .3rem .6rem; }
+  .osa li.fakt { opacity: .8; font-size: .92em; }
+  .osa-rok { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .osa-znak { text-align: center; }
+  .osa-meta { display: block; font-size: .85em; opacity: .7; }
+  .crumbs { font-size: .9rem; margin-bottom: .5rem; }
+</style>

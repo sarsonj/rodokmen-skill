@@ -6,6 +6,14 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: stránka **Domy předků** (`/domy/` a stránka každého domu) – čísla popisná, ke kterým se váží aspoň tři předci:
+  mapa obcí, seznam domů, u každého domu kdo tu žil, časová osa a zápisy, které dům zmiňují. Čísla popisná se čtou z textů
+  o osobách a ze zápisů („Holice čp. 112“); obec se pozná podle míst na mapě webu. Je volitelná: bez domu s třemi
+  předky se stránky nevytvoří a v menu nejsou. Žijící osoby se nepočítají. Nový `tools/export_domy.py` (volá ho `export_web.py`).
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není

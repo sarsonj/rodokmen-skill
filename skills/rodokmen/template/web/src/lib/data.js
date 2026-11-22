@@ -2,6 +2,10 @@
 import site from '../data/site.json';
 
 export const { people, families, lines, stats, issues, hypotheses, docs, config } = site;
+/** Domy předků (web/src/data/domy.json vyrábí tools/export_domy.py; chybí-li soubor nebo je prázdný, stránka Domy se nevytvoří). */
+const domyFile = import.meta.glob('../data/domy.json', { eager: true });
+export const domy = Object.values(domyFile)[0]?.default ?? [];
+export const maDomy = domy.length > 0;
 /** Počet rodů slovem pro nadpisy („Osm rodů“). */
 export const linesTitle = (n) => (['Žádný rod', 'Jeden rod', 'Dva rody', 'Tři rody', 'Čtyři rody', 'Pět rodů', 'Šest rodů', 'Sedm rodů', 'Osm rodů'][n] ?? `${n} rodů`);
 export const root = people[site.root];

@@ -122,6 +122,15 @@ náhled. Řekni to uživateli hned při prvním zveřejnění.
 
 **Pozor:** „Netlify Drop“ (přetažení složky v prohlížeči) neumí Edge Functions → web by byl bez přihlášení. Nepoužívat.
 
+## Stránka Domy předků (volitelná)
+`/domy/` (mapa a seznam) a `/dum/<obec>-<čp>/` (kdo tu žil, časová osa domu, zápisy). Dům je číslo popisné, ke kterému se
+v textech faktů osob nebo v zápisech váží **aspoň 3 předci**. Čísla se čtou z textů ve tvaru „Holice čp. 112“, „Holice č. 112“,
+„Dolní Roveň (mlýn) č. 7“ – před číslem musí stát název obce z `data/mista.json` (tedy obec, která je na mapě webu;
+rozpoznává ji výraz `re`, jinak název místa). Zapisuj proto adresy ve faktech jednotně: `* 1893 Holice čp. 41`.
+Polohou domu je střed obce (přesnou polohu domu neznáme). Žijící osoby se do domů nepočítají (stejné pravidlo jako
+u stránky Jména). `tools/export_domy.py` (volá ho `export_web.py`) vždy zapíše `web/src/data/domy.json`; **není-li žádný
+dům s 3 předky, stránky Domy se nevygenerují a položka v menu chybí**.
+
 ## Náhled v Claude desktop
 Projekt má `.claude/launch.json` – náhled webu v Claude desktop spustí `npm --prefix web run dev` (port 4321). Data se
 předtím musí vyexportovat (`cd web && npm run data`). Když náhled nenaběhne (třeba na Windows, kde je `npm` jako `npm.cmd`),

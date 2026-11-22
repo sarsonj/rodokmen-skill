@@ -1,0 +1,30 @@
+---
+import Base from '../../layouts/Base.astro';
+import HouseMap from '../../components/HouseMap.astro';
+import { domy, maDomy } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return maDomy ? [{ params: { index: undefined } }] : [];
+}
+const pl = (n, a, b, c) => (n === 1 ? a : n >= 2 && n <= 4 ? b : c);
+const nPeople = (h) => Object.keys(h.people).length;
+const points = domy.filter((h) => h.lat).map((h) => ({ lat: h.lat, lon: h.lon, n: nPeople(h), label: `${h.obec} čp. ${h.cp} – ${nPeople(h)} ${pl(nPeople(h), 'předek', 'předci', 'předků')}`, href: `/dum/${h.slug}/` }));
+const obce = {};
+for (const h of domy) (obce[h.obec] ??= []).push(h);
+const list = Object.entries(obce).sort((a, b) => a[0].localeCompare(b[0], 'cs'));
+---
+<Base title="Domy předků" wider>
+  <h1>Domy předků</h1>
+  <p class="lead">Čísla popisná, ke kterým se v zápisech a údajích o osobách váží aspoň tři předci – rodné domy, statky předávané z otce na syna, výměnky. Každý dům má stránku s mapou, časovou osou a zápisy. Celkem {domy.length} {pl(domy.length, 'dům', 'domy', 'domů')} v {list.length} {pl(list.length, 'obci', 'obcích', 'obcích')}.</p>
+  <HouseMap points={points} height="60vh" />
+  <p class="small muted">Poloha je střed dnešní obce (OpenStreetMap), ne přesná poloha domu; domy v jedné obci jsou na mapě kvůli přehlednosti mírně rozptýlené. Čísla domů se v 19. století občas měnila.</p>
+  <div class="obce">
+    {list.map(([obec, hs]) => (
+      <div><b>{obec}</b>: {hs.map((h, i) => <>{i > 0 && ', '}<a href={`/dum/${h.slug}/`}>čp. {h.cp}</a> <span class="muted small">({nPeople(h)})</span></>)}</div>
+    ))}
+  </div>
+</Base>
+<style>
+  .obce { columns: 16rem; column-gap: 2rem; margin-top: 1rem; }
+  .obce > div { break-inside: avoid; margin-bottom: .4rem; }
+</style>
