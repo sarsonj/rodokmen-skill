@@ -43,6 +43,8 @@ P = {
   Jde na web – nepiš sem citlivé věci (příčiny úmrtí, rodinné spory) bez souhlasu.
 - `HYPOTEZY` – `dict(rod=8, nadpis="…", text="…", polozky=[("jméno", "text")], zaznamy=[klíče])` → stránka rodu.
 - `SAME = {350: 140}` – předek, který je v rodokmenu dvakrát (alias → hlavní číslo; alias v `P` může mít `f=["TÁŽ OSOBA jako 140"]`).
+  Zapisuje se nástrojem `python3 -I tools/stejna_osoba.py 350 140` (další číslo, první číslo): zkontroluje obě osoby, shodu
+  jména, roků a rodičů, že nad aliasem nejsou vlastní předci (větev se bere z hlavní osoby), a zbytek souboru nechá. `--seznam` vypíše dosavadní `SAME`.
 
 ## `zaznamy.json` – zápisy
 ```json

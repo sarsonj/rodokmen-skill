@@ -52,7 +52,9 @@ Stránka **Dvakrát ve stromě** (`/dvakrat/`) vysvětluje, kteří předci jsou
 pedigree collapse): u každého sňatku příbuzných ukáže společné předky, schéma sestupu k oběma manželům, míru příbuzenství
 („bratranec a sestřenice z druhého kolena, společné asi 3 %“) a – je-li v matrice zmíněn – dispenz. Je **volitelná**: ukáže
 se jen tehdy, když je v `data/osoby.py` aspoň jedno `SAME` (číslo Kekulé předka, který je ve stromě podruhé → číslo, pod
-kterým je vedený poprvé), jinak nevznikne ani stránka, ani položka v menu. Žádná zvláštní data nejsou potřeba.
+kterým je vedený poprvé), jinak nevznikne ani stránka, ani položka v menu. Žádná zvláštní data nejsou potřeba; `SAME` zapisuje
+`python3 -I tools/stejna_osoba.py <další číslo> <první číslo>` (viz `data.md`) – při čtení zápisů na něj pamatuj, jakmile
+se předek ve stromě objeví podruhé.
 
 ## Zveřejnění na Cloudflare (výchozí, zdarma)
 Nasazování i přenos jsou zdarma bez limitu; brána běží před každým souborem a to se počítá do 100 000 požadavků denně
