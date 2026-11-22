@@ -11,6 +11,9 @@ Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to 
 **Nové**
 - Web: stránka **Jména** (`/jmena/`) – která křestní jména se v rodokmenu dědí. U každého jména je počet osob a rozpad
   po rodech, rozkliknutím se ukážou konkrétní lidé. Žijící osoby se nepočítají.
+- Web: stránka **Kalendář** (`/kalendar/`) – kdo z předků se v který den narodil, byl pokřtěn, oženil se nebo zemřel,
+  bez ohledu na rok. Jen události s přesně známým dnem a měsícem (z faktů `* 3. 5. 1921`, `× …`, `† …` v `data/osoby.py`);
+  žijící osoby a svatby s nimi se v kalendáři nezobrazí.
 
 ## 0.10.2 – 16. 11. 2026
 

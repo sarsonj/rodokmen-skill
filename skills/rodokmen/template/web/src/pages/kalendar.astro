@@ -1,0 +1,134 @@
+---
+import Base from '../layouts/Base.astro';
+import { people, href } from '../lib/data.js';
+import { calendarEvents } from '../lib/zivoty.js';
+
+// Jen události s přesným dnem a měsícem; žijící osoby (a svatby s nimi) vynechává calendarEvents().
+const events = calendarEvents().map((e) => ({
+  m: e.m, d: e.d, y: e.y, k: e.k, q: e.q,
+  p: e.p.map((s) => [href.person(s), people[s].name, people[s].st]),
+}));
+const count = (k) => events.filter((e) => e.k === k).length;
+const json = JSON.stringify(events).replace(/</g, '\\u003c');
+---
+<Base title="Kalendář" wide>
+  <h1>Kalendář</h1>
+  <p class="lead">Kdo z předků se ten den narodil nebo byl pokřtěn, měl svatbu nebo zemřel – bez ohledu na rok. Jsou tu jen události s přesně známým dnem a měsícem ({events.length}); žijící lidé v kalendáři nejsou. Kurzíva = osoba jen pravděpodobná nebo z cizího rodokmenu (neověřeno).</p>
+  <div class="kal-legend small">
+    <span><i class="kal-ico narozeni">*</i> narození ({count('narozeni')})</span>
+    <span><i class="kal-ico krest">*</i> křest – narození neznáme ({count('krest')})</span>
+    <span><i class="kal-ico svatba">⚭</i> svatba ({count('svatba')})</span>
+    <span><i class="kal-ico umrti">†</i> úmrtí ({count('umrti')})</span>
+  </div>
+  <div class="kal-nav">
+    <button type="button" class="kal-btn" data-krok="-1" aria-label="Předchozí měsíc">← <span class="kal-btn-txt"></span></button>
+    <h2 class="kal-title" aria-live="polite">&nbsp;</h2>
+    <button type="button" class="kal-btn" data-krok="1" aria-label="Další měsíc"><span class="kal-btn-txt"></span> →</button>
+  </div>
+  <p class="kal-dnes small"><button type="button" class="kal-link" data-dnes>Zpět na dnešek</button></p>
+  <p class="kal-souhrn small muted"></p>
+  <div class="kal-grid" role="grid"></div>
+  <noscript><p>Kalendář potřebuje zapnutý JavaScript.</p></noscript>
+  <script type="application/json" id="kal-data" set:html={json} />
+  <script is:inline>
+    (() => {
+      const E = JSON.parse(document.getElementById('kal-data').textContent || '[]');
+      const MES = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
+      const MES2 = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+      const DNY = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+      const ICO = { narozeni: '*', krest: '*', svatba: '⚭', umrti: '†' };
+      const NAZ = { narozeni: 'narození', krest: 'křest', svatba: 'svatba', umrti: 'úmrtí' };
+      const ORD = { narozeni: 0, krest: 1, svatba: 2, umrti: 3 };
+      const grid = document.querySelector('.kal-grid'), title = document.querySelector('.kal-title'), souhrn = document.querySelector('.kal-souhrn');
+      const now = new Date();
+      let rok = now.getFullYear(), mes = now.getMonth();
+      const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n >= 2 && n <= 4 ? b : c}`;
+      function zHashe() {
+        const m = location.hash.match(/^#(\d{4})-(\d{1,2})$/);
+        if (m && +m[2] >= 1 && +m[2] <= 12) { rok = +m[1]; mes = m[2] - 1; }
+      }
+      function kresli() {
+        title.textContent = `${MES[mes][0].toUpperCase()}${MES[mes].slice(1)} ${rok}`;
+        const tl = document.querySelectorAll('.kal-btn-txt');
+        tl[0].textContent = MES[(mes + 11) % 12];
+        tl[1].textContent = MES[(mes + 1) % 12];
+        const v = E.filter((e) => e.m === mes + 1);
+        const dny = new Map();
+        for (const e of v) { if (!dny.has(e.d)) dny.set(e.d, []); dny.get(e.d).push(e); }
+        souhrn.textContent = v.length ? `V tomto měsíci ${pl(v.length, 'událost', 'události', 'událostí')} ve ${pl(dny.size, 'dni', 'dnech', 'dnech')}.` : 'V tomto měsíci zatím nic.';
+        const pocet = new Date(rok, mes + 1, 0).getDate();
+        const posun = (new Date(rok, mes, 1).getDay() + 6) % 7;
+        const dnes = (d) => rok === now.getFullYear() && mes === now.getMonth() && d === now.getDate();
+        let h = DNY.map((d) => `<div class="kal-hd" role="columnheader">${d}</div>`).join('');
+        for (let i = 0; i < posun; i++) h += '<div class="kal-pad" aria-hidden="true"></div>';
+        for (let d = 1; d <= pocet; d++) {
+          const den = DNY[(posun + d - 1) % 7];
+          const ev = (dny.get(d) || []).sort((a, b) => ORD[a.k] - ORD[b.k] || a.y - b.y);
+          const li = ev.map((e) => {
+            const kdo = e.p.map(([u, n, st]) => `<a class="person-link ${st}" href="${u}"${st === 'mh' ? ' title="jen z cizího rodokmenu (neověřeno)"' : ''}><span class="nm">${esc(n)}</span></a>`).join(' a ');
+            const pred = rok - e.y;
+            const t = `${NAZ[e.k]} ${e.d}. ${e.m}. ${e.y}${e.q ? ' (datum nejisté)' : ''}${pred > 0 ? ` – před ${pred} lety` : ''}`;
+            return `<li class="kal-ev ${e.k}" title="${esc(t)}"><i class="kal-ico ${e.k}" aria-label="${NAZ[e.k]}">${ICO[e.k]}</i> <span class="kal-kdo">${kdo}</span> <span class="kal-rok">${e.y}${e.q ? '?' : ''}</span></li>`;
+          }).join('');
+          h += `<div class="kal-day${ev.length ? '' : ' empty'}${dnes(d) ? ' today' : ''}" role="gridcell"><div class="kal-num"><span class="kal-den">${den} </span>${d}.<span class="kal-mes"> ${MES2[mes]}</span></div>${li ? `<ul>${li}</ul>` : ''}</div>`;
+        }
+        grid.innerHTML = h;
+      }
+      function krok(k) {
+        mes += k;
+        if (mes < 0) { mes = 11; rok--; }
+        if (mes > 11) { mes = 0; rok++; }
+        history.replaceState(null, '', `#${rok}-${mes + 1}`);
+        kresli();
+      }
+      document.querySelectorAll('.kal-btn').forEach((b) => b.addEventListener('click', () => krok(Number(b.dataset.krok))));
+      document.querySelector('[data-dnes]').addEventListener('click', () => { rok = now.getFullYear(); mes = now.getMonth(); history.replaceState(null, '', location.pathname); kresli(); });
+      window.addEventListener('hashchange', () => { zHashe(); kresli(); });
+      zHashe(); kresli();
+    })();
+  </script>
+</Base>
+
+<style is:global>
+.kal-legend{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;margin:.4rem 0 1rem}
+.kal-nav{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin:.6rem 0 .2rem}
+.kal-title{flex:1;text-align:center;margin:0;font-size:1.5rem;border:0;padding:0}
+.kal-btn{font:inherit;background:var(--paper);border:1px solid var(--line);cursor:pointer;color:var(--ink);white-space:nowrap;border-radius:8px;padding:.4rem .8rem}
+.kal-btn:hover{border-color:var(--accent);color:var(--accent)}
+.kal-dnes{text-align:center;margin:0}
+.kal-link{font:inherit;color:var(--accent);cursor:pointer;background:none;border:0;padding:0;text-decoration:underline}
+.kal-souhrn{text-align:center;margin:.2rem 0 .8rem}
+.kal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.kal-hd{text-align:center;color:var(--muted);padding:.2rem 0;font-size:.85rem;font-weight:600}
+.kal-day{background:var(--paper);border:1px solid var(--line);border-radius:8px;min-width:0;min-height:5.5rem;padding:.3rem .4rem .4rem}
+.kal-day.empty{background:none}
+.kal-day.today{border:2px solid var(--accent)}
+.kal-num{color:var(--muted);font-size:.9rem;font-weight:600}
+.kal-day.today .kal-num{color:var(--accent)}
+.kal-den,.kal-mes{display:none}
+.kal-day ul{margin:.2rem 0 0;padding:0;list-style:none}
+.kal-ev{display:grid;grid-template-columns:1rem 1fr;column-gap:.15rem;margin:0 0 .3rem;font-size:.78rem;line-height:1.25}
+.kal-ev .kal-kdo{min-width:0}
+.kal-ev .kal-rok{color:var(--muted);grid-column:2}
+.kal-ev a{color:var(--ink);text-decoration:none}
+.kal-ev a:hover{color:var(--accent);text-decoration:underline}
+.kal-ico{display:inline-block;width:1rem;text-align:center;font-style:normal;font-weight:700}
+.kal-ico.svatba{font-size:1.15em;line-height:1}
+.kal-ico.narozeni{color:#3f7d4a}
+.kal-ico.krest{color:#4f6d8f}
+.kal-ico.svatba{color:#b07a1e}
+.kal-ico.umrti{color:#6e6153}
+@media (max-width:760px){
+  .kal-grid{display:block}
+  .kal-hd,.kal-pad,.kal-day.empty:not(.today){display:none}
+  .kal-day{min-height:0;margin:0 0 .5rem;padding:.5rem .7rem}
+  .kal-den,.kal-mes{display:inline}
+  .kal-num{color:var(--ink);font-size:1rem}
+  .kal-ev{grid-template-columns:1.2rem 1fr auto;column-gap:.4rem;margin-bottom:.35rem;font-size:.95rem}
+  .kal-ev .kal-rok{grid-column:3}
+  .kal-btn{padding:.4rem .6rem}
+  .kal-btn-txt{display:none}
+  .kal-title{font-size:1.25rem}
+}
+</style>
