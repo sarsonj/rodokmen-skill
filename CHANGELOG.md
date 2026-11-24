@@ -6,6 +6,12 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: stránka **Jména** (`/jmena/`) – která křestní jména se v rodokmenu dědí. U každého jména je počet osob a rozpad
+  po rodech, rozkliknutím se ukážou konkrétní lidé. Žijící osoby se nepočítají.
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není
