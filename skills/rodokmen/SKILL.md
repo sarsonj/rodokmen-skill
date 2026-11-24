@@ -65,11 +65,12 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - Vše zapiš: `data/udaje_od_rodiny.md` (kdo co řekl), osoby do `data/osoby.py` se stavem `fam`
   (formát v hlavičce souboru a v `reference/data.md`). Žijící lidé jen jméno a rok narození.
 - **Rodinný strom** (GEDCOM `.ged`, záloha MyHeritage `.ftb`): `tools/ged_import.py`, `tools/ftb_export.py` – postup
-  v `reference/data.md` → Import rodinného stromu. Strom, který si rodina vede sama, má stav `fam`; cizí stromy
+  v `reference/data.md` → Import rodinného stromu. Pole `ged`/`uid` z importu u osob nech (vazba pro sloučení s MyHeritage). Strom, který si rodina vede sama, má stav `fam`; cizí stromy
   z internetu (MyHeritage, Geni, FamilySearch, Smart Match) jsou **jen vodítko**, stav `mh`, nikdy `doc`.
-- **Export do GEDCOM** (rodokmen do MyHeritage, Gramps a jiných programů): `tools/ged_export.py` – postup
+- **Export do GEDCOM** (rodokmen do MyHeritage, Gramps a jiných programů; do vlastního stromu na MyHeritage
+  rozdílově `--rozdil`, přehled změn projdi s uživatelem před importem): `tools/ged_export.py` – postup
   a soukromí v `reference/data.md` → Export do GEDCOM. **Před spuštěním se zeptej, zda exportovat i žijící osoby**
-  (výchozí ne: žijící a nedávno zemřelí jsou jen „Žijící osoba“; ano = `--zijici`, vysvětli, že údaje dostane cílová služba).
+  (výchozí ne: žijící a nedávno zemřelí jsou jen „Žijící / Chráněná osoba“; ano = `--zijici`, vysvětli, že údaje dostane cílová služba).
 
 ## Fáze 2 – Matriky, generace po generaci
 Podrobný postup čtení: `reference/matriky.md`. Archivy: `reference/portaly.md`. Sporná ztotožnění, mrtvé body,
@@ -247,7 +248,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské, `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `mapa_knihy.py` | mapa knihy po vsích a montáž sloupce jmen (`matriky.md`) |
 | `cache.py` | sdílená mezipaměť snímků; uložení snímku z prohlížeče |
-| `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage) – `data.md` |
+| `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage); `--ged-id` vazba osob na strom (`ged`, `uid`) – `data.md` |
 | `ged_export.py` | export rodokmenu do GEDCOM (ZIP s obrázky, `--slozka` rozbalený; do MyHeritage s obrázky jen přes Family Tree Builder) – `data.md` |
 | `vyrez.py`, `ramecek.py`, `overit.py` | výřez zápisu (zlomky stránky), rámeček (zlomky výřezu, `--pozn` poznámka), ověření čtení na dvou polovinách |
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |

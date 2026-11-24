@@ -32,7 +32,7 @@ def slova_obce(fakty):
 
 
 def main():
-    err, warn = [], []
+    err, warn, info = [], [], []
     ns = {}
     try:
         exec(open(os.path.join(DATA, "osoby.py"), encoding="utf-8-sig").read(), ns)
@@ -179,6 +179,27 @@ def main():
 
     def neznamy(p):   # jako placeholder() v export_web.py
         return p.get("n", "").startswith(("otec neuveden", "matka neuvedena")) or p.get("n", "") in ("", "?")
+
+    # vazba na původní strom (ged/uid z ged_import.py) – pro sloučení s MyHeritage (ged_export.py --rozdil)
+    gedy = {}
+    for k, p in P.items():
+        g = p.get("ged")
+        if g is None:
+            continue
+        if not isinstance(g, str) or not re.fullmatch(r"@[^@\s]+@", g):
+            err.append(f"osoba {k}: ged {g!r} není ID osoby z GEDCOM (tvar @I123@)")
+            continue
+        gedy.setdefault(g, []).append(k)
+    for g, ks in gedy.items():
+        hlavni = {SAME.get(k, k) for k in ks}
+        if len(hlavni) > 1:
+            warn.append(f"osoby {', '.join(map(str, sorted(ks)))} mají stejné ged {g} – jde o tutéž osobu (pak SAME), "
+                        "nebo je jedno ID špatně")
+    if gedy:
+        bez = sorted(k for k, p in P.items() if isinstance(k, int) and k not in SAME and not neznamy(p) and not p.get("ged"))
+        if bez:
+            info.append(f"{len(bez)} osob bez vazby na původní strom (ged) – nově zjištěné, při sloučení s MyHeritage "
+                        f"budou nové osoby: {', '.join(map(str, bez[:20]))}{' …' if len(bez) > 20 else ''}")
     for k, p in P.items():   # sňatek „× Jméno“ má jmenovat partnera na sousedním čísle (k ^ 1, SAME vzít v úvahu)
         satky = [kmeny(bez_obce(f)) for f in p.get("f", []) if isinstance(f, str) and f.startswith("×")]
         satky = [s for s in satky if s]
@@ -308,6 +329,8 @@ def main():
         print("CHYBA:", e)
     for w in warn:
         print("upozornění:", w)
+    for i in info:
+        print("informace:", i)
     if not err and not warn:
         print("Vše v pořádku.")
     sys.exit(1 if err else 0)
