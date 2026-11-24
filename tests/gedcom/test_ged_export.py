@@ -196,7 +196,7 @@ def spolecne(ged, recs, files):
     ok("řádky nejvýš 255 znaků", all(len(line) <= 255 for line in ged.splitlines()))
     soubory = re.findall(r"^\d+ FILE (.+)$", ged, re.M)
     ok("každý FILE je v ZIP", all(f in files for f in soubory), [f for f in soubory if f not in files])
-    chranene = [r for r in recs.values() if r["_type"] == "INDI" and gi.first(r, "NAME") == "Žijící osoba"]
+    chranene = [r for r in recs.values() if r["_type"] == "INDI" and gi.first(r, "NAME") in ("Žijící osoba", "Chráněná osoba")]
     ok("chránění mají jen NAME/SEX/RESN/FAMC/FAMS",
        all(set(tags(r)) <= {"NAME", "SEX", "RESN", "FAMC", "FAMS"} for r in chranene),
        [(r["_id"], tags(r)) for r in chranene])
@@ -216,7 +216,10 @@ def test_ukazka():
     indi = [r for r in recs.values() if r["_type"] == "INDI"]
     ok("round-trip: počet osob", len(indi) == len(cekane), (len(indi), len(cekane)))
     ok("výchozí osoba a rodiče žijící", {"@I1@", "@I2@", "@I3@"} <= {r["_id"] for r in chranene})
-    ok("zemřelý 1990 není chráněný (36 let)", gi.first(recs["@I4@"], "NAME") != "Žijící osoba")
+    ok("zemřelý 1990 není chráněný (36 let)", gi.first(recs["@I4@"], "NAME") not in ("Žijící osoba", "Chráněná osoba"))
+    ok("žijící = „Žijící osoba“, zemřelá 2011 = „Chráněná osoba“",
+       gi.first(recs["@I2@"], "NAME") == "Žijící osoba" and gi.first(recs["@I5@"], "NAME") == "Chráněná osoba",
+       (gi.first(recs["@I2@"], "NAME"), gi.first(recs["@I5@"], "NAME")))
 
     jan = recs["@I8@"]
     birt = first(jan, "BIRT")

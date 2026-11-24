@@ -15,6 +15,10 @@ nástroj nic nezmění a vypíše je (pak --sloucit, nebo --prepsat). Python skr
   zapis.py odkaz <osoba> <klíč zápisu> [<klíč> …]
     Přidá klíč(e) do seznamu `r` v data/osoby.py: osoba = Kekulého číslo (P), nebo část jména bočního příbuzného
     (SIDE, musí sedět na jediného). Zbytek souboru zůstane doslova, klíč musí být v zaznamy.json.
+
+  zapis.py ged <číslo osoby> <@I…@> [<uid>]
+    Vazba osoby na původní strom (GEDCOM z MyHeritage…): nastaví v data/osoby.py pole ged (a uid = _UID).
+    Hromadně pro celý strom: ged_import.py <strom.ged> "Výchozí osoba" --ged-id --zapsat.
 """
 import ast, json, os, re, sys
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -170,7 +174,72 @@ def odkaz(osoba, klice):
     print(f"data/osoby.py: {popis} – přidán zápis {', '.join(nove)}")
 
 
+def nastav(k, pole):
+    """Nastaví u osoby k v P (data/osoby.py) textová pole (např. ged, uid): existující hodnotu nahradí, chybějící
+    pole přidá na konec dict(…). Zbytek souboru zůstane doslova; pojistka jako u odkaz()."""
+    path = os.path.join(ROOT, "data", "osoby.py")
+    src = open(path, "rb").read()
+    try:
+        pred = nacti_osoby(src)
+    except Exception as e:
+        sys.exit(f"data/osoby.py nejde načíst ({e}) – oprav ho nejdřív (git diff ukáže poslední změnu).")
+    if k not in pred.get("P", {}):
+        sys.exit(f"Osoba {k} v P (data/osoby.py) není.")
+    stare = pred["P"][k]
+    zmeny = {kl: v for kl, v in pole.items() if stare.get(kl) != v}
+    if not zmeny:
+        print(f"data/osoby.py: osoba {k} ({stare.get('n')}) – už má {', '.join(f'{a}={b}' for a, b in pole.items())}")
+        return
+    novy = src
+    for kl, v in zmeny.items():
+        strom = ast.parse(novy)
+        P = next((u.value for u in strom.body if isinstance(u, ast.Assign)
+                  and any(isinstance(t, ast.Name) and t.id == "P" for t in u.targets)), None)
+        volani = next((v2 for kk, v2 in zip(P.keys, P.values) if isinstance(kk, ast.Constant) and kk.value == k), None) \
+            if isinstance(P, ast.Dict) else None
+        jako_dict = isinstance(volani, ast.Call) and getattr(volani.func, "id", "") == "dict" and not volani.args
+        if not (jako_dict or isinstance(volani, ast.Dict)):
+            sys.exit(f"osoba {k}: čekal jsem dict(…) nebo {{…}} – uprav ručně.")
+        pos = bajty_pozice(novy)
+        prvni = next((n for n in ast.walk(volani) if isinstance(n, ast.Constant) and isinstance(n.value, str)), None)
+        apostrof = prvni is not None and novy[pos(prvni.lineno, prvni.col_offset):][:1] == b"'"
+        retez = lambda s: (repr(s) if apostrof else json.dumps(s, ensure_ascii=False)).encode("utf-8")
+        if jako_dict:
+            uzel = next((kw.value for kw in volani.keywords if kw.arg == kl), None)
+        else:
+            uzel = next((v2 for kk, v2 in zip(volani.keys, volani.values)
+                         if isinstance(kk, ast.Constant) and kk.value == kl), None)
+        if uzel is not None:   # nahradit hodnotu
+            a, b = pos(uzel.lineno, uzel.col_offset), pos(uzel.end_lineno, uzel.end_col_offset)
+            novy = novy[:a] + retez(v) + novy[b:]
+        else:                  # přidat za poslední argument / položku
+            konec = pos(volani.end_lineno, volani.end_col_offset) - 1   # „)“ nebo „}“
+            pred_z = novy[:konec].rstrip()
+            oddel = b" " if pred_z.endswith(b",") else b", "
+            klic = (kl + "=").encode() if jako_dict else retez(kl) + b": "
+            novy = pred_z + oddel + klic + retez(v) + novy[len(pred_z):]
+    try:
+        po = nacti_osoby(novy)
+    except Exception as e:
+        sys.exit(f"Úprava by rozbila data/osoby.py ({e}) – nic jsem nezapsal, uprav ručně.")
+    ocekavane = dict(pred)
+    ocekavane["P"] = {**pred["P"], k: {**stare, **zmeny}}
+    for jmeno in ("P", "SIDE", "LINES", "ISSUES", "HYPOTEZY", "SAME"):
+        if po.get(jmeno) != ocekavane.get(jmeno):
+            sys.exit(f"Úprava by změnila i {jmeno} – nic jsem nezapsal, uprav ručně.")
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(novy)
+    os.replace(tmp, path)
+    print(f"data/osoby.py: osoba {k} ({stare.get('n')}) – " + ", ".join(f"{a}={b}" for a, b in zmeny.items()))
+
+
 def main():
+    if sys.argv[1:2] == ["ged"]:
+        if len(sys.argv) not in (4, 5) or not re.fullmatch(r"\d+", sys.argv[2]) \
+                or not re.fullmatch(r"@[^@\s]+@", sys.argv[3]):
+            sys.exit("Použití: zapis.py ged <číslo osoby> <@I…@> [<uid>]  (ID osoby z původního GEDCOM, např. @I500001@)")
+        return nastav(int(sys.argv[2]), {"ged": sys.argv[3], **({"uid": sys.argv[4]} if len(sys.argv) == 5 else {})})
     if sys.argv[1:2] == ["odkaz"]:
         if len(sys.argv) < 4:
             sys.exit(__doc__)
