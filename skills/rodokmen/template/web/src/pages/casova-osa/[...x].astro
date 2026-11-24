@@ -1,0 +1,212 @@
+---
+import Base from '../../layouts/Base.astro';
+import { lines, genName } from '../../lib/data.js';
+import { timelineRows, maCasovouOsu } from '../../lib/zivoty.js';
+
+// Stránka je volitelná: když není žádný předek s aspoň jedním známým rokem, nevygeneruje se vůbec.
+export function getStaticPaths() {
+  return maCasovouOsu ? [{ params: { x: undefined } }] : [];
+}
+
+// Pruhy narození–smrt; žijící osoby se nezobrazují. Odhadnuté roky vybledávají (viz zivoty.js).
+const rows = timelineRows().map((r) => ({ ...r, gl: genName(r.g) }));
+const legend = Object.values(lines).sort((a, b) => a.k - b.k);
+const json = JSON.stringify({ rows, now: new Date().getFullYear() }).replace(/</g, '\\u003c');
+const odhad = rows.filter((r) => r.bq === 'est' || r.dq === 'est').length;
+---
+<Base title="Časová osa" wide>
+  <h1>Časová osa předků</h1>
+  <p class="lead">Každý předek je jeden pruh od narození do smrti, seřazení podle roku narození a obarvení podle rodu (šedá = nejbližší rodina). Kde přesný rok neznáme, je odhadnutý (z dětí, sňatku nebo rodičů) a pruh tam <em>vybledá do ztracena</em> – tím víc, čím je odhad nejistější. Tečka = narození, čárka = úmrtí, kroužek = sňatek. Při posouvání nahoru a dolů se osa sama přizpůsobí období předků, které právě vidíte.</p>
+  <div class="tl-bar">
+    <div class="tl-mode" role="group" aria-label="Rozsah osy">
+      <button type="button" data-m="auto" aria-pressed="true">podle viditelných</button>
+      <button type="button" data-m="all" aria-pressed="false">celá osa</button>
+    </div>
+    <div class="tl-legend">
+      {legend.map((l) => <span><i style={`background:${l.color}`}></i>{l.name}</span>)}
+      <span><i style="background:#9aa3ad"></i>nejbližší rodina</span>
+    </div>
+  </div>
+  <div class="tl-wrap">
+    <svg class="tl-axis" aria-hidden="true"></svg>
+    <div class="tl-view"><svg class="tl-svg" aria-label="Časová osa předků – pruhy jsou odkazy na stránky předků"></svg></div>
+  </div>
+  <p class="small muted">{rows.length} předků na ose (u {odhad} je alespoň jeden rok odhad); žijící lidé na ose nejsou. Myší: najetím se ukáže rok a kolik předků tehdy žilo, kliknutím na pruh stránka předka. Na dotykovém displeji: první klepnutí na pruh ho vybere a ukáže rok, druhé otevře stránku předka. Totéž jako seznam: <a href="/predci/">Předci</a>.</p>
+  <noscript><p>Časová osa potřebuje zapnutý JavaScript.</p></noscript>
+  <script type="application/json" id="tl-data" set:html={json} />
+  <script is:inline>
+    (() => {
+      const { rows: R, now: NOW } = JSON.parse(document.getElementById('tl-data').textContent);
+      const view = document.querySelector('.tl-view'), svg = document.querySelector('.tl-svg'), axis = document.querySelector('.tl-axis'), wrap = document.querySelector('.tl-wrap');
+      const header = document.querySelector('.site-header');
+      const NS = 'http://www.w3.org/2000/svg';
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      const H = coarse ? 17 : 14;                       // výška řádku
+      const full = [Math.floor(Math.min(...R.map((r) => r.x0)) / 10) * 10, NOW + 5];
+      let mode = 'auto', cur = [...full], target = [...full], W = 0, hoverYear = null, sel = null, raf = 0, ptr = 'mouse';
+      const el = (n, a, parent) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (parent) parent.appendChild(e); return e; };
+      const X = (y) => (y - cur[0]) / (cur[1] - cur[0]) * (W - 8) + 4;
+      const defs = el('defs', {}, svg), grid = el('g', {}, svg), bars = el('g', {}, svg), over = el('g', {}, svg);
+      grid.style.pointerEvents = 'none'; over.style.pointerEvents = 'none';
+      const grads = new Map();
+      const q = (v) => Math.min(0.9, Math.round(v * 20) / 20);
+      function gradient(c, l, r) {
+        l = q(l); r = q(r);
+        const key = `${c}|${l}|${r}`;
+        if (!grads.has(key)) {
+          const id = `tlg${grads.size}`; grads.set(key, id);
+          const g = el('linearGradient', { id, x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
+          el('stop', { offset: 0, 'stop-color': c, 'stop-opacity': l ? 0 : 1 }, g);
+          el('stop', { offset: l, 'stop-color': c }, g);
+          el('stop', { offset: 1 - r, 'stop-color': c }, g);
+          el('stop', { offset: 1, 'stop-color': c, 'stop-opacity': r ? 0 : 1 }, g);
+        }
+        return grads.get(key);
+      }
+      const els = R.map((r, i) => {
+        const a = el('a', { href: `/osoba/${r.s}/`, 'data-s': r.s }, bars);
+        el('title', {}, a).textContent = `${r.n} (${r.y || 'roky neznámé'}) – ${r.l}, ${r.gl}${r.st === 'mh' ? ' – jen z cizího rodokmenu (neověřeno)' : ''}${r.bq === 'est' || r.dq === 'est' ? ' – roky odhadnuty' : ''}`;
+        const bar = el('rect', { class: 'bar', rx: 2, height: H - 2, fill: `url(#${gradient(r.c, r.sl, r.sr)})` }, a);
+        const dot = r.bq === 'exact' ? el('circle', { r: 2.3, fill: 'var(--ink)' }, a) : null;
+        const tick = r.dq === 'exact' ? el('line', { stroke: 'var(--ink)', 'stroke-width': 1.5 }, a) : null;
+        const mar = r.m.map(() => el('circle', { r: 3, fill: 'var(--paper)', stroke: 'var(--ink)', 'stroke-width': 1.2 }, a));
+        const text = el('text', {}, a); text.textContent = r.n;
+        if (r.st === 'mh') text.setAttribute('font-style', 'italic');
+        return { a, bar, dot, tick, mar, text };
+      });
+      function layout() {
+        for (let i = 0; i < R.length; i++) {
+          const r = R[i], e = els[i], y = i * H;
+          const x0 = X(r.x0), x1 = X(r.x1);
+          e.bar.setAttribute('x', x0); e.bar.setAttribute('y', y + 1); e.bar.setAttribute('width', Math.max(2, x1 - x0));
+          if (e.dot) { e.dot.setAttribute('cx', X(r.b)); e.dot.setAttribute('cy', y + H / 2); }
+          if (e.tick) { const x = X(r.d); e.tick.setAttribute('x1', x); e.tick.setAttribute('x2', x); e.tick.setAttribute('y1', y + 2); e.tick.setAttribute('y2', y + H - 2); }
+          r.m.forEach((m, j) => { e.mar[j].setAttribute('cx', X(m)); e.mar[j].setAttribute('cy', y + H / 2); });
+          const tw = r.n.length * (coarse ? 6.4 : 5.9), tx = Math.max(4, X(r.b) + 4);
+          if (tx + tw > W - 2) { e.text.setAttribute('x', Math.max(tw + 4, Math.min(W - 4, x0 - 3))); e.text.setAttribute('text-anchor', 'end'); }
+          else { e.text.setAttribute('x', tx); e.text.setAttribute('text-anchor', 'start'); }
+          e.text.setAttribute('y', y + H - 4);
+          e.a.classList.toggle('sel', r.s === sel);
+        }
+      }
+      function drawAxis() {
+        grid.replaceChildren(); axis.replaceChildren();
+        const total = R.length * H;
+        const step = [1, 2, 5, 10, 20, 25, 50, 100].find((s) => W / (cur[1] - cur[0]) * s >= 55) ?? 100;
+        for (let t = Math.ceil(cur[0] / step) * step; t <= cur[1]; t += step) {
+          el('line', { x1: X(t), x2: X(t), y1: 0, y2: total, stroke: 'var(--line)' }, grid);
+          if (X(t) + 32 < W) el('text', { x: X(t) + 3, y: 15 }, axis).textContent = String(t);
+        }
+      }
+      function drawCursor() {
+        over.replaceChildren();
+        if (hoverYear === null || hoverYear < cur[0] || hoverYear > cur[1]) return;
+        const x = X(hoverYear);
+        el('line', { x1: x, x2: x, y1: 0, y2: R.length * H }, over);
+        // popisek drží u okraje viditelné části, ne u konce celé osy
+        const living = R.filter((r) => r.b <= hoverYear && hoverYear <= r.d).length;
+        const txt = `${hoverYear}: ${living === 1 ? 'žil asi 1 předek' : living >= 2 && living <= 4 ? `žili asi ${living} předci` : `žilo asi ${living} předků`}`;
+        const w = txt.length * 6 + 8, px = x + w + 4 > W ? x - w - 2 : x + 2;
+        const top = Math.max(0, -view.getBoundingClientRect().top) + 2;
+        el('rect', { x: px, y: top, width: w, height: 16, rx: 3 }, over);
+        el('text', { x: px + 4, y: top + 12 }, over).textContent = txt;
+      }
+      function draw() {
+        svg.setAttribute('width', W); svg.setAttribute('height', R.length * H);
+        layout(); drawAxis(); drawCursor();
+      }
+      const headerH = () => (header && /sticky|fixed/.test(getComputedStyle(header).position) ? header.offsetHeight : 0);
+      function visibleRows() {
+        const top = Math.max(0, -view.getBoundingClientRect().top - 0);
+        const hh = headerH() + 22;
+        const a = Math.max(0, Math.floor((top + hh) / H)), b = Math.min(R.length - 1, Math.ceil((top + window.innerHeight) / H));
+        return [a, Math.max(a, b)];
+      }
+      function wanted() {
+        if (mode === 'all') return [...full];
+        const [a, b] = visibleRows();
+        let lo = Infinity, hi = -Infinity;
+        for (let i = a; i <= b; i++) { lo = Math.min(lo, R[i].x0); hi = Math.max(hi, R[i].x1); }
+        const minSpan = Math.max(40, W / 9);
+        if (hi - lo < minSpan) { const c = (lo + hi) / 2; lo = c - minSpan / 2; hi = c + minSpan / 2; }
+        const pad = (hi - lo) * 0.03;
+        return [lo - pad, Math.min(hi + pad, NOW + 5)];
+      }
+      function step() {
+        raf = 0;
+        cur = [cur[0] + (target[0] - cur[0]) * 0.22, cur[1] + (target[1] - cur[1]) * 0.22];
+        const done = Math.abs(cur[0] - target[0]) < 0.05 && Math.abs(cur[1] - target[1]) < 0.05;
+        if (done) cur = [...target];
+        draw();
+        if (!done) raf = requestAnimationFrame(step);
+      }
+      function retarget(instant) {
+        target = wanted();
+        if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { cur = [...target]; draw(); }
+        else if (!raf) raf = requestAnimationFrame(step);
+      }
+      function resize() {
+        const old = visibleRows()[0];
+        W = view.clientWidth;
+        axis.setAttribute('width', W);
+        wrap.style.setProperty('--hh', `${headerH()}px`);
+        retarget(true);
+        void old;
+      }
+      window.addEventListener('scroll', () => retarget(), { passive: true });
+      new ResizeObserver(resize).observe(view);
+      const yearAt = (cx) => Math.round(cur[0] + (cx - view.getBoundingClientRect().left - 4) / (W - 8) * (cur[1] - cur[0]));
+      view.addEventListener('pointerdown', (e) => { ptr = e.pointerType; });
+      view.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        hoverYear = yearAt(e.clientX); drawCursor();
+      });
+      view.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { hoverYear = null; drawCursor(); } });
+      view.addEventListener('click', (e) => {
+        const a = e.target.closest('a');
+        if (a && ptr !== 'mouse' && a.getAttribute('data-s') !== sel) { e.preventDefault(); sel = a.getAttribute('data-s'); hoverYear = yearAt(e.clientX); draw(); }
+        else if (!a) { hoverYear = yearAt(e.clientX); sel = null; draw(); }
+      });
+      const reset = () => { hoverYear = null; sel = null; draw(); };
+      axis.addEventListener('click', reset);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') reset(); });
+      document.querySelectorAll('.tl-mode button').forEach((b) => b.addEventListener('click', () => {
+        mode = b.dataset.m;
+        document.querySelectorAll('.tl-mode button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+        retarget();
+      }));
+      function zHashe() {   // #1750 = rolovat k předkům narozeným od roku 1750, #1750@1800 = navíc svislá čára v roce 1800
+        const m = location.hash.match(/^#(\d{4})?(?:@(\d{4}))?$/);
+        if (!m) return;
+        if (m[1]) { const i = R.findIndex((r) => r.b >= +m[1]); window.scrollTo(0, window.scrollY + view.getBoundingClientRect().top - headerH() - 22 + Math.max(0, (i < 0 ? R.length : i) * H - 4)); }
+        if (m[2]) hoverYear = +m[2];
+        retarget(true);
+      }
+      resize(); zHashe(); window.addEventListener('hashchange', zHashe);
+    })();
+  </script>
+</Base>
+
+<style is:global>
+.tl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin:.5rem 0}
+.tl-mode{display:inline-flex}
+.tl-mode button{font:inherit;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;padding:.25rem .7rem;font-size:.9rem}
+.tl-mode button:first-child{border-radius:.4rem 0 0 .4rem}
+.tl-mode button:last-child{border-left:0;border-radius:0 .4rem .4rem 0}
+.tl-mode button[aria-pressed=true]{background:var(--accent-soft);font-weight:600}
+.tl-legend{display:flex;flex-wrap:wrap;gap:.2rem .8rem;font-size:.8rem}
+.tl-legend i{display:inline-block;vertical-align:-.1rem;border-radius:.2rem;width:.8rem;height:.8rem;margin-right:.3rem}
+.tl-wrap{border:1px solid var(--line);background:var(--paper);--hh:0px;border-radius:6px}
+.tl-axis{display:block;position:sticky;top:var(--hh);z-index:3;height:22px;width:100%;border-bottom:1px solid var(--line);background:var(--paper);cursor:pointer;border-radius:6px 6px 0 0}
+.tl-axis text{fill:var(--muted);font-size:11px}
+.tl-view{position:relative;overflow:clip}
+.tl-svg{display:block}
+.tl-svg text{fill:var(--ink);pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-opacity:.8;stroke-width:3px;font-size:10.5px}
+.tl-svg a:hover rect.bar,.tl-svg a:focus rect.bar,.tl-svg a.sel rect.bar{stroke:var(--ink);stroke-width:1.2px}
+.tl-svg line{vector-effect:none}
+.tl-svg g:last-child line{stroke:#c33;stroke-dasharray:3 3}
+.tl-svg g:last-child rect{fill:#c33}
+.tl-svg g:last-child text{fill:#fff;stroke:none;font-size:11px}
+@media (pointer:coarse){.tl-svg text{font-size:11.5px}}
+@media (max-width:600px){.tl-legend{font-size:.72rem}}
+</style>
