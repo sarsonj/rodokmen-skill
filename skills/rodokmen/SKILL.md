@@ -107,6 +107,11 @@ Základní smyčka pro každou osobu:
 7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
 
 Pravidla, která chrání kvalitu:
+- **Předek ve stromě podruhé:** zjistíš-li, že předek, kterého právě čteš (jméno, rodiče, rok, dům), už ve stromě je pod jiným
+  Kekulého číslem (vzdálení příbuzní se vzali), **nezakládej ho a jeho předky znovu**. Přidej do `P` jen samotný alias
+  (jméno, roky, `f=["TÁŽ OSOBA jako <první číslo>"]`) a zapiš ho nástrojem `python3 -I tools/stejna_osoba.py <další číslo> <první číslo>`
+  (`SAME` v `data/osoby.py`; ohlídá obě osoby, jméno, roky i rodiče a že nad aliasem nejsou vlastní předci). `SAME` ručně
+  nepiš. Na webu pak vznikne stránka „Dvakrát ve stromě“ (`reference/web.md`).
 - **Než něco ohlásíš jako nové, prohledej** `data/osoby.py`, `data/zaznamy.json` a `data/research_log.md`
   (jméno, místo, rok). Snadno „objevíš“ něco, co už v datech je.
 - **Zápis do dat:** `zaznamy`, `svazky`, `prepisy`, `dokumenty` přes `python3 -I tools/zapis.py <soubor> <klíč> pracovni/x.json`
@@ -252,6 +257,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `ged_export.py` | export rodokmenu do GEDCOM (ZIP s obrázky, `--slozka` rozbalený; do MyHeritage s obrázky jen přes Family Tree Builder) – `data.md` |
 | `vyrez.py`, `ramecek.py`, `overit.py` | výřez zápisu (zlomky stránky), rámeček (zlomky výřezu, `--pozn` poznámka), ověření čtení na dvou polovinách |
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
+| `stejna_osoba.py` | předek je ve stromě podruhé (jiné číslo): zapíše `SAME` v `osoby.py` s kontrolou jména, roků a rodičů |
 | `mista.py` | místa pro mapu (OpenStreetMap) |
 | `napady.py` | náměty na zajímavosti z dat |
 | `kontrola.py` | kontrola dat; hlásí i citlivé údaje na webu a kdy psát příběh |

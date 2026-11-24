@@ -1,0 +1,152 @@
+---
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import { people, byK, records, maDuplicity, href } from '../../lib/data.js';
+import site from '../../data/site.json';
+
+// Stránka je volitelná: když v rodokmenu žádný předek není vícekrát (SAME v data/osoby.py), nevygeneruje se vůbec.
+export function getStaticPaths() {
+  return maDuplicity ? [{ params: { x: undefined } }] : [];
+}
+
+// Předek vícekrát ve stromě: aliasy (číslo Kekulé → kanonická osoba) jsou v site.aliases, počítá je export z data/osoby.py (SAME).
+// Jméno dítěte páru se neukazuje u osoby, která žije nebo by mohla žít (zjednodušená kontrola: poznámka „Žijící“, nebo bez známého úmrtí a narozená před méně než 110 lety).
+const NOW = new Date().getFullYear();
+const mohlaZit = (p) => /^Žijící/i.test(p.note || '')
+  || (!p.facts.some((f) => f.startsWith('†')) && !/[–†]/.test(p.y || '') && +((p.y || '').match(/\d{4}/)?.[0] ?? 0) > NOW - 110);
+const depth = (k) => Math.floor(Math.log2(k));
+const canonK = (k) => (site.aliases[k] ? people[site.aliases[k]].k : k);
+const allK = new Map();                       // kanonické číslo → všechna čísla, pod kterými se v rodokmenu objevuje
+for (const [a, slug] of Object.entries(site.aliases)) {
+  const c = people[slug].k;
+  if (!allK.has(c)) allK.set(c, [c]);
+  allK.get(c).push(Number(a));
+}
+const lca = (u, v) => { while (depth(u) > depth(v)) u >>= 1; while (depth(v) > depth(u)) v >>= 1; while (u !== v) { u >>= 1; v >>= 1; } return u; };
+const top = (k, x) => { while (depth(k) > depth(x) + 1) k >>= 1; return k; };   // předek ze dvou rodičů páru, pod kterým k leží
+
+const couples = new Map();                    // x = číslo dítěte páru → { x, pairs: [...] }
+for (const [c, ks] of allK) {
+  for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
+    let u = ks[i], v = ks[j];
+    const x = lca(u, v);
+    if (x === u || x === v) continue;
+    if (top(u, x) % 2) [u, v] = [v, u];       // u = strana otce (2x), v = strana matky (2x+1)
+    const n1 = depth(u) - depth(x) - 1, n2 = depth(v) - depth(x) - 1;
+    const higher = canonK(u >> 1) === canonK(v >> 1) && depth(u) > depth(x) + 1 && depth(v) > depth(x) + 1;
+    if (!couples.has(x)) couples.set(x, { x, pairs: [] });
+    couples.get(x).pairs.push({ c, u, v, n1, n2, higher });
+  }
+}
+const slugOf = (k) => byK[k]?.slug;
+const rel = (n) => (n === 1 ? 'rodiče' : `${'pra'.repeat(n - 1)}rodiče`);
+const KOL = ['', '', '', 'z druhého kolena', 'ze třetího kolena', 'ze čtvrtého kolena', 'z pátého kolena', 'ze šestého kolena'];
+const kolena = (n) => (n === 2 ? 'bratranec a sestřenice' : `bratranec a sestřenice ${KOL[n] ?? `z ${n - 1}. kolena`}`);
+const pct = (r) => { const p = r * 100; return p >= 10 ? `asi ${Math.round(p)} %` : p >= 0.1 ? `asi ${p.toFixed(1).replace('.', ',').replace(',0', '')} %` : 'méně než 0,1 %'; };
+const DISP = /Dispens od|Církevní dispens|dispenz|Dispensatione|dispensationem|dispensatione/i;
+
+const list = [...couples.values()].filter((cp) => byK[2 * cp.x] && byK[2 * cp.x + 1]).map((cp) => {
+  const near = cp.pairs.filter((p) => !p.higher);
+  const best = Math.min(...near.map((p) => p.n1 + p.n2));
+  const closest = near.filter((p) => p.n1 + p.n2 === best);   // nejbližší společní předkové: podle nich se popisuje příbuzenství
+  const first = closest[0];
+  const father = byK[2 * cp.x], mother = byK[2 * cp.x + 1];
+  const r = near.reduce((s, p) => s + 2 ** -(p.n1 + p.n2), 0);
+  const stupen = Math.max(first.n1, first.n2);
+  const label = first.n1 === first.n2 ? kolena(first.n1) : `společní předci jsou pro něj ${rel(first.n1)}, pro ni ${rel(first.n2)}`;
+  // předci páru nad prvním dítětem a cesty dolů ke snoubencům
+  const anc = [...new Set(closest.filter((p) => p.u >> 1 === first.u >> 1 && p.v >> 1 === first.v >> 1).flatMap((p) => [byK[p.u], byK[p.v]].filter(Boolean)).map((p) => p.slug))];
+  const ancPeople = [...new Set(closest.flatMap((p) => [p.u, p.v]).map(slugOf))].filter(Boolean);
+  const path = (k) => { const out = []; for (let q = k >> 1; depth(q) >= depth(cp.x) + 1; q >>= 1) out.push(slugOf(q)); return out.filter(Boolean); };
+  const colL = path(first.u), colR = path(first.v);
+  const child = people[slugOf(cp.x)];
+  const shared = new Set([...(father?.records || [])].filter((rk) => (mother?.records || []).includes(rk)));
+  let dispenz = null;
+  for (const rk of shared) {
+    const rec = records[rk];
+    if (!rec || rec.kind !== 'O') continue;
+    const m = (rec.cs || '').match(new RegExp(`.{0,70}(?:${DISP.source}).{0,110}`, 'i'));
+    if (m) { dispenz = { key: rk, text: m[0].replace(/\s+/g, ' ').trim() }; break; }
+  }
+  return {
+    id: `${father.slug}-a-${mother.slug}`, x: cp.x, pairs: cp.pairs, father, mother, first, near, r, label, stupen, anc, ancPeople, colL, colR,
+    child: child && !mohlaZit(child) ? child : null, higher: cp.pairs.length - near.length, dispenz,
+    famId: site.families[`${father.slug}-a-${mother.slug}`] ? `${father.slug}-a-${mother.slug}` : null,
+  };
+}).sort((a, b) => a.x - b.x);   // od nejbližších generací (nízké číslo dítěte páru)
+
+const tabulka = [...allK.entries()].map(([c, ks]) => ({
+  p: byK[c], times: ks.length,
+})).filter((t) => t.p).sort((a, b) => a.p.k - b.p.k);
+const coupleOf = (c) => list.filter((cp) => cp.pairs.some((n) => n.c === c));
+const znamych = Object.keys(site.aliases).length;
+---
+<Base title="Dvakrát ve stromě">
+  <h1>Dvakrát ve stromě</h1>
+  <p class="lead">Někteří předci jsou v rodokmenu vícekrát, třeba dvakrát <span class="twice">2×</span> nebo třikrát <span class="twice">3×</span>. Stane se to, když se vezmou dva lidé se společnými předky: jejich děti pak mají tytéž předky po otci i po matce.</p>
+  <div class="prose collapse-intro">
+    <p>Genealogové tomu říkají <em>ztráta předků</em> (anglicky <em>pedigree collapse</em>). Na papíře má každý dva rodiče, čtyři prarodiče a o deset generací zpátky 1 024 předků; o dvacet generací zpátky by to bylo přes milion lidí. Ve skutečnosti se na venkově lidé brali v okruhu několika sousedních vesnic, a tak byli manželé často vzdálení příbuzní – mnohdy o tom ani nevěděli. Čím dál do minulosti, tím víc se větve rodokmenu sbíhají.</p>
+    <p><strong>Jak blízké je to příbuzenství:</strong> bratranec a sestřenice mají společné prarodiče, bratranec a sestřenice z druhého kolena praprarodiče, ze třetího kolena prapraprarodiče a tak dál. Procento u každé svatby říká, kolik dědičné výbavy měli manželé v průměru společné díky společným předkům. Pro srovnání: sourozenci 50 %, bratranec a sestřenice 12,5 %, z druhého kolena asi 3 %.</p>
+    <p><strong>Církev</strong> do roku 1917 nedovolila sňatek příbuzných až po společné prapraprarodiče (tzv. 4. stupeň) bez zvláštního povolení – dispenzu; od roku 1918 platilo totéž do 3. stupně. Proto o blízkém příbuzenství manželů často víme právě z oddacích matrik.</p>
+    <p class="small muted">Zdvojených předků v rodokmenu: {znamych}, sňatků příbuzných: {list.length}. Počítají se jen ti předkové, které se v matrikách podařilo skutečně ztotožnit; u dalších příbuzných společné předky zatím neznáme. Kurzíva = osoba jen z cizího rodokmenu (neověřeno).</p>
+  </div>
+
+  <h2>Sňatky příbuzných v rodokmenu</h2>
+  {list.map((cp) => (
+    <section class="card collapse-card" id={cp.id}>
+      <h3><PersonLink slug={cp.father.slug} /> <span class="muted">×</span> <PersonLink slug={cp.mother.slug} /></h3>
+      <p class="chips">
+        <span class="chip st-prob">{cp.label}</span>
+        <span class="chip">společné {pct(cp.r)}</span>
+      </p>
+      <p>Společnými předky {cp.ancPeople.length > 1 ? 'byli' : 'byl'} {cp.ancPeople.map((s, i) => <>{i > 0 && (i === cp.ancPeople.length - 1 ? ' a ' : ', ')}<PersonLink slug={s} /></>)}{cp.first.n1 === cp.first.n2 ? <> – pro oba {rel(cp.first.n1)}.</> : <> – pro něj {rel(cp.first.n1)}, pro ni {rel(cp.first.n2)}.</>}</p>
+      <div class="descent" style={`--rows:${Math.max(cp.colL.length, cp.colR.length)}`}>
+        <div class="descent-top">{cp.anc.map((s, i) => <>{i > 0 && <span class="muted"> × </span>}<a href={href.person(s)}>{people[s].name}</a></>)}</div>
+        {[cp.colL, cp.colR].map((col, ci) => col.map((s, ri) => (
+          <a class={`descent-box ${ri === col.length - 1 ? 'spouse' : ''}`} href={href.person(s)} style={`grid-column:${ci + 1};grid-row:${ri + 2}`}>
+            <strong>{people[s].name}</strong><span>{people[s].years}</span>
+          </a>
+        )))}
+        <div class="descent-bottom" style={`grid-row:${Math.max(cp.colL.length, cp.colR.length) + 2}`}>↓ svatba {cp.father.name.split(' ')[0]} × {cp.mother.name.split(' ')[0]} ↓ {cp.child ? <a href={href.person(cp.child.slug)}>{cp.child.name}</a> : 'jejich potomci'}</div>
+      </div>
+      {cp.stupen <= 3 && <p class="small">Podle církevního práva byli příbuzní ve {cp.stupen}. stupni, a ke svatbě proto potřebovali zvláštní povolení (dispenz).{cp.dispenz && <> V oddací matrice o tom stojí: <em>„…{cp.dispenz.text}…“</em> <a href={href.record(cp.dispenz.key)}>Zápis sňatku →</a></>}</p>}
+      {cp.stupen === 4 && <p class="small">Byli příbuzní ve 4. stupni; do roku 1917 k tomu církev vyžadovala dispenz.{cp.dispenz && <> V oddací matrice o tom stojí: <em>„…{cp.dispenz.text}…“</em> <a href={href.record(cp.dispenz.key)}>Zápis sňatku →</a></>}</p>}
+      {cp.higher > 0 && <p class="small muted">Spolu s nimi je ve stromě vícekrát i {cp.higher} {cp.higher === 1 ? 'další jejich známý předek' : cp.higher < 5 ? 'další jejich známí předci' : 'dalších jejich známých předků'} (seznam níže).</p>}
+      {cp.famId && <p class="small"><a href={href.family(cp.famId)}>Jejich rodina a děti →</a></p>}
+    </section>
+  ))}
+
+  <h2>Kdo je ve stromě vícekrát</h2>
+  <div class="table-box">
+    <table>
+      <thead><tr><th>Jméno</th><th>Kolikrát</th><th>Kvůli sňatku</th></tr></thead>
+      <tbody>
+        {tabulka.map((t) => (
+          <tr>
+            <td><PersonLink slug={t.p.slug} /><br /><span class="small muted">{t.p.rel}</span></td>
+            <td><span class="twice">{t.times}×</span></td>
+            <td class="small">{coupleOf(t.p.k).map((cp, i) => <>{i > 0 && ', '}<a href={`#${cp.id}`}>{cp.father.name} × {cp.mother.name}</a></>)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Base>
+
+<style>
+  .twice { display: inline-block; background: #f8ecd2; color: #8a5a2b; border-radius: 999px; padding: 0 0.45rem; font-size: 0.8em; font-weight: 700; margin: 0 0.15rem; }
+  .collapse-intro { max-width: 46rem; }
+  .collapse-card { margin: 1rem 0 1.4rem; scroll-margin-top: 5rem; }
+  .collapse-card h3 { font-size: 1.15rem; }
+  .collapse-card .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .descent { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto repeat(var(--rows), auto) auto; gap: 6px 14px; max-width: 40rem; margin: 0.8rem 0; }
+  .descent-top, .descent-bottom { text-align: center; border-radius: 8px; grid-column: 1 / span 2; padding: 0.45rem 0.6rem; font-size: 0.92rem; }
+  .descent-top { background: #f8ecd2; grid-row: 1; font-weight: 600; }
+  .descent-bottom { color: var(--muted); background: #f1ede6; }
+  .descent-box { background: var(--paper); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 0.35rem 0.55rem; font-size: 0.88rem; line-height: 1.25; text-decoration: none; display: block; position: relative; }
+  .descent-box::before { content: '↓'; color: #c9b9a2; font-size: 0.8rem; position: absolute; top: -0.95rem; left: 50%; }
+  .descent-box strong { font-weight: 600; display: block; }
+  .descent-box span { color: var(--muted); font-size: 0.8rem; }
+  .descent-box.spouse { border: 2px solid #efb45f; }
+  .descent-box:hover { border-color: var(--accent); }
+</style>

@@ -6,6 +6,16 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## Nepublikováno
+
+**Nové**
+- Web: volitelná stránka **Dvakrát ve stromě** (`/dvakrat/`) – předci, kteří jsou v rodokmenu vícekrát (sňatky příbuzných):
+  společní předci, schéma sestupu, míra příbuzenství a dispenz z oddací matriky. Zobrazí se jen tehdy, když je
+  v `data/osoby.py` aspoň jedno `SAME`, jinak nevznikne ani stránka, ani položka v menu.
+- Nový nástroj **`tools/stejna_osoba.py <další-číslo> <první-číslo>`**: zapíše předka, který je ve stromě podruhé, do `SAME`
+  v `data/osoby.py` – ohlídá obě osoby, jméno, roky, rodiče, předky nad aliasem a počet záznamů, zbytek souboru nechá. SKILL.md
+  agenta vede, aby takového předka zapsal tímto nástrojem, ne druhým nezávislým záznamem.
+
 ## 0.10.2 – 16. 11. 2026
 
 Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není
