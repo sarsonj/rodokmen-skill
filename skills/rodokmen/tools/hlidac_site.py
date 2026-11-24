@@ -12,7 +12,7 @@ import json, os, re, sys
 
 CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s|\b(?:bash|sh|zsh)\s+-c\s+[\"']|\beval\s+[\"']?)\s*"
 CURL = re.compile(CMD + r"(curl|wget)(?:\.exe)?(?=\s|$)", re.I)
-PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python3?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)
+PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python(?:3(?:\.\d+)?)?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)   # i python3.11
 SHELL = re.compile(CMD + r"(?:(?:bash|sh|zsh)\s+|\./)(\S+\.sh)\b")
 SIT_MOD = r"(?:requests|httpx|aiohttp|urllib3|pycurl|socket|urllib\.request|http\.client)\b"
 ZAC = r"(?:^|[;\"'])\s*"   # začátek řádku, příkazu za středníkem nebo kódu v python -c "…"

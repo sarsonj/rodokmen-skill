@@ -23,6 +23,10 @@ Použití (z kořene projektu):
                                          (adresa $dist nebo /ark:/61903/3:1:…) nebo ZA Opava (adresa
                                          showZoomifySeparate…myImageUuid=…), jinak kód 1; vypíše i rozměr
                                          (nalezený snímek se počítá jako ušetřené otevření v prohlížeči)
+  cache.py z-chromu "<adresa showZoomifySeparate…>" <Z.imagePath> <šířka>x<výška> [vystup.jpg] [--plne]
+                                      -> ZA Opava, AHMP: složí snímek z dlaždic, které si prohlížeč snímků načetl do
+                                         mezipaměti Chromu (Edge, Brave), a uloží ho; archiv nedostane žádný dotaz.
+                                         Bez --plne poloviční rozlišení (na čtení stačí), s --plne plné
   --nahled nahled.jpg                 -> k tomu rovnou náhled široký 1600 px (k přečtení stránky, bez sítě)
 
 Počítá se jen to, co by jinak opravdu šlo z archivu znovu: u nástrojů přes brzdu každý obrázek vrácený z disku,
@@ -239,6 +243,9 @@ FS_WEB = "www.familysearch.org"
 # ZA Opava: snímek určuje myImageUuid v adrese prohlížeče snímků (showZoomifySeparate), dá se zjistit bez otevření snímku
 ZAO = re.compile(r"archives\.cz/da/showZoomifySeparate\?.*?\bmyImageUuid=([0-9A-Fa-f-]{32,36})")
 ZAO_WEB = "images.archives.cz"
+# AHMP (nový Archivní katalog digi.ahmp.cz od 30. 11. 2026): stejný software jako ZA Opava
+AHMP = re.compile(r"digi\.ahmp\.cz/pragapublica/showZoomifySeparate\?.*?\bmyImageUuid=([0-9A-Fa-f-]{32,36})")
+AHMP_WEB = "digi-images.ahmp.cz"
 
 
 def z_prohlizece(adresa):
@@ -252,6 +259,9 @@ def z_prohlizece(adresa):
     m = ZAO.search(adresa or "")
     if m:
         return f"zaopava/{m.group(1).replace('-', '').lower()}.jpg", ZAO_WEB
+    m = AHMP.search(adresa or "")
+    if m:
+        return f"ahmp/{m.group(1).replace('-', '').lower()}.jpg", AHMP_WEB
     return None
 
 
@@ -260,6 +270,143 @@ def _sirka(p):
     M = _magick()
     r = subprocess.run([M, p + "[0]", "-format", "%w %h", "info:"], capture_output=True, text=True) if M else None
     return tuple(map(int, r.stdout.split())) if r and re.fullmatch(r"\d+ \d+", r.stdout.strip()) else None
+
+
+# --- ZA Opava a AHMP: dlaždice z mezipaměti prohlížeče ---------------------------------------------------------------
+# Archivy posílají dlaždice s „Cache-Control: … public“ (ZA Opava 10 hodin, AHMP 1 hodinu), Chrome je drží na disku. Čteme jen
+# soubory na disku – žádný dotaz na archiv. Chrome má dva formáty mezipaměti: „simple“ (soubory <hash>_0; macOS,
+# Linux) a „blockfile“ (index, data_0–3, f_XXXXXX; Windows).
+TILE = re.compile(r"(/ximage/\S+?\.jpg)/TileGroup\d+/(\d+)-(\d+)-(\d+)\.jpg$", re.I)
+
+
+def _slozky_prohlizece():
+    """Složky Cache_Data všech profilů Chromu, Edge, Brave a Chromia."""
+    home = os.path.expanduser("~")
+    lad = os.environ.get("LOCALAPPDATA") or ""
+    zaklady = [os.path.join(home, "Library", "Caches", *p) for p in
+               (("Google", "Chrome"), ("Microsoft Edge",), ("BraveSoftware", "Brave-Browser"), ("Chromium",))]
+    zaklady += [os.path.join(home, ".cache", p) for p in
+                ("google-chrome", "microsoft-edge", "BraveSoftware/Brave-Browser", "chromium")]
+    zaklady += [os.path.join(lad, *p, "User Data") for p in
+                (("Google", "Chrome"), ("Microsoft", "Edge"), ("BraveSoftware", "Brave-Browser"), ("Chromium",))] if lad else []
+    return [d for z in zaklady for d in glob.glob(os.path.join(z, "*", "Cache", "Cache_Data"))]
+
+
+def _simple(slozka, hledej):
+    eof = (0xf4fa6f45970d41d8).to_bytes(8, "little")
+    for f in glob.glob(os.path.join(slozka, "*_0")):
+        try:
+            b = open(f, "rb").read()
+        except OSError:
+            continue
+        if len(b) < 24 or b[:8] != (0xfcfb6d1ba7725c30).to_bytes(8, "little"):
+            continue
+        n = int.from_bytes(b[12:16], "little")
+        klic = b[24:24 + n].decode("utf-8", "replace")
+        if hledej in klic:
+            konec = b.find(eof, 24 + n)
+            yield klic, b[24 + n:konec if konec > 0 else None]
+
+
+def _blockfile(slozka, hledej):
+    """Formát blockfile (net/disk_cache/blockfile/disk_format.h): záznamy po 256 B v data_1, klíč v záznamu,
+    tělo odpovědi (proud 1) v data_N nebo v samostatném f_XXXXXX."""
+    soubory = {}
+
+    def blok(adresa, velikost):
+        if not adresa >> 31:
+            return None
+        typ = (adresa >> 28) & 7
+        if typ == 0:   # samostatný soubor f_XXXXXX
+            try:
+                return open(os.path.join(slozka, f"f_{adresa & 0x0FFFFFFF:06x}"), "rb").read(velikost)
+            except OSError:
+                return None
+        bs = {1: 36, 2: 256, 3: 1024, 4: 4096}.get(typ)
+        if not bs:
+            return None
+        n = (adresa >> 16) & 0xFF
+        if n not in soubory:
+            try:
+                soubory[n] = open(os.path.join(slozka, f"data_{n}"), "rb").read()
+            except OSError:
+                return None
+        start = 8192 + (adresa & 0xFFFF) * bs
+        return soubory[n][start:start + velikost]
+
+    try:
+        d1 = open(os.path.join(slozka, "data_1"), "rb").read()
+    except OSError:
+        return
+    for o in range(8192, len(d1) - 256, 256):
+        n = int.from_bytes(d1[o + 32:o + 36], "little")
+        if not 0 < n <= 928:   # klíč přímo v záznamu (až 4 bloky)
+            continue
+        klic = d1[o + 96:o + 96 + n].decode("utf-8", "replace")
+        if hledej not in klic:
+            continue
+        velikost = int.from_bytes(d1[o + 44:o + 48], "little")
+        adresa = int.from_bytes(d1[o + 60:o + 64], "little")
+        data = blok(adresa, velikost) if 0 < velikost < 2 ** 24 else None
+        if data:
+            yield klic, data
+
+
+def dlazdice_z_prohlizece(cesta_obrazku):
+    """{(úroveň, x, y): bajty} pro snímek podle Z.imagePath ze všech mezipamětí prohlížečů; (dlaždice, formáty)."""
+    hledej = urlsplit(cesta_obrazku).path if "://" in cesta_obrazku else cesta_obrazku
+    t, formaty = {}, set()
+    for slozka in _slozky_prohlizece():
+        if os.path.exists(os.path.join(slozka, "data_1")):
+            formaty.add("blockfile")
+            zdroj = _blockfile(slozka, hledej)
+        else:
+            formaty.add("simple")
+            zdroj = _simple(slozka, hledej)
+        for klic, data in zdroj:
+            m = TILE.search(klic)
+            if m and data[:2] == b"\xff\xd8" and cely(data):
+                t[tuple(map(int, m.group(2, 3, 4)))] = data
+    return t, formaty
+
+
+def urovne(W, H, T=256):
+    """Rozměry úrovní Zoomify od nejmenší (0) po plné rozlišení."""
+    d = []
+    while True:
+        d.insert(0, (W, H))
+        if W <= T and H <= T:
+            return d
+        W, H = (W + 1) // 2, (H + 1) // 2
+
+
+def sloz_z_prohlizece(cesta_obrazku, W, H, out, plne=False):
+    """Složí snímek z dlaždic v mezipaměti prohlížeče. Vrací (w, h, chybějící [(x, y)], formáty)."""
+    t, formaty = dlazdice_z_prohlizece(cesta_obrazku)
+    d = urovne(W, H)
+    L = len(d) - 1 if plne else len(d) - 2
+    w, h = d[L]
+    nx, ny = -(-w // 256), -(-h // 256)
+    chybi = [(x, y) for y in range(ny) for x in range(nx) if (L, x, y) not in t]
+    if chybi:
+        return w, h, chybi, formaty
+    M = _magick()
+    if not M:
+        sys.exit("chybí ImageMagick (magick) – bez něj snímek nesložím")
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="rodokmen_dlazdice_")
+    try:
+        args = [M, "-size", f"{w}x{h}", "xc:white"]
+        for (l, x, y), data in t.items():
+            if l == L:
+                f = os.path.join(tmp, f"{x}-{y}.jpg")
+                open(f, "wb").write(data)
+                args += [f, "-geometry", f"+{x * 256}+{y * 256}", "-composite"]
+        if subprocess.run(args + ["-quality", "92", out], capture_output=True).returncode:
+            sys.exit("ImageMagick snímek nesložil")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return w, h, [], formaty
 
 
 def _ze_souboru(path):
@@ -326,7 +473,7 @@ def main(a):
         data = base64.b64decode(d["data"].split(",", 1)[1])
         if not cely(data):
             sys.exit("snímek z prohlížeče není celý (chybí konec obrázku) – počkej na načtení a ulož ho znovu")
-        stary = _sirka(cesta(klic)) if znovu and web == ZAO_WEB else None
+        stary = _sirka(cesta(klic)) if znovu and web in (ZAO_WEB, AHMP_WEB) else None
         if stary and d.get("w") and stary[0] > int(d["w"]):   # ZA Opava: menší rozlišení nepřepíše větší
             print(f"v mezipaměti už je větší snímek ({stary[0]} × {stary[1]}) – nechávám ho:", cesta(klic))
             os.remove(a[1])
@@ -345,6 +492,43 @@ def main(a):
             shutil.copyfile(p, a[2])
             print(a[2])
         _nahled(p, nahled, d.get("w"))
+    elif a[0] == "z-chromu" and len(a) > 3:
+        plne = "--plne" in a
+        a = [x for x in a if x != "--plne"]
+        zdroj = z_prohlizece(a[1])
+        rozmer = re.fullmatch(r"(\d+)[x×](\d+)", a[3])
+        if not zdroj or zdroj[1] not in (ZAO_WEB, AHMP_WEB) or not rozmer:
+            sys.exit('použití: cache.py z-chromu "<adresa showZoomifySeparate…myImageUuid=…>" <Z.imagePath> '
+                     "<Z.imageW>x<Z.imageH> [vystup.jpg] [--plne] [--nahled nahled.jpg]")
+        if not _slozky_prohlizece():
+            sys.exit("nenašel jsem mezipaměť Chromu, Edge ani Brave – snímek čti ze snímků obrazovky (portaly.md)")
+        W, H = map(int, rozmer.groups())
+        klic = zdroj[0]
+        stary = _sirka(cesta(klic)) if os.path.exists(cesta(klic)) else None
+        cil = cesta(klic) + f".{os.getpid()}.tmp.jpg"
+        os.makedirs(os.path.dirname(cil), exist_ok=True)
+        w, h, chybi, formaty = sloz_z_prohlizece(a[2], W, H, cil, plne)
+        if chybi:
+            z = 1 if plne else 0.5
+            radky = sorted({y for _, y in chybi})
+            sys.exit(f"v mezipaměti prohlížeče chybí {len(chybi)} dlaždic (řádky {radky[0]}–{radky[-1]} z "
+                     f"{-(-h // 256)}; formát {', '.join(sorted(formaty))}). Prohlížeč snímků je nenačetl: projdi "
+                     f"stránku po pohledech (Z.Viewport.zoomAndPanToView(x, y, {z}), pauza 2,5 s) a spusť znovu. "
+                     "Když nepřibudou ani potom, mezipaměť prohlížeče se nedá číst – čti ze snímků obrazovky.")
+        if stary and stary[0] > w:
+            os.remove(cil)
+            print(f"v mezipaměti už je větší snímek ({stary[0]} × {stary[1]}) – nechávám ho:", cesta(klic))
+            p = cesta(klic)
+        else:
+            os.replace(cil, cesta(klic))
+            p = cesta(klic)
+            print("uloženo:", p, f"({w} × {h})")
+        _pouzito(p)
+        if len(a) > 4:
+            os.makedirs(os.path.dirname(os.path.abspath(a[4])), exist_ok=True)
+            shutil.copyfile(p, a[4])
+            print(a[4])
+        _nahled(p, nahled, w)
     elif a[0] == "najdi" and len(a) > 1:
         zdroj = z_prohlizece(a[1])
         p = cesta(zdroj[0]) if zdroj else None

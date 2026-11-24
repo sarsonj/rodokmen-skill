@@ -71,6 +71,9 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
   rozdílově `--rozdil`, přehled změn projdi s uživatelem před importem): `tools/ged_export.py` – postup
   a soukromí v `reference/data.md` → Export do GEDCOM. **Před spuštěním se zeptej, zda exportovat i žijící osoby**
   (výchozí ne: žijící a nedávno zemřelí jsou jen „Žijící / Chráněná osoba“; ano = `--zijici`, vysvětli, že údaje dostane cílová služba).
+  Export nabídni sám, když uživatel zmíní MyHeritage, Ancestry, Geni nebo test DNA; jinak občas (na konci kola,
+  u hotové větve) jednou větou připomeň, že export jde. Nevnucuj ho. Sloučení s vlastním stromem na MyHeritage
+  (`--rozdil`) je pokročilý postup: uživatel potřebuje Family Tree Builder a kotvy v něm spojuje ručně.
 
 ## Fáze 2 – Matriky, generace po generaci
 Podrobný postup čtení: `reference/matriky.md`. Archivy: `reference/portaly.md`. Sporná ztotožnění, mrtvé body,
@@ -86,7 +89,7 @@ Základní smyčka pro každou osobu:
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
-   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
+   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh` (do 30. 11. 2026, pak prohlížeč); SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
    rejstřík, začni jím.
 4. **Stáhni snímek** do `pracovni/<svazek>/` a nech ho tam – před dalším stažením se podívej, jestli ho už nemáš.
@@ -241,7 +244,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `aron_search.py`, `aron_img.py` | ARON (SOA Zámrsk): hledání svazků; snímek, trvalý odkaz, zápis svazku |
 | `portafontium.py` | SOA Plzeň (Porta fontium) bez prohlížeče |
 | `ebadatelna.py` | SOA Praha: trvalý odkaz, náhled a výřez ze snímku uloženého z prohlížeče (stahovat nesmí) |
-| `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) |
+| `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) – jen do 30. 11. 2026, pak prohlížeč (`portaly.md`) |
 | `policie_prihlasky.py` | pražské policejní přihlášky 1850–1914 |
 | `soal_zoomify.py` | snímek SOA Litoměřice (knihu najdi v prohlížeči); ZA Opava jen v prohlížeči (`portaly.md`) |
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko, Bavorsko, Polsko…) |

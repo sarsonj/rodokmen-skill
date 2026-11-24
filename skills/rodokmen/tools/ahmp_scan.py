@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Matriky AHMP (Praha) – stáhne snímek slepením dlaždic Zoomify.
+"""Matriky AHMP (Praha) – stáhne snímek slepením dlaždic Zoomify. Funguje jen se starým katalogem katalog.ahmp.cz,
+který archiv ukončuje 30. 11. 2026 (pak jen prohlížeč – reference/portaly.md, AHMP).
 Použití: ahmp_scan.py XID SCAN OUT.jpg [down] [x0,y0,x1,y1]   (down=0 plné rozlišení, 1 = poloviční…; oblast ve zlomcích)
 XID svazku vypíše ahmp_search.sh. Trvalý odkaz: https://katalog.ahmp.cz/pragapublica/permalink?xid=<XID>&scan=<N>
 """
@@ -22,7 +23,9 @@ UA={'User-Agent':'Mozilla/5.0 genealogy-research'}
 def get(u):
     return urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60).read()
 pl=get(f'https://katalog.ahmp.cz/pragapublica/permalink?xid={xid}&scan={scan}').decode('utf-8','replace')
-path=re.search(r'zoomifyImgPath = "([^"]+)"',pl).group(1)
+m=re.search(r'zoomifyImgPath = "([^"]+)"',pl)
+if not m: sys.exit("Starý katalog AHMP (katalog.ahmp.cz) skončil 30. 11. 2026. Matriky Prahy čti v Claude in Chrome v novém katalogu digi.ahmp.cz/pragapublica – snímek obrazovky přiblíženého zápisu nebo cache.py z-chromu (reference/portaly.md, AHMP).")
+path=m.group(1)
 props=get(path+'/ImageProperties.xml').decode()
 W=int(re.search(r'WIDTH="(\d+)"',props).group(1)); H=int(re.search(r'HEIGHT="(\d+)"',props).group(1)); T=int(re.search(r'TILESIZE="(\d+)"',props).group(1))
 tiers=[(W,H)]
@@ -33,7 +36,8 @@ ntiles=[(math.ceil(w/T),math.ceil(h/T)) for w,h in tiers]
 z=len(tiers)-1-down
 off=sum(a*b for a,b in ntiles[:z])
 cols,rows=ntiles[z]
-d=tempfile.mkdtemp()
+d=tempfile.mkdtemp(prefix='ahmp_')
+import atexit,shutil; atexit.register(shutil.rmtree,d,True)   # dlaždice jen dočasně – jinak zůstanou v /tmp (#220)
 files=[]
 tw,th=tiers[z]
 xs=range(int(reg[0]*tw)//T, min(cols,math.ceil(reg[2]*tw/T))); ys=range(int(reg[1]*th)//T, min(rows,math.ceil(reg[3]*th/T)))

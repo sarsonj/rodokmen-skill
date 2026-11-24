@@ -68,9 +68,16 @@ ZAKAZ["soapraha.cz"] = (            # SOA Praha (eBadatelna): od 2. 11. 2026 rob
 ZAKAZ["archives.cz"] = (            # ZA Opava: robots.txt „Disallow: /“, od 11/2026 obrázky skriptům 403/404, jen prohlížeč
     re.compile(r"(?!)"),             # skriptům nic
     "ZA Opava (digi.archives.cz, images.archives.cz) od listopadu 2026 nástroje nepouští (robots.txt, obrázky "
-    "HTTP 403/404) – soal_zoomify.py ani vlastní skripty nepoužívej. Snímek ulož z prohlížeče snímků: Playwright "
-    "(dlaždice, které načte prohlížeč, složí úryvek do celého snímku), jinak snímek obrazovky přiblíženého zápisu "
-    "(reference/portaly.md, ZA Opava). Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
+    "HTTP 403/404) – soal_zoomify.py ani vlastní skripty nepoužívej. Čti v Claude in Chrome: snímek obrazovky "
+    "přiblíženého zápisu, celý snímek z mezipaměti prohlížeče (cache.py z-chromu) – reference/portaly.md, ZA Opava. "
+    "Neobcházej to (jiný User-Agent, nástroj, hlavičky).")
+for _h in ("digi.ahmp.cz", "digi-images.ahmp.cz"):   # AHMP – nový Archivní katalog: robots.txt „Disallow: /“, ochrana proti robotům
+    ZAKAZ[_h] = (
+        re.compile(r"(?!)"),
+        "Nový Archivní katalog AHMP (digi.ahmp.cz) nástroje nepouští (robots.txt, ochrana proti robotům, zákaz "
+        "automatizace na úvodní stránce). Čti v Claude in Chrome: snímek obrazovky přiblíženého zápisu, celý snímek "
+        "z mezipaměti prohlížeče (cache.py z-chromu) – reference/portaly.md, AHMP. Neobcházej to (jiný User-Agent, "
+        "nástroj, hlavičky).")
 VOLNE = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "netlify.app", "netlify.com", "workers.dev", "cloudflare.com", "github.com",
          "githubusercontent.com", "npmjs.org", "pypi.org", "pythonhosted.org")
 UA = "Mozilla/5.0 (rodokmen)"           # jak se představuje slusne.py curl (stejně jako nástroje)
@@ -291,7 +298,7 @@ def _spojeni_selhalo(host, e):
 
 # Kramerius: 403 u stránek, OCR a obrázků neveřejného díla (autorský zákon, licence) není blokace – dílo jen není
 # volně dostupné; zastavit kvůli němu celý web na hodiny by zastavilo i veřejná díla.
-KRAMERIUS = re.compile(r"kramerius|(^|\.)(ndk|digitalniknihovna)\.cz$", re.I)
+KRAMERIUS = re.compile(r"kramerius|(^|\.)(ndk|digitalniknihovna|ceskadigitalniknihovna)\.cz$", re.I)   # CDK: api.ceskadigitalniknihovna.cz
 KRAMERIUS_DILO = re.compile(r"/(item|uuid)[/:].*/(ocr|streams|full|image|thumb|preview|foxml)|/iiif/|/ocr\b|/img\b", re.I)
 
 

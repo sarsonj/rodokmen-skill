@@ -2,7 +2,7 @@
 """Snímek matriky ve formátu Zoomify (SOA Litoměřice) v plném rozlišení – bez prohlížeče a bez cookies.
 
 ZA Opava (images.archives.cz) od listopadu 2026 nástroje nepouští (robots.txt, obrázky HTTP 403/404) – snímky
-odtud ukládej z prohlížeče snímků (reference/portaly.md, ZA Opava; nejlépe Playwright).
+odtud ukládej z prohlížeče snímků (reference/portaly.md, ZA Opava; Claude in Chrome).
 
 Použití (z kořene projektu):
   soal_zoomify.py <cesta nebo adresa> <zmenseni> <vystup.jpg>
@@ -68,7 +68,7 @@ def main():
     base = arg if arg.startswith("http") else BASE + arg
     if urllib.parse.urlsplit(base).hostname in ("images.archives.cz", "digi.archives.cz"):
         sys.exit("ZA Opava od listopadu 2026 nástroje nepouští (robots.txt, obrázky HTTP 403/404). Snímek ulož "
-                 "z prohlížeče snímků – Playwright složí dlaždice, které prohlížeč načetl (reference/portaly.md, ZA Opava).")
+                 "v Claude in Chrome – snímek obrazovky nebo cache.py z-chromu (reference/portaly.md, ZA Opava).")
     if urllib.parse.urlsplit(base).scheme != "https" or urllib.parse.urlsplit(base).hostname not in HOSTS:
         sys.exit(f"Adresa musí být https:// na serveru archivu ({', '.join(HOSTS)}), ne {base[:80]}")
     red, out = int(sys.argv[2]), sys.argv[3]

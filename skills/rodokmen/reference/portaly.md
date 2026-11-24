@@ -9,9 +9,9 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | SOA Plzeň | západní Čechy | Porta fontium – portafontium.eu | **ano – nástroj `portafontium.py`** |
 | SOA Třeboň | jižní Čechy | digi.ceskearchivy.cz | **jen v prohlížeči** – archiv nástroj od 2. 11. 2026 odmítá (postup níže) |
 | SOA Litoměřice | severní Čechy | Digitální badatelna – digi.soalitomerice.cz | **částečně – `soal_zoomify.py`** (knihu najdi v prohlížeči) |
-| AHMP | hl. m. Praha | katalog.ahmp.cz (Pragapublica) | **ano – `ahmp_search.sh`, `ahmp_scan.py`** |
+| AHMP | hl. m. Praha | do 30. 11. 2026 katalog.ahmp.cz, pak Archivní katalog digi.ahmp.cz/pragapublica | **do 30. 11. 2026 `ahmp_search.sh`, `ahmp_scan.py`**, pak jen v prohlížeči (Claude in Chrome, postup jako ZA Opava) |
 | MZA Brno | jižní Morava, Vysočina z části | Acta Publica – www.mza.cz/actapublica | **jen v prohlížeči** – snímek obrazovky přiblíženého zápisu (postup níže) |
-| ZA Opava | severní Morava a Slezsko, Olomoucko a Litovelsko | Digitální badatelna – digi.archives.cz/da/ | **jen v prohlížeči, nejlépe Playwright** – celý snímek z dlaždic, které načte prohlížeč (postup níže; CAPTCHU řeší uživatel) |
+| ZA Opava | severní Morava a Slezsko, Olomoucko a Litovelsko | Digitální badatelna – digi.archives.cz/da/ | **jen v prohlížeči, Claude in Chrome** – snímek obrazovky přiblíženého zápisu, celý snímek z mezipaměti prohlížeče (postup níže; CAPTCHU řeší uživatel) |
 | Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | HBMa: VadeMeCum NA – vademecum.nacr.cz (Digitální badatelna → Matriky židovských náboženských obcí; stará adresa badatelna.eu už nepatří archivu); digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
 
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `metodika.md`
@@ -156,12 +156,25 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - Svazek do `svazky.json` přes `zapis.py` (Ostatní portály, krok 4, klíč `ebad_<matrikaId>`, archiválie `ebad_a_<id>`).
   Denní údržba portálu kolem 4:44 (asi 2 minuty); večer a v noci bývá nedostupná (zhruba 22:45–0:45 a kolem 2:00).
 
-## AHMP Praha – `tools/ahmp_search.sh`, `tools/ahmp_scan.py`
+## AHMP Praha – do 30. 11. 2026 nástroje, pak jen v prohlížeči (Claude in Chrome)
+**Starý katalog katalog.ahmp.cz archiv 30. 11. 2026 ukončuje** (oznámení na katalogu a na www.ahmp.cz, novinka
+z 25. 8. 2026); nástroje pak skončí hláškou. Do té doby:
 - `bash tools/ahmp_search.sh "Smíchov"` → svazky Sbírky matrik: popis | farnost | (XID, id, počet snímků).
 - `python3 -I tools/ahmp_scan.py <XID> <snímek> pracovni/x.jpg [1] [x0,y0,x1,y1]` → snímek (1 = poloviční rozlišení).
-- Trvalý odkaz `https://katalog.ahmp.cz/pragapublica/permalink?xid=<XID>&scan=<N>`.
-- Nový portál digi.ahmp.cz má ochranu proti robotům – nepoužívat. Pražské matriky 1890–1940 většinou **nemají rejstříky**
-  a farností je mnoho – bez přesného data a farnosti (z úmrtí/sňatku nebo od rodiny) je hledání velmi drahé.
+- Trvalý odkaz `https://katalog.ahmp.cz/pragapublica/permalink?xid=<XID>&scan=<N>` – archiv slibuje, že staré odkazy
+  přesměruje do nového katalogu (zatím neověřeno, jestli i na stejný snímek).
+
+**Nový Archivní katalog `https://digi.ahmp.cz/pragapublica/`** – stejný software jako ZA Opava (platí tamní postup
+a pasti: `vysledekDetail` přímou adresou, `showZoomifySeparate`, tlačítko „Uložit obrázek“ nefunguje). Nástroje
+nepouští (robots.txt „Disallow: /“, ochrana proti robotům):
+pracuj v **Claude in Chrome** tempem člověka, jen snímky, které čteš, žádné dávky ani pomocníci. Ověření projde
+v Chromu uživatele samo (24. 11. 2026). Hledání: dlaždice **Matriky** (nebo „Sbírka matrik“ na úvodní stránce) a obec
+v poli „Místo / Lokalita“; ID snímků a entitu zjistíš jako u ZA Opava. Čti ze **snímku obrazovky přiblíženého
+zápisu**; celý snímek složí `cache.py z-chromu` (dlaždice z `digi-images.ahmp.cz` drží Chrome jen **1 hodinu** –
+skládej hned po projití stránky). Správnou farnost najdeš podle seznamů na https://www.ahmp.cz/index.html?mid=75
+(vnitřní Praha podle čísla popisného, vnější obvody podle obce); odkazy v nich vedou přímo na svazky.
+- Pražské matriky 1890–1940 většinou **nemají rejstříky** a farností je mnoho – bez přesného data a farnosti
+  (z úmrtí/sňatku nebo od rodiny) je hledání velmi drahé.
 
 ## SOA Litoměřice (severní Čechy) – `tools/soal_zoomify.py`
 Stejný software jako ZA Opava (Digitální badatelna; Opava ale nástroje už nepouští) – platí i tamní pasti (`vysledekDetail` přímou adresou ukáže jiný
@@ -199,19 +212,18 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   `fetch`). Ohlásí ji stránka „!“ s **HTTP 200** (asi 116 bajtů) – kontroluj obsah, ne stavový kód. Dotazy jen postupně
   (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka; po blokaci 35 minut nic (další pokusy ji prodlužují).
   Pomocníkům to napiš do zadání.
-## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – jen v prohlížeči, nejlépe Playwright
+## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – jen v prohlížeči, Claude in Chrome
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
-  má ochranu proti robotům (Radware) a od listopadu 2026 nepouští nástroje ani k obrázkům (robots.txt „Disallow: /“,
-  images.archives.cz vrací skriptům 403/404) – `soal_zoomify.py`, curl ani WebFetch, brzda je zastaví. Archiv na úvodní
-  stránce upozorňuje, že nestandardní práce s aplikací vede k blokaci: pracuj jako člověk, jeden snímek po druhém.
-  **Doporučený prohlížeč je Playwright** – jen v něm jde snímek uložit celý (níže). Jde i Claude in Chrome (uživatel ho
-  připojí příkazem `/chrome`), tam ale jen snímky obrazovky přiblíženého zápisu. Bez prohlížeče ať knihu najde a snímky
-  uloží uživatel.
-  **Vestavěný prohlížeč aplikace Claude** (desktop, Code) archiv odmítne hned („Anomaly detected“) – nepoužívej ho.
-  Úvodní ověření projde samo, ale jen v kartě v popředí. Okno nastav aspoň na 1400×900, v užším se nezobrazí
-  filtry ani snímek. **CAPTCHA přijde typicky už u prvního hledání**, pak zhruba po hodině a v nové relaci
-  prohlížeče vždy znovu: **vyřeší ji uživatel** v okně prohlížeče, ty nikdy.
+  má ochranu proti robotům (Radware) a nepouští nástroje ani k obrázkům (robots.txt „Disallow: /“, images.archives.cz
+  vrací skriptům 403/404) – `soal_zoomify.py`, curl ani WebFetch, brzda je zastaví. Archiv na úvodní stránce
+  upozorňuje, že nestandardní práce s aplikací vede k blokaci: pracuj jako člověk, jeden snímek po druhém.
+  **Prohlížeč: Claude in Chrome** (uživatel ho připojí příkazem `/chrome`) – v uživatelově Chromu ochrana projde sama,
+  často i bez CAPTCHY (ověřeno 24. 11. 2026). **Playwright ne:** od listopadu 2026 ho Radware pozná a po CAPTCHA se
+  ověření („Verifying your browser…“) točí donekonečna. **Vestavěný prohlížeč aplikace Claude** archiv odmítne hned
+  („Anomaly detected“). Bez Claude in Chrome ať knihu najde a snímky pošle uživatel.
+  Ověření projde jen v kartě v popředí. Okno aspoň 1400×900, v užším se nezobrazí filtry ani snímek. **CAPTCHU**
+  (když přijde, pak zhruba po hodině) **vyřeší uživatel** v okně prohlížeče, ty nikdy.
 - Hledej obec a vyfiltruj Matriky (ikona, potom znovu lupa). Hledání vrací i civilní matriky (u obce stovky svazků) –
   filtr „Datum od – do“ (podle začátku svazku, např. 1680–1873) nechá jen církevní. Knihy bývají řazené po obcích
   a na konci mají rejstřík. Vedle farních knih bývají i **druhopisy** („T“ v signatuře, viz `matriky.md`).
@@ -229,56 +241,38 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   `select.getScanSelect option` (tvar „N%20uuid“). Snímek pak otevřeš kdykoli bez hledání (jediná přímá adresa,
   která na relaci nezávisí):
   `/da/showZoomifySeparate?imageNumberSeparate=N&myEntityUuid=<entita>&myImageUuid=<uuid>`.
-- **Snímek celý (Playwright)** – funkci ke stažení badatelna nemá a snímek posílá jen po dlaždicích 256 px; obrázky
-  nemají CORS, takže je stránka sama do souboru nesloží. Playwright ale umí zachytit dlaždice, které si prohlížeč snímků
-  při přiblížení sám načte – archiv nedostane žádný dotaz navíc a snímek pak čteš z disku (ověřeno 13. 11. 2026):
-  1. Už ho máš? `python3 -I tools/cache.py najdi "<adresa showZoomifySeparate…>" --nahled pracovni/nahled.jpg`
-     (vypíše cestu a rozměr) – pak snímek neotvírej.
-  2. Otevři snímek **jeho adresou** `showZoomifySeparate…` (ne šipkami v prohlížeči – adresa určuje klíč v mezipaměti),
-     počkej na načtení a spusť `browser_run_code_unsafe`; prohlížeč snímků přiblíží a projde stránku po pohledech
-     (2,5 s na pohled, jako když ji člověk posouvá):
+- **Čtení: snímek obrazovky přiblíženého zápisu** (výchozí, funguje na všech systémech). Na stránce
+  `showZoomifySeparate` přibliž zápis `Z.Viewport.zoomAndPanToView(x, y, 0.5)` (souřadnice originálu, rozměr
+  v `Z.imageW`/`Z.imageH`; 1 = plné rozlišení na těžko čitelné místo), počkej 2–3 s, myš odsuň mimo zápis
+  (`hover` na okraj okna – jinak je kurzor v obraze) a ulož oblast zápisu: `computer` → `zoom` s `region` a
+  `save_to_disk` (ostřejší než celý snímek obrazovky). Soubor z výsledku zkopíruj do `pracovni/` a dál `vyrez.py`
+  jako u jiných archivů – přiblížený zápis je zároveň výřez pro web. Dlaždice nestahuj ani neskládej vlastním
+  `fetch`/`new Image()` – to jsou dotazy navíc, které prohlížeč sám nedělá.
+- **Celý snímek (volitelně, z mezipaměti prohlížeče)** – na rejstřík nebo když se ke stránce budeš vracet. Funkční
+  stažení badatelna nemá (tlačítko „Uložit obrázek“ u detailu svazku nic neudělá – chyba skriptu archivu
+  `sendInput is not defined`; obraz z plátna prohlížeče vzít nejde, dlaždice nemají CORS). Dlaždice, které si
+  prohlížeč snímků načte, ale Chrome drží 10 hodin na disku a `cache.py` z nich snímek složí bez jediného dotazu
+  na archiv (ověřeno 24. 11. 2026 na macOS; na Windows má Chrome jiný formát mezipaměti, zatím neověřeno):
+  1. Už ho máš? `python3 -I tools/cache.py najdi "<adresa showZoomifySeparate…>" --nahled pracovni/nahled.jpg`.
+  2. Otevři snímek **jeho adresou** `showZoomifySeparate…` a projdi stránku po pohledech (`javascript_tool`;
+     2,5 s na pohled jako člověk, při polovičním rozlišení 4–6 pohledů):
      ```js
-     async (page) => {
-       const z = 0.5;   // 0.5 = poloviční rozlišení, na čtení stačí; 1 = plné (4× víc dlaždic) jen na těžko čitelné místo
-       const img = await page.evaluate(() => Z.imagePath);
-       const dl = await page.evaluate(() => window.__dlazdice || {});   // při opakování doplní jen chybějící
-       const h = async (r) => { const m = r.url().match(/TileGroup\d+\/(\d+-\d+-\d+)\.jpg/);
-         if (m && r.url().startsWith(img) && r.status() === 200) try { dl[m[1]] = (await r.body()).toString('base64'); } catch {} };
-       page.on('response', h);
-       const [W, H, vw, vh] = await page.evaluate(() => [Z.imageW, Z.imageH, Z.viewerW, Z.viewerH]);
-       const sx = vw / z, sy = vh / z, nx = Math.ceil(W / sx), ny = Math.ceil(H / sy);
-       const stred = (n, i, s, D) => n === 1 ? D / 2 : Math.min(D - s / 2, s / 2 + i * s);
-       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-         await page.evaluate(([x, y, zz]) => Z.Viewport.zoomAndPanToView(x, y, zz), [stred(nx, i, sx, W), stred(ny, j, sy, H), z]);
-         await page.waitForTimeout(2500);
-       }
-       page.off('response', h);
-       await page.evaluate((t) => { window.__dlazdice = t; }, dl);
-       return `${Object.keys(dl).length} dlaždic, ${nx * ny} pohledů`;
+     await new Promise(r => setTimeout(r, 3000));
+     const z = 0.5;   // 1 = plné rozlišení (4× víc dlaždic), jen na těžko čitelné místo
+     const [W, H, vw, vh] = [Z.imageW, Z.imageH, Z.viewerW, Z.viewerH];
+     const sx = vw / z, sy = vh / z, nx = Math.ceil(W / sx), ny = Math.ceil(H / sy);
+     const stred = (n, i, s, D) => n === 1 ? D / 2 : Math.min(D - s / 2, s / 2 + i * s);
+     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+       Z.Viewport.zoomAndPanToView(stred(nx, i, sx, W), stred(ny, j, sy, H), z);
+       await new Promise(r => setTimeout(r, 2500));
      }
+     [Z.imagePath, W + 'x' + H, nx * ny + ' pohledů']
      ```
-  3. Slož snímek (`browser_evaluate` s `filename: "pracovni/zaopava.json"`):
-     ```js
-     async () => {
-       const t = window.__dlazdice || {}, T = 256, dims = [];
-       for (let w = Z.imageW, h = Z.imageH; ; w = Math.ceil(w / 2), h = Math.ceil(h / 2)) { dims.unshift([w, h]); if (w <= T && h <= T) break; }
-       const L = Math.max(...Object.keys(t).map(k => +k.split('-')[0])), [W, H] = dims[L];
-       const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-       let chybi = 0;
-       for (let y = 0; y < Math.ceil(H / T); y++) for (let x = 0; x < Math.ceil(W / T); x++) {
-         const b = t[`${L}-${x}-${y}`]; if (!b) { chybi++; continue; }
-         const i = new Image(); i.src = 'data:image/jpeg;base64,' + b; await i.decode(); g.drawImage(i, x * T, y * T);
-       }
-       return JSON.stringify({w: W, h: H, chybi, adresa: location.href, data: chybi ? '' : c.toDataURL('image/jpeg', 0.92)});
-     }
-     ```
-     a `python3 -I tools/cache.py uloz pracovni/zaopava.json pracovni/x.jpg --nahled pracovni/nahled.jpg` (uloží snímek
-     do mezipaměti a do `pracovni/x.jpg`, udělá náhled). Chybí-li dlaždice, zopakuj krok 2 (doplní jen ty chybějící).
-     Dál `vyrez.py` jako u jiných archivů. Plné rozlišení (`z = 1`) přepíše v mezipaměti poloviční, opačně ne.
+  3. `python3 -I tools/cache.py z-chromu "<adresa showZoomifySeparate…>" <Z.imagePath> <W>x<H> pracovni/x.jpg
+     --nahled pracovni/nahled.jpg` (s `--plne` pro plné rozlišení, když jsi v kroku 2 procházel se `z = 1`). Uloží
+     snímek do mezipaměti a do `pracovni/x.jpg`; dál `vyrez.py`. Hlásí-li chybějící dlaždice, zopakuj krok 2; když
+     nepřibudou (jiný prohlížeč, Windows), zůstaň u snímků obrazovky.
   Jen snímky, které čteš, žádné dávky celých svazků ani pomocníci na tomto archivu.
-- **Claude in Chrome** odpovědi zachytit neumí: přibliž zápis (`Z.Viewport.zoomAndPanToView(x, y, 0.6)` na stránce
-  `showZoomifySeparate`, souřadnice originálu, rozměr v `Z.imageW`/`Z.imageH`) a ulož snímek obrazovky; dlaždice
-  nestahuj ani neskládej vlastním `fetch`/`new Image()` – to jsou dotazy navíc, které prohlížeč sám nedělá.
 - **POZOR na blokování**: rychlé dotazy → CAPTCHA, „operace vyhodnoceny jako
   nestandardní“ nebo „Access blocked“ na 30 minut. Pauza aspoň 5 s mezi stránkami, stránky výsledků neprocházej
   za sebou a nepouštěj smyčky na pozadí ani dávky celých svazků. **Žádný `fetch`** (na `showZoomify`, permalinky
@@ -287,9 +281,10 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   - **Denní limit:** oficiální archiv neuvádí; ze zkušenosti asi **50 snímků** (a 200–300 stránek aplikace) za den.
     Pak „Server Exception“ v okně snímku, „Přístup zablokován!“ i na úvodní stránce. Po prvním odmítnutí ten den
     skonči (`python3 -I tools/slusne.py zastav digi.archives.cz "denní limit"`) – druhé odmítnutí blokaci prodlouží.
+    Hlášení uživatelů bývají i nižší (20–40 snímků za 2–3 dny) – počítej s rezervou.
   - **„Server Exception“ hned po CAPTCHA** (přesměrování přes `/da/human/verify`) limit není: otevři znovu
-    `https://digi.archives.cz/da/` nebo adresu snímku; když to nepomůže, jednou zavři a znovu otevři prohlížeč
-    (Playwright `browser_close`) – ověření pak obvykle projde samo. Teprve potom ber chybu jako limit.
+    `https://digi.archives.cz/da/` nebo adresu snímku; když to nepomůže, jednou zavři kartu a otevři novou – ověření
+    pak obvykle projde samo. Teprve potom ber chybu jako limit.
 - **Totéž na FamilySearch:** matriky ZA Opava (sbírka „Czech Republic, Church Books, 1552–1981“, signatury
   `217000010-…`) a pozemkové a gruntovní knihy Opavy a Olomouce („Land Records, 1450–1889“) jsou na FamilySearch
   v plném rozlišení a bez CAPTCHY – dobrá náhrada, když Opava blokuje nebo došel denní limit (postup v oddílu

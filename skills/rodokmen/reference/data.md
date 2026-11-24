@@ -201,8 +201,8 @@ GEDCOM do existujícího stromu nesloučí a obrázky nenačte.
    restart FTB → spojit kotvy podle přehledu: přehled uvádí **dvojice ID** (importovaná osoba dostane ve FTB ID podle
    pořadí v souboru 1, 2, 3…, originál má ID ze stromu 500…). Nástroje → Kontrola duplicit se sníženou citlivostí
    (~40 %) najde většinu kotev (ověřeno 8 z 10) – spojovat jen dvojice z přehledu, ostatní nálezy ne (u nových osob
-   s upozorněním „nespojujte“); ostatní ručně:
-   importovaná kotva má nové rodiče/děti z přehledu, originál ne) → Sync.
+   s upozorněním „nespojujte“). Kotvy, které kontrola nenajde, spoj ručně (importovanou kotvu poznáš podle nových
+   rodičů nebo dětí z přehledu, originál je nemá) → Sync.
    FTB při importu nic sám nespojí (ověřeno: ani podle `_UID`), spojení kotev je vždy ruční.
 5. Po Sync znovu Export GEDCOM z FTB do `dokumenty/` (`strom_<datum>.ged`), znovu `--ged-id --zapsat` (nové osoby dostanou `ged`)
    a do `data/STAV.md` zapsat, který strom platí. Bez toho by se příště tvářily jako nové.

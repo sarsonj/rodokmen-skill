@@ -76,6 +76,9 @@ PRIPADY = [
     ("Bash", 'python3 -c "import json, urllib.request; print(1)"', Z),
     ("Bash", "python3 -c 'import os; import requests'", Z),
     ("Bash", 'python3 -c "import json; print(42)"', P),
+    # 0.10.3: python3.X (python3.11, python3.12) – hlídač ho dřív neviděl
+    ("Bash", 'python3.11 -c "import urllib.request; print(1)"', Z),
+    ("Bash", 'python3.12 -c "import json; print(42)"', P),
     ("Bash", 'echo "import requests" >> pracovni/poznamka.txt', P),
     ("Bash", "python3 - <<'EOF'\nimport os, sys, requests\nEOF", Z),
     ("Bash", "python3 - <<'EOF'\nimport json as j, http.client\nEOF", Z),
