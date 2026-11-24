@@ -29,7 +29,10 @@ P = {
 - `n` jméno (ženy rodným příjmením), `y` roky pro přehledy (`"* 1895"`, `"1890–1944"`, `"asi 1720–1785"`, `"1680 – před 1740"`,
   `"† 1940"` když známe jen úmrtí; nic nevíme → `""`).
 - `f` fakta: začínají `*` (narození), `×` (sňatek), `†` (úmrtí) nebo jsou volný text (řemeslo, bydliště).
-  Názvy obcí ve faktech používá mapa (`mista.json` → `re`).
+  Názvy obcí ve faktech používá mapa (`mista.json` → `re`). Piš je jednotně, ať z nich jde strojově skládat životní
+  osa, domy a povolání: **dům vždy „Obec čp. N“** („1930 rolník, majitel domu Holice čp. 57“; samotné „čp. N“ se
+  vztáhne k poslední zmíněné obci), **rok nebo datum na začátek** („1869 hospodář v čp. 16“) a **povolání vlastní,
+  v 1. pádu** („sedlák“, „služebná“ – ne „dcera sedláka“).
   Sňatek jmenuje partnera (`× 1919 Holice Josefa Pokorná`); `kontrola.py` hlásí, když žádný sňatek nejmenuje osobu
   na sousedním čísle (manžel 2k, manželka 2k+1, i přes `SAME`). U `doc` hlásí `čp.`, které není v žádném citovaném
   zápisu (`shrnuti`, přepis) jako číslo domu (`čp. 23`, `No 23`, `N. 23`, `[Dům] 23`, `z Ostřetína 23`; datum, věk ani

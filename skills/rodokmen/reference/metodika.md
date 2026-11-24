@@ -42,7 +42,12 @@ z nich brát snímky: `portaly.md`, formát dat: `data.md`.
   Jeden znak nebo jen jméno a doba = `prob` s `note` proč; rozpor do `ISSUES`.
 - **Bratranci stejného jména v jedné vsi:** dům sám nestačí (bydleli vedle sebe i v jednom domě) – žádej rodiče **a** manželku.
 - **Vdova znovu vdaná** vystupuje pod dvěma příjmeními po mužích: spojuj podle **rodného příjmení a jména otce**
-  v obou oddacích zápisech.
+  v obou oddacích zápisech. Když se žena v dalších zápisech jmenuje jinak než v křtu, bývá to jméno prvního
+  manžela; oddací zápis s „1mo voto …“ / „vdova po …“ obě jména spojí.
+- **Kandidát na křest podle věku:** než ho zapíšeš, projdi knihu zemřelých za léta po jeho narození. Ve vsi s opakovanými
+  jmény kandidát často zemřel jako dítě (slovenské knihy zemřelých kolem 1810–1820 uvádějí u dětí jméno otce
+  v genitivu: *Georgius Andreae* = Jiří, syn Ondřeje). Úmrtí ověř na snímku (věk), ne jen v rejstříku. Opakované jméno
+  u mladšího sourozence je silná nepřímá známka, že starší zemřel.
 - **Rozpor mezi prameny:** originál má přednost před opisem; váž, kdo údaj oznámil a jak dlouho po události
   (datum narození v úmrtním zápisu, které hlásil soused, je slabší než křestní zápis). Rozpor zapiš do `ISSUES`.
 - **Nevlastní rodiny:** výměnkář může být nevlastní rodič; vztah uvádí gruntovní kniha.
@@ -76,6 +81,12 @@ z nich brát snímky: `portaly.md`, formát dat: `data.md`.
 - **Jméno poangličtěné v USA** – v českých knihách „neexistuje“; původní tvar dají lodní seznamy a naturalizace.
 - **Dítě vojáka „chybí“** – mohlo být zapsané ve vojenské matrice pluku, ne ve farní.
 - **Dvojí započtení:** druhopis a originál nejsou dva nezávislé prameny – jeden je opis druhého.
+- **Stejná stopa hledaná podruhé:** v dlouhém výzkumu se snadno znovu projde rejstřík, který už prošlý je. Před každou
+  novou stopou prohledej deník (`grep` na jméno osoby i klíč svazku).
+- **Kurent, velké W × B:** v některých rukou se skoro neliší (příjmení na W čtené jako na B). Příjmení, které „neexistuje“,
+  zkus se záměnou a ověř ve starším nebo úhledněji psaném zápisu téže rodiny.
+- **Tabulkové knihy:** rejstřík vede dítě pod prvním jménem (Joannes Josephus pod J), v dospělosti užívá druhé.
+- **Rodinná data:** rodinné rodokmeny mívají správně den a špatně měsíc (III × VIII, IV × IX) – rozhodne matrika.
 
 ## Mrtvé body – co zkusit, v tomto pořadí
 - **Před 1784 (staré matriky chybí nebo nestačí):** 1. starší společné knihy N/O/Z přečíst celé (nejen rejstřík)
@@ -99,6 +110,9 @@ z nich brát snímky: `portaly.md`, formát dat: `data.md`.
   (Kriegsarchiv uvádí totéž), starší ročníky ve Vídni (Kriegsarchiv, asi 1820–1864 i na mikrofilmech FamilySearch),
   **ročníky 1887–1898 z velké části skartované** – tam hledej v seznamech ztrát a matrikách.
 - **Nalezenec:** záznamy nalezince → fara kojné. Spojuje číslo nalezince.
+- **Sourozenci a dům po konci veřejných matrik (po ~1900–1910):** sčítání lidu 1900, 1910, 1921 (Morava a Slezsko
+  na FamilySearch, `portaly.md`; Slovensko 1930/1940 na Slovakianě) ukáže celé domácnosti s čp., povoláním
+  a dětmi, i když křty online nejsou.
 - **Zápis 20. století ještě neveřejný:** matriční úřad (ČR: zápisy starší lhůty kdokoli, mladší rodina; SK: jen
   rodina), Standesamt (DE, AT),
   kartotéka HOK (sudetští Němci), policejní přihlášky. Do `archivni_dotazy.md`.

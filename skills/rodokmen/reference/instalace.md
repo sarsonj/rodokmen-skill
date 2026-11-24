@@ -44,6 +44,22 @@ Litoměřice). Když předci žili tam a nemáš nástroje `mcp__…playwright�
 jde jen v Claude in Chrome** (Playwright tamní ochrana proti robotům od 11/2026 nepustí).
 Bez prohlížeče ať uživatel posílá snímky obrazovky.
 
+## Práce v cloudu (Claude Code na webu, vlákna Projektů)
+Vyzkoušeno 11/2026 na projektu s repozitářem na GitHubu. Cloud je Linux s čerstvým klonem repozitáře:
+- **Skill tam není**, pokud není v repozitáři – zkopíruj ho do `.claude/skills/rodokmen/`. Vlákna Projektů skilly
+  z repozitáře nenačítají: v `CLAUDE.md` projektu napiš, ať vlákno přečte `.claude/skills/rodokmen/SKILL.md` samo.
+  `CLAUDE.md` projektu má mít dva oddíly, „tento počítač“ a „v cloudu“ (`python3`, jiné cesty).
+- **Hook hlídače s windowsovou cestou k Pythonu** na Linuxu tiše selže – hlídač tam neběží, brzda ano.
+- **Brzda i mezipaměť snímků** mají stav v `~/.cache/`, každé cloudové vlákno začíná od nuly a nezná archivy zastavené
+  jinde. Z archivů proto stahuj v jednu chvíli jen v jednom vlákně a zastavený archiv zapiš i do deníku.
+- Síť cloudového prostředí bývá omezená seznamem webů – archivy (ARON aj.) povol v nastavení prostředí.
+  Weby s přihlášením (FamilySearch) a archivy jen v prohlížeči jdou jen přes prohlížeč na počítači uživatele
+  propojeném s vláknem (vestavěný prohlížeč aplikace Claude, `portaly.md`). Snímky z něj se do repozitáře nedostanou.
+- **Víc vláken na jednom repozitáři:** nejdřív commit vlastních změn, pak `git pull --rebase` (s `--autostash` hrozí,
+  že značky konfliktu `<<<<<<<` zůstanou v `data/*.json` a odejdou dalším commitem). `git add` s cestami, ne `-A`.
+- **Úspora:** dlouhé vlákno platí hlavně za opakované čtení vlastní historie. Vyplatí se krátké bloky (3–5 stop),
+  po každé stopě stav do `STAV.md` a deníku, commit a push, pak nové vlákno, které naváže ze souborů.
+
 ## Založení projektu
 1. Zeptej se, kde má projekt být (navrhni `~/Rodokmen`), a založ ho: `python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`.
    Chce-li uživatel nejdřív vidět, jak web vypadá, založ vedle ukázku: `… novy_projekt.py ~/Rodokmen-ukazka --ukazka`,

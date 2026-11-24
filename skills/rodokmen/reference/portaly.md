@@ -151,6 +151,10 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   3. Jiný náhled nebo výřez z uloženého snímku bez sítě: `python3 -I tools/ebadatelna.py snimek <matrikaId> <snímek>
      pracovni/x.jpg [nahled] [x0,y0,x1,y1]` (archiválie `a-snimek`), dál `vyrez.py` jako u jiných archivů.
   Bez Playwrightu (Claude in Chrome neumí výsledek uložit do souboru) ať snímek uloží uživatel (snímek obrazovky).
+- **Rejstříky hledej i vedle knihy:** samostatné knihy rejstříků leží pod sousedními `matrikaId` a v seznamu knih
+  snadno zaniknou (popis „kniha obsahuje jen rejstřík“, pole „Narození / index“) – před listováním knihy bez rejstříku
+  projdi popisy `matrikaId` ±5. Rejstřík bývá rozdělený na části (písmeno B 1784–1819, pak znovu B 1820–1880); projdi
+  všechny, než napíšeš „není“. Rejstříky uvádějí i roky, pro které kniha online ještě není.
 - Starší snímky bývají z mikrofilmu nebo silně vybledlé – výřez dělej s `--kontrast` (`vyrez.py`, `overit.py`;
   viz `matriky.md`, Čtení písma) a poznamenej to v přepisu.
 - Svazek do `svazky.json` přes `zapis.py` (Ostatní portály, krok 4, klíč `ebad_<matrikaId>`, archiválie `ebad_a_<id>`).
@@ -424,6 +428,34 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   (nebo ho se souhlasem stáhneš ty) – soubor přijde do `~/Downloads` jako `<id snímku>.jpg`, chvíli může mít
   příponu `.tmp`. Přesuň **jen soubor s očekávaným názvem**, nikdy „nejnovější soubor ve Stažených“ (je tam i cizí).
   Žádné vlastní přijímače na localhostu ani jiné obcházení ochran prohlížeče.
+- **Vestavěný prohlížeč aplikace Claude** (desktop, i z cloudového vlákna propojeného s počítačem): FamilySearch
+  v něm funguje, když se uživatel v panelu jednou přihlásí (přihlášení vydrží dny). Vyzkoušeno 11/2026:
+  - **Vypršené přihlášení** se nehlásí chybou: `$dist` vrací 403, `personas` s filtrem sbírky 401 a bez filtru 200,
+    ale jen sčítání USA 1950. Před větším hledáním ověř, že na stránce není „SIGN IN“, a případně požádej uživatele.
+  - `personas` jde volat obyčejným `fetch` ze stránky FS (cookie stačí). Hlavičku s tokenem z cookie si nevyráběj –
+    bezpečnostní kontrola nástrojů to správně zablokuje; výsledky pak čti z tabulky stránky hledání.
+  - Snímek: když `fetch` na `$dist` vrátí 401 (stránka je přitom přihlášená), funguje `new Image()` se `src` na `$dist`,
+    `await img.decode()` a `drawImage` do plátna přes celé okno; plátno je „tainted“, pro snímek obrazovky to nevadí.
+    Uložit snímek do souboru tudy nejde – zápis pak ulož bez výřezu a výřez doplň později (Playwright, Download).
+  - **Jeden snímek obrazovky na stránku matriky:** do plátna slož vedle sebe jen sloupce datum + jméno + rodiče
+    z horní a dolní půlky stránky. Snímek obrazovky skrytého panelu bývá napoprvé starý nebo nedokreslený – po změně
+    obsahu počkej 1–2 s a udělej dva (první zahoď). Při velkém plátně (přes 4000 px) to brzdí, zmenši ho na ~1600 px.
+  - Přehled knihy bez prohlížeče FS: dlaždice `…/deepzoomcloud/dz/v1/<ark>/image_files/<úroveň>/<x>_<y>.jpg`
+    (256 px; úroveň 8 ≈ náhled, 10 ≈ celá dvojstrana, 11–12 ke čtení) vložené jako `<img>`. Hlavičky mnoha snímků
+    vedle sebe rychle najdou rok nebo čp. Film předtím jednou otevři v prohlížeči FS. Tempo jako výše (429).
+- **Index:** příjmení bývají silně zkomolená (Novák/Nowak/Nowacsek, Kolář → Kolá). Sourozence hledej přes
+  rodiče (`q.motherSurname`, `q.fatherGivenName`) bez příjmení dítěte, nebo se zástupným znakem
+  (`q.givenName=Franciscus&q.surname=Nov*`) s rozsahem let a bez místa. Rodiče ve výsledku hned ukážou, zda jde o naši rodinu.
+- **Katalog přeceňuje i plete:** rozsah let v názvu nemusí na filmu být (sňatky „1742–1912“ na filmu až od 1826),
+  na konci filmu bývají jiné fary a stejnojmenné obce se pletou („<Obec>, census“ byla stejnojmenná obec v jiném okrese). Před hledáním
+  projdi film po desítkách snímků (karty „ITEM“) a zkontroluj úvodní list (okres). Knihy po ~1910 hlásí „Snímek
+  s omezeným přístupem“ – online nejsou. Slovenské filmy mívají vzadu knihu biřmovaných s věkem a rodiči.
+- **Sčítání lidu Moravy a Slezska** (ZA Opava; katalog „<Obec>, census, 1857–1946“, sbírka Czech Republic Census)
+  jsou na FamilySearch po obcích 1857, 1869, 1880, 1890, 1900, 1910, 1921 – neindexované, ale volně ke čtení.
+  Po konci veřejných matrik (asi 1910) jsou nejlepší cestou k **sourozencům, číslu domu a povolání**: kdo v domě
+  bydlel, kdo byl na výměnku, u koho žily děti, když rodiče odešli. Na dům připadají 2–4 snímky; číslo domu je
+  na obálce domu (1910, i se jménem majitele) nebo vpravo nahoře na seznamu osob. Nejdřív si udělej mapu
+  „snímek → čp.“ z výřezů záhlaví, pak čti jen domy, které potřebuješ. Data narození se od matrik liší o dny.
 
 ## Hroby a hřbitovy
 - Kde jsou předci pohřbeni, víš z rozhovoru s rodinou (Fáze 1). Fotky náhrobků (jména, data, rodná příjmení) jsou
