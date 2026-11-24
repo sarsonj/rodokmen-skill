@@ -58,6 +58,8 @@ P = {
 ## `svazky.json`
 `{"1a0b2337": {"archiv": "SOA Zámrsk – Sbírka matrik…", "portal": "ARON", "svazek": "N Holice 1880–1900, sign. …",
 "popis": "obce", "url": "odkaz na svazek"}}` – u ARON zapisuje `aron_img.py <apu> svazek`.
+Nepovinně `"roky": {"N": "1880–1900"}` – roky knihy z katalogu archivu (N, O, Z). `sdileni.py` je pošle do Mapy
+matrik, aby kniha byla k nalezení pro celý rozsah; bez nich vezme rozsah z názvu svazku, má-li jeden druh a jeden rozsah.
 
 ## `prepisy.json`
 `{"<klic>": {"orig": "[Datum] 14. února 1890\n[Dům] 112\n[Otec] …", "cs": "Český překlad celou větou…"}}`
