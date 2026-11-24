@@ -119,3 +119,52 @@ v `web/src/data/site.json` (`people`). Při přejmenování osoby se slug změn�
   nejcennější rodinné doklady.
 - Údaje ze stromů (i Smart Match) jsou jen vodítko k zápisu – datum a číslo domu tě dovedou na stránku, ale **jména vždy
   ověř v zápisu** (skutečná chyba: „sňatek“ ze Smart Match byl jiný pár ze stejného domu).
+
+## Export do GEDCOM
+`python3 -I tools/ged_export.py` → `pracovni/rodokmen.zip`: `rodokmen.ged` (GEDCOM 5.5.1, UTF-8) a složka `media/`
+s výřezy zápisů, rodinnými fotkami a portréty (dokument s „portrét“ v názvu a jednou osobou je její hlavní fotka). ZIP se **rozbalí** (`rodokmen.ged` a `media/` vedle sebe) a importuje
+se `.ged` – obrázky si program načte podle relativních cest (Gramps ano, **Family Tree Builder ne**). **Pro import
+rovnou použij `--slozka`**: nástroj zapíše rozbalenou složku `pracovni/rodokmen/` (s `--koren 3`
+`pracovni/rodokmen_koren3/`), ZIP nevznikne a cesty k obrázkům jsou **absolutní** – Family Tree Builder je načte.
+Složku před importem nepřesouvej (po přesunu export zopakuj). Výřez zápisu je v citaci u události a se `--slozka`
+i přímo u osoby (FTB obrázky z citací zahodí – formulář citace pole pro obrázek nemá). Se `--slozka` je navíc
+zdrojem jeden zápis (titul „zápis, svazek, snímek“, archiv svazku) s výřezem – FTB ho ukáže ve „Zdrojích fotografií“;
+bez `--slozka` je zdrojem svazek. Soubor ve složce je UTF-8 s BOM a CRLF – bez BOM FTB špatně přečte cestu
+s diakritikou a obrázky nenačte. Obrázky ve složce jsou v plném rozlišení ze `zdroje/` (jinak `vyrezy/`),
+`--plne-rozliseni` je u `--slozka` zbytečné. Portrét je ve složce i osobní fotkou FTB (okénko osoby ve stromu):
+dvojice `OBJE` s `_PRIM_CUTOUT`/`_CUTOUT`/`_PARENTRIN`, čísla fotek `MH:P500001…` a `RIN MH:I<číslo>` u osob; `_PHOTO_RIN` a `_FILESIZE` má každý obrázek (jinak je
+FTB nenačte).
+- **MyHeritage s obrázky:** jen přes desktopový **Family Tree Builder** (zdarma): export s `--slozka`, File → Import GEDCOM →
+  `rodokmen.ged` z té složky (z ručně rozbaleného ZIPu FTB obrázky nenačte – „Failed to Load Image“) → nový projekt (nebo „Merge into project“), **FTB restartovat** (obrázky jsou vidět až po restartu), zkontrolovat fotky u osob, pak **Sync** – strom i obrázky
+  se nahrají na web. Web MyHeritage přijímá jen `.ged` (ZIP odmítne) a obrázky z GEDCOM nenačte nikdy (soubor
+  obsahuje jen odkazy na ně); nahrání jen `.ged` na web = strom bez obrázků, fotky pak jen ručně.
+  Pro MyHeritage exportuj s **`--cp-v-miste`**: číslo popisné jde i do místa události („Holice čp. 112, okres …“),
+  protože adresu (`ADDR`) u narození, sňatku a úmrtí MyHeritage nezobrazí (jeho vlastní stromy mají číslo domu
+  v místě, např. „Obora č.21“). Každý dům je pak pro MyHeritage samostatné místo (rozpoznání místa a mapa ho
+  mohou vynechat) – proto to není výchozí; bez volby je čp. jen v adrese (Gramps ji zobrazí).
+- **Gramps:** importovat rozbalený `.ged`.
+Volby: `--bez-obrazku` (jen `pracovni/rodokmen.ged`), `--plne-rozliseni` (i výřezy ze `zdroje/`), `--vystup <soubor>`,
+`--koren <číslo>` (jen tato osoba a její předci, např. `--koren 3` = maminčina strana jako samostatný strom; čísla osob
+zůstanou, aliasy `SAME` z jiné větve se přiberou i s předky; výchozí soubor `pracovni/rodokmen_koren3.zip`).
+Existující soubor nástroj nepřepíše (jen s `--prepsat`), do `web/` nezapíše a hlídá příponu (`.zip`, s `--bez-obrazku` `.ged`).
+U `--slozka` nahradí `--prepsat` jen `rodokmen.ged` a `media/`; složku s jinými soubory nepřepíše nikdy.
+- Rodiny se odvozují z čísel (otec 2k, matka 2k+1), aliasy `SAME` jsou jedna osoba, zástupní rodiče („otec neuveden“)
+  se nevyváží. Fakta se převádějí na události: `*`, `×` (sňatek v rodině), `†`; datum do tvaru GEDCOM (`asi` → ABT,
+  `před` → BEF, `po` → AFT, `mezi … a …` → BET), obec podle `mista.json` (název z OpenStreetMap a souřadnice),
+  `čp.` do adresy, závorky do poznámky. Ostatní fakta jsou povolání nebo poznámka. `SIDE` → poznámka u osoby,
+  stav `st` → kvalita citací a poznámka „Původ údajů“. `LINES`, `ISSUES` a `HYPOTEZY` se nevyvážejí.
+- Prameny: svazek = `SOUR` (archiv jako `REPO`), zápis = citace se snímkem, shrnutím, přepisem a výřezem. Zápis se cituje
+  u události jen při shodě druhu a roku – křest syna v `r` otce není otcovo narození, ten se cituje u osoby.
+- **Soukromí:** žijící (poznámka „Žijící…“, bez úmrtí a narození v posledních 100 letech) a zemřelí před méně než 30 lety
+  zůstanou jen jako „Žijící osoba“ (vazby bez údajů, fotek a zápisů). U lidí z posledních ~100 let se vynechá poznámka
+  a příčina úmrtí, boční příbuzní z té doby a dokumenty s chráněnou osobou také. Zápis, ve kterém je i chráněná osoba,
+  jde bez obrázku a přepisu – souhrn ho vypíše ke kontrole. `udaje_od_rodiny.md` se nevyváží.
+- **Před exportem se vždy zeptej, jestli má export obsahovat i žijící osoby** (a kam soubor půjde). Vysvětli rozdíl:
+  bez nich jsou žijící a nedávno zemřelí jen „Žijící osoba“ (údaje si uživatel doplní ručně); s nimi (`--zijici`) jsou
+  v souboru jejich jména, data, místa, poznámky i fotky. Nahráním do cizí služby (MyHeritage, Ancestry…) je dostane
+  i ta služba – u vlastního stromu je MyHeritage ostatním skrývá, ale data u ní budou. Výchozí odpověď je „ne“;
+  `--zijici` použij jen na výslovné „ano“ a připomeň souhlas dotčených (`soukromi.md`). Na web takový soubor nepatří.
+  Když projekt leží ve složce synchronizované do cloudu (Google Disk, OneDrive, Dropbox), řekni, že soubor s žijícími
+  dostane i ten cloud, a nabídni ho po nahrání smazat.
+- Projdi s uživatelem souhrn na konci (chránění, vynechané, chybějící obrázky, data, která nešla převést) dřív, než
+  soubor nahraje. Nahrání GEDCOM na web MyHeritage vytvoří **nový samostatný strom** (se stávajícím se nesloučí).
