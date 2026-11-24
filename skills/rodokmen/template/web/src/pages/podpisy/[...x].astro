@@ -1,0 +1,57 @@
+---
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import { people, lines, records, podpisy as items, maPodpisy, href } from '../../lib/data.js';
+
+// Stránka je volitelná: bez podpisů (data/podpisy.json, viz reference/web.md) se nevygeneruje vůbec.
+export function getStaticPaths() {
+  return maPodpisy ? [{ params: { x: undefined } }] : [];
+}
+
+// Rod, do kterého podpis patří: rod osoby (u předka v rodokmenu dvakrát oba rody).
+const lineKeys = (p) => [...new Set([p.line, ...p.also.map((a) => a.line)].filter((k) => k != null))];
+const groups = Object.values(lines).sort((a, b) => a.k - b.k).map((l) => ({
+  line: l,
+  list: items.filter((i) => lineKeys(people[i.osoba]).includes(l.k)).sort((a, b) => a.rok - b.rok),
+})).filter((g) => g.list.length);
+const other = items.filter((i) => !lineKeys(people[i.osoba]).length).sort((a, b) => a.rok - b.rok);
+const krizky = items.filter((i) => i.kruzky).length;
+---
+<Base title="Podpisy">
+  <h1>Podpisy</h1>
+  <p class="lead">Do konce 18. století psal celý zápis do matriky farář a nikdo jiný se nepodepisoval. Od josefínských reforem se v knize podepisují svědci, kmotři a hlavně rodiče, kteří svolují ke sňatku nezletilého dítěte. Kdo psát neuměl, udělal místo podpisu tři křížky a farář k nim připsal jeho jméno. Tady jsou podpisy a křížky předků, které se v zápisech našly ({items.length}{krizky ? `, z toho ${krizky}× křížky` : ''}).</p>
+  <p class="small muted">Předek, který je v rodokmenu dvakrát, je pod oběma rody. Kurzíva = osoba jen z cizího rodokmenu (neověřeno). Obrázky jsou výřezy z digitalizovaných matrik a dalších pramenů; kliknutím se otevře celý zápis.</p>
+  {[...groups, ...(other.length ? [{ line: null, list: other }] : [])].map((g) => (
+    <section class="sig-group">
+      <h2>{g.line ? <a href={href.line(g.line.slug)}>{g.line.name}</a> : 'Ostatní'}</h2>
+      <ol class="sig-list">
+        {g.list.map((i) => (
+          <li class={`sig card ${i.kruzky ? 'sig-krizky' : ''}`} id={i.id}>
+            <div class="sig-head">
+              <span class="sig-year">{i.rok}</span>
+              <PersonLink slug={i.osoba} />
+              <span class={`sig-kind ${i.kruzky ? 'sig-kind-krizky' : ''}`}>{i.kruzky ? 'křížky – neuměl(a) psát' : 'vlastnoruční podpis'}</span>
+            </div>
+            <a href={href.record(i.zdroj)} class="sig-img" title="celý zápis"><img src={`/podpisy/${i.soubor}`} alt={`${i.kruzky ? 'křížky' : 'podpis'}: ${i.text.replace(/[„“]/g, '')}`} loading="lazy" /></a>
+            <p class="sig-text">{i.text}</p>
+            {i.popis ? <p class="sig-desc">{i.popis} – <a href={href.record(i.zdroj)}>{records[i.zdroj].title}</a></p> : <p class="sig-desc"><a href={href.record(i.zdroj)}>{records[i.zdroj].title}</a></p>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  ))}
+</Base>
+
+<style>
+  .sig-group { margin-top: 1.6rem; }
+  .sig-list { display: grid; gap: 0.9rem; margin: 0.6rem 0 0; padding: 0; list-style: none; }
+  .sig { padding: 0.8rem 1rem; scroll-margin-top: 1rem; }
+  .sig-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem; margin-bottom: 0.5rem; }
+  .sig-year { min-width: 3rem; font-size: 1.1rem; font-weight: 700; }
+  .sig-kind { background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.82rem; }
+  .sig-kind-krizky { color: var(--muted); background: #ece7df; }
+  .sig-img { display: block; }
+  .sig-img img { border: 1px solid var(--line); background: #fff; border-radius: 6px; width: auto; max-width: 100%; height: auto; max-height: 9rem; display: block; }
+  .sig-text { margin: 0.4rem 0 0.1rem; font-style: italic; }
+  .sig-desc { color: var(--muted); margin: 0; font-size: 0.9rem; }
+</style>

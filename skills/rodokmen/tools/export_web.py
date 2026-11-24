@@ -428,6 +428,9 @@ def main():
     print(f"{len(people)} osob, {len(families)} rodin, {len(records)} zápisů, {len(lines)} rodů, {len(places)} míst; "
           f"zkopírováno {copied} obrázků; přihlášení {'zapnuté' if gated else 'VYPNUTÉ (web je otevřený)'}")
 
+    import runpy   # doplněk: stránka Podpisy (data/podpisy.json; bez podpisů se stránka nevytvoří)
+    runpy.run_path(os.path.join(TOOLS, "export_podpisy.py"), run_name="export_podpisy")
+
     # odkazy v textech, které nikam nevedou (adresa osoby se změní třeba doplněním roku narození: jan-novak → jan-novak-1798)
     targets = dict(osoba=people, zdroj=recs, rod=lines, rodina=families)
     texts = {f: open(os.path.join(gen_dir, f), encoding="utf-8").read() for f in ("pribeh.md", "zajimavosti.md")}

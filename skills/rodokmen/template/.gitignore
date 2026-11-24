@@ -11,9 +11,11 @@ web/dist/
 web/.astro/
 web/.netlify/
 web/src/data/site.json
+web/src/data/podpisy.json
 web/src/generated/
 web/public/img/
 web/public/zdroje/
+web/public/podpisy/
 web/public/prihlaseni.html
 web/nginx.conf
 web/netlify/edge-functions/

@@ -4,7 +4,7 @@ import PersonLink from '../../components/PersonLink.astro';
 import Record from '../../components/Record.astro';
 import Pedigree from '../../components/Pedigree.astro';
 import MobileTree from '../../components/MobileTree.astro';
-import { people, families, lineByK, records, dateKey, href, statusClass } from '../../lib/data.js';
+import { people, families, lineByK, records, dateKey, href, statusClass, podpisy as vsechnyPodpisy } from '../../lib/data.js';
 
 export function getStaticPaths() {
   return Object.keys(people).map((slug) => ({ params: { slug } }));
@@ -13,6 +13,7 @@ const p = people[Astro.params.slug];
 const line = p.line ? lineByK[p.line] : null;
 const recs = [...new Set(p.records)].filter((r) => records[r]).sort((a, b) => dateKey(records[a].date) - dateKey(records[b].date));
 const path = [...p.path].reverse().filter(Boolean);
+const podpisy = vsechnyPodpisy.filter((x) => x.osoba === p.slug).sort((a, b) => a.rok - b.rok);
 ---
 <Base title={p.name} description={`${p.name} ${p.years} – ${p.rel}`}>
   <div class="crumbs">
@@ -72,6 +73,16 @@ const path = [...p.path].reverse().filter(Boolean);
     <>
       <h2>Rodinné dokumenty</h2>
       <div class="docs">{p.docs.map((d) => <figure><a href={`/img/${d.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${d.img}.jpg`} alt={d.caption} loading="lazy" /></a><figcaption>{d.caption}</figcaption></figure>)}</div>
+    </>
+  )}
+
+  {podpisy.length > 0 && (
+    <>
+      <h2>{podpisy.some((x) => !x.kruzky) ? 'Vlastnoruční podpis' : 'Křížky místo podpisu'}</h2>
+      <div class="docs">{podpisy.map((x) => (
+        <figure><a href={href.record(x.zdroj)}><img src={`/podpisy/${x.soubor}`} alt={x.text} loading="lazy" /></a>
+          <figcaption>{x.rok}: {x.kruzky ? 'křížky – neuměl(a) psát. ' : ''}{x.text} {x.popis}{x.popis && !x.popis.endsWith('.') ? '.' : ''} <a href={href.record(x.zdroj)}>Celý zápis</a> · <a href={`/podpisy/#${x.id}`}>všechny podpisy</a></figcaption></figure>
+      ))}</div>
     </>
   )}
 
