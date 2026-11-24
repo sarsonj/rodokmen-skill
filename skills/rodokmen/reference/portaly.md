@@ -15,7 +15,8 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | HBMa: VadeMeCum NA – vademecum.nacr.cz (Digitální badatelna → Matriky židovských náboženských obcí; stará adresa badatelna.eu už nepatří archivu); digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
 
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `metodika.md`
-(Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže.
+(Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže. Hroby na Slovensku
+(i na několika českých hřbitovech) najde `tools/cintoriny.py`, viz oddíl Hroby a hřbitovy.
 
 **Claude in Chrome – výstup JavaScriptu** (platí pro všechny portály):
 - Výstup, který obsahuje adresu s parametry (`?`, `&`, `=`) nebo dlouhý hex, rozšíření zahodí jako
@@ -435,6 +436,15 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   cenný pramen hlavně pro 20. století, kde matriky ještě nejsou přístupné.
 - Evidence hrobových míst: správa hřbitova (kdo je v hrobě uložen, kdo platí nájem – často žijící potomek);
   řada měst má online vyhledávání hrobů. Mezinárodně BillionGraves a Find a Grave.
+- **cintoriny.sk** (Slovensko, i několik českých hřbitovů – Motol, Strašnice, Vodňany…) – `tools/cintoriny.py`, bez prohlížeče a bez přihlášení:
+  - `cintoriny.py hledat --prijmeni Izso [--jmeno J] [--rodne R] [--obec Lučenec | --hrbitov 1459] [--narozeni-od 1900 --narozeni-do 1910] [--umrti-od/-do]`
+    vypíše jméno, data narození a úmrtí, věk, hřbitov s obcí a `hrob <hřbitov>:<hrob>`. Hledá od začátku slova a bez diakritiky
+    (Kováč najde i Kovács, Izso i Izsof), po 50 záznamech na stránku (`--stran N`, výchozí 2). Ženy hledej i podle rodného příjmení (`--rodne`).
+  - `cintoriny.py hrob 68:68002334 [--foto pracovni/hrob.jpg]` ukáže kartu hrobu: sektor, řadu, číslo (i dřívější), všechny uložené v hrobě
+    s daty narození, úmrtí a uložení, rodným příjmením a místem narození, pokud je správa vede. Odkaz na kartu jde do `zdroje`.
+  - `cintoriny.py hrbitovy "Obec"` vypíše hřbitovy v obci s ID pro `--hrbitov`.
+  - Na Slovensku po roce 1900 matriky online nejsou, a tak hrob často jako jediný ukáže, kdo leží spolu (manželé, děti, rodiče), a dá přesné datum narození.
+    **Datum 1. 1. bývá zástupné** (správa znala jen rok) a evidence správy hřbitova není matrika – data ber jako vodítko (stav `mh`) a ověř v matrice.
 
 ## Noviny a ročenky – `tools/anno.py`, `tools/anno_snap.py`, `tools/kramerius.py`
 **Kdy se vyplatí:** státní a vrchnostenští úředníci, soudci, učitelé, faráři, důstojníci, vojenští lékaři, notáři,
