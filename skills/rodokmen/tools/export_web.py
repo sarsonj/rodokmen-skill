@@ -365,7 +365,7 @@ def main():
         if not byline:
             continue
         yrs = [int(y) for p in hits for y in re.findall(r"\b1[4-9]\d\d\b", p["y"] or "")]
-        places.append(dict(name=name, lat=e["lat"], lon=e["lon"], lines=[dict(k=k, people=v) for k, v in sorted(byline.items())],
+        places.append(dict(name=name, re=e.get("re") or re.escape(name), lat=e["lat"], lon=e["lon"], lines=[dict(k=k, people=v) for k, v in sorted(byline.items())],
                            years=[min(yrs), max(yrs)] if yrs else None, hypothesis=bool(e.get("hypoteza"))))
 
     known = [p for p in people.values() if p["k"] > 1]
@@ -401,6 +401,9 @@ def main():
     json.dump({k: f"/osoba/{s}/" for k, s in slugs.items()}, open(hrefs, "w", encoding="utf-8", newline="\n"))
     subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(TOOLS, "fan_chart.py"),
                     os.path.join(gen_dir, "fan.svg"), "--web", hrefs], check=True, capture_output=True)
+
+    # Domy předků (volitelná stránka): web/src/data/domy.json, bez domů prázdný seznam
+    subprocess.run([sys.executable, "-I", "-X", "utf8", os.path.join(TOOLS, "export_domy.py")], check=True)
 
     gated = login_files(cfg)
 

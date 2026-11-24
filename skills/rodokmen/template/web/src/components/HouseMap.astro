@@ -1,0 +1,50 @@
+---
+// Mapa domů (Leaflet + OpenStreetMap). Polohy jsou středy obcí – domy v jedné obci se rozloží do kroužku.
+import 'leaflet/dist/leaflet.css';
+const { points, height = '60vh', zoom } = Astro.props;
+const payload = JSON.stringify({ points, zoom });
+---
+<div class="hmap" style={`height:${height}`} data-map={payload}></div>
+<script>
+  import L from 'leaflet';
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  for (const el of document.querySelectorAll<HTMLElement>('.hmap')) {
+    const { points, zoom } = JSON.parse(el.dataset.map!);
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    const map = L.map(el, { scrollWheelZoom: false, dragging: !touch, tap: false });
+    el.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        map.setZoomAround(map.mouseEventToContainerPoint(e as unknown as MouseEvent), map.getZoom() + (e.deltaY < 0 ? 1 : -1));
+      }
+    }, { passive: false });
+    if (touch) {
+      el.addEventListener('touchstart', (e) => { if (e.touches.length > 1) map.dragging.enable(); else map.dragging.disable(); }, { passive: true });
+      el.addEventListener('touchend', () => map.dragging.disable(), { passive: true });
+    }
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+    // domy ve stejné obci se mírně rozptýlí, aby šly rozlišit
+    const seen: Record<string, number> = {};
+    const bounds: L.LatLngExpression[] = [];
+    for (const p of points) {
+      const k = `${p.lat},${p.lon}`;
+      const i = (seen[k] = (seen[k] ?? -1) + 1);
+      const total = points.filter((q: { lat: number; lon: number }) => q.lat === p.lat && q.lon === p.lon).length;
+      const r = total > 1 ? 0.004 : 0;
+      const a = (2 * Math.PI * i) / total;
+      const ll: L.LatLngExpression = [p.lat + r * Math.sin(a) * 0.7, p.lon + r * Math.cos(a)];
+      bounds.push(ll);
+      const m = L.circleMarker(ll, { radius: Math.min(14, 6 + (p.n ?? 3)), color: '#5B4A3A', weight: 2, fillColor: '#EFB45F', fillOpacity: 0.85 }).addTo(map);
+      m.bindTooltip(esc(p.label));
+      if (p.href) m.on('click', () => { location.href = p.href; });
+    }
+    if (bounds.length === 1) map.setView(bounds[0], zoom ?? 14);
+    else map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
+  }
+</script>
+<style is:global>
+  .hmap { width: 100%; border-radius: 8px; border: 1px solid #d9cfc0; z-index: 0; }
+</style>
