@@ -8,23 +8,69 @@ const gens = [...new Set(list.map((p) => p.gen))];
 <Base title="Předci">
   <h1>Všichni předci</h1>
   <p class="lead">Po generacích, v pořadí podle Kekulého čísla (otec má číslo 2n, matka 2n + 1). U každé generace vidíte, kolik předků z možného počtu už známe – ty ostatní teprve hledáme. Podívejte se, <a href="/hledame/">co ještě hledáme</a>, třeba víte víc.</p>
+  <div class="view-switch" role="group" aria-label="Zobrazení dat">
+    <span class="small muted">Zobrazit Život:</span>
+    <button type="button" data-view="roky" aria-pressed="true">jen roky</button>
+    <button type="button" data-view="data" aria-pressed="false">celá data</button>
+  </div>
+  <div class="predci" data-view="roky">
   {gens.map((g) => (
     <>
       <h2>{genName(g)} <span class="muted small">({list.filter((p) => p.gen === g).length} z {2 ** g})</span></h2>
       <div class="table-box"><table>
-        <thead><tr><th>#</th><th>Jméno</th><th>Vztah</th><th>Rod</th><th>Stav</th></tr></thead>
+        <colgroup><col class="c-k" /><col class="c-jmeno" /><col class="c-zivot" /><col /><col class="c-rod" /><col class="c-stav" /></colgroup>
+        <thead><tr><th>#</th><th>Jméno</th><th>Život</th><th>Vztah</th><th>Rod</th><th>Stav</th></tr></thead>
         <tbody>
           {list.filter((p) => p.gen === g).map((p) => (
             <tr>
-              <td class="small muted">{p.k}</td>
-              <td><PersonLink slug={p.slug} /></td>
+              <td class="small muted nowrap c-k">{p.k}</td>
+              <td><PersonLink slug={p.slug} showYears={false} /></td>
+              <td class="small">
+                <span class="v-roky">{p.years}</span>
+                <span class="v-data">{(p.dates || p.years || '').split(' – ').map((d) => <span class="nowrap d-cast">{d}</span>)}</span>
+              </td>
               <td class="small">{p.rel}</td>
-              <td class="small">{p.line && lineByK[p.line] && <><span class="dot" style={`display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:${lineByK[p.line].color};margin-right:.3rem`}></span>{lineByK[p.line].name}</>}</td>
-              <td><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
+              <td class="small nowrap">{p.line && lineByK[p.line] && <><span class="dot" style={`display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:${lineByK[p.line].color};margin-right:.3rem`}></span>{lineByK[p.line].name}</>}</td>
+              <td class="nowrap"><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
             </tr>
           ))}
         </tbody>
       </table></div>
     </>
   ))}
+  </div>
 </Base>
+
+<script>
+  // Přepínač „jen roky / celá data“; volba se pamatuje v prohlížeči (localStorage, když jde).
+  const box = document.querySelector<HTMLElement>('.predci');
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.view-switch button');
+  const nastav = (v: string) => {
+    if (!box) return;
+    box.dataset.view = v;
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    try { localStorage.setItem('predci-zobrazeni', v); } catch {}
+  };
+  let ulozeno = '';
+  try { ulozeno = localStorage.getItem('predci-zobrazeni') || ''; } catch {}
+  if (ulozeno === 'roky' || ulozeno === 'data') nastav(ulozeno);
+  buttons.forEach((b) => b.addEventListener('click', () => nastav(b.dataset.view || 'roky')));
+</script>
+
+<style>
+  .nowrap { white-space: nowrap; }
+  /* všechny generace mají stejně široké sloupce, aby při posouvání zůstaly pod sebou */
+  .predci table { table-layout: fixed; width: 100%; min-width: 52rem; }   /* i na mobilu zbyde sloupci Vztah ~12 rem; tabulka se posouvá vodorovně (.table-box) */
+  .predci col.c-k { width: 4rem; }
+  .predci col.c-jmeno { width: 21%; }
+  .predci col.c-zivot { width: 8.5rem; }
+  .predci col.c-rod { width: 7.5rem; }
+  .predci col.c-stav { width: 9.5rem; }
+  .predci td { overflow-wrap: break-word; }
+  .predci td.c-k { overflow-wrap: normal; }   /* číslo předka se nezalamuje */
+  .predci .d-cast { display: block; }   /* celá data: narození a úmrtí pod sebou */
+  .predci[data-view='data'] .v-roky, .predci[data-view='roky'] .v-data { display: none; }
+  .view-switch { display: flex; align-items: center; gap: 0.4rem; margin: 0.5rem 0 1rem; }
+  .view-switch button { font: inherit; font-size: 0.88rem; padding: 0.2rem 0.7rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: inherit; cursor: pointer; }
+  .view-switch button[aria-pressed='true'] { background: #3b2e22; color: #fbf3e6; border-color: #3b2e22; }
+</style>
