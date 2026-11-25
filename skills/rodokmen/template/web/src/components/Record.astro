@@ -1,6 +1,7 @@
 ---
 import { records, href } from '../lib/data.js';
 import PersonLink from './PersonLink.astro';
+import Cause from './Cause.astro';
 const { id, showPeople = false, exclude, open = false } = Astro.props;
 const r = records[id];
 ---
@@ -10,6 +11,7 @@ const r = records[id];
       <div class="meta"><span class="kind">{r.kindName}</span>{r.date} · {r.archive && r.volume ? r.volume : r.vdesc} · snímek {r.scan}</div>
       <div class="title"><a href={href.record(r.key)}>{r.title}</a></div>
       <div class="small">{r.summary}</div>
+      <Cause cause={r.cause} />
       {showPeople && r.people.filter((s) => s !== exclude).length > 0 && (
         <div class="small muted">Týká se: {r.people.filter((s) => s !== exclude).map((s, i) => <>{i > 0 && ', '}<PersonLink slug={s} /></>)}</div>
       )}
