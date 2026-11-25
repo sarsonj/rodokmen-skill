@@ -104,6 +104,9 @@ th { font-weight: 600; color: #5a4632; background: #f6f0e6; }
 .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
 .docs figure { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.6rem; }
 .docs figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+.dmapa { margin: 1rem 0 1.5rem; scroll-margin-top: 1rem; }
+.dmapa img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.dmapa figcaption { max-width: 46rem; margin: 0.5rem auto 0; }
 
 @media (max-width: 640px) {
   main { padding: 1rem 0.8rem 2rem; }

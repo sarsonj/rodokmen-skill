@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import PersonLink from '../../components/PersonLink.astro';
 import Record from '../../components/Record.astro';
-import { lines, people, hypotheses, href, genName, statusClass, lineByK } from '../../lib/data.js';
+import { lines, people, hypotheses, maps, href, genName, statusClass, lineByK } from '../../lib/data.js';
 
 export function getStaticPaths() {
   return Object.keys(lines).map((slug) => ({ params: { slug } }));
@@ -42,6 +42,20 @@ const partnerLine = lineByK[l.k ^ 1];
       </table></div>
     </>
   ))}
+
+  {maps.some((m) => m.lines.includes(l.k)) && (
+    <>
+      <h2>Dobové mapy</h2>
+      <p class="small muted">Výřezy starých map. Kliknutím mapu zvětšíte.</p>
+      {maps.filter((m) => m.lines.includes(l.k)).map((m) => (
+        <figure class="dmapa" id={`mapa-${m.img}`}>
+          <a href={`/img/${m.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${m.img}.jpg`} alt={`${m.place} ${m.year}`} loading="lazy" /></a>
+          <figcaption><strong>{m.place}{m.year && ` (${m.year})`}</strong>{m.caption && ` – ${m.caption}`}
+            {m.source && <span class="small muted"> Zdroj: {m.url ? <a href={m.url} target="_blank" rel="noopener">{m.source}</a> : m.source}.</span>}</figcaption>
+        </figure>
+      ))}
+    </>
+  )}
 
   {hypotheses.filter((h) => h.line === l.k).map((h) => (
     <>

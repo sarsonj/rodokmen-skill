@@ -510,12 +510,16 @@ Nástroje pro ně hotové nejsou. Postupuj takto a výsledek zapiš do `STAV.md`
     držitelů i čísla parcel. Jen výřezy vsí pro rodinu, žádné hromadné stahování listů.
   - **Morava:** odkaz vede do prohlížeče MZA (fond D 9, často dva listy: původní z 30. let a reambulace ze 70. let 19. stol.).
     MZA stahovací skripty zakazuje – jen přiblížit a snímek obrazovky (jako u matrik MZA). Listy Moravy nejsou georeferencované.
+    V okně moravské obce v ČÚZK je tlačítko `#btn_skicim` a skica se otevře na `https://www.mza.cz/indikacniskici/skica/detail/<ID>`.
   - **Čtení:** v budově je **červeně číslo popisné** a **černě číslo stavební parcely** (pozemkové parcely mají čísla
     červená); záměna přečte celou ves obráceně. Při pochybnosti ověř na pár domech: vrstva pozemkového katastru
     (archiv_spojene_pk) s adresními body RÚIAN ukáže, na které parcele stojí dnešní čp. „N° 35 Příjmení“ u pozemku
     = patří k domu čp. 35.
     Žlutá stavba dřevěná, růžová zděná. Popisky bývají vzhůru nohama (výřez otoč o 180°). U měst bývá intravilán prázdný.
-    Na web dej výřez se zakroužkovaným domem (u rodiny mívají staré mapy velký úspěch).
+    Na web dej výřez se zakroužkovaným domem (u rodiny mívají staré mapy velký úspěch): `vyrez.py` do `vyrezy/` a položka
+    `"druh": "mapa"` v `dokumenty.json` (`data.md`). **Zakroužkuj jen ověřené čp.** U moravských skic a u některých
+    českých jsou v budově dvě řady čísel (zlomek „24/3“, dvě čísla nad sebou) a někde se později přečíslovávalo
+    – když nejde ověřit, které číslo je čp., nech ves bez kroužku a napiš to do popisu.
 - **Dnešní adresa domu** podle čísla popisného: RÚIAN (ČÚZK, vrstva AdresniMisto). Pozor, staré centrum mívá od 19. století
   stejná čp., ale předměstí a vesnice čísla přečíslovávaly. Hodí se na „procházku po stopách předků“.
   Stavbu podle obce a čísla popisného najde i nahlizenidokn.cuzk.gov.cz (ověření adresy z dokladu); vlastník je za

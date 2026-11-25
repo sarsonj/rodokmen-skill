@@ -377,6 +377,18 @@ def main():
                        records=[r for r in h.get("zaznamy", []) if r in recs])
                   for h in ns["HYPOTEZY"] if isinstance(h, dict)]   # jiný zápis hlásí kontrola.py
 
+    line_ks = {l["k"] for l in lines.values()}   # jen rody, které mají na webu stránku
+
+    def map_lines(d):   # dobová mapa patří rodům z „rod“ (číslo nebo seznam) a rodům osob z „osoby“
+        r = d.get("rod")
+        ks = [k for k in (r if isinstance(r, list) else [r]) if isinstance(k, int)]
+        ks += [people[slugs[k]]["line"] for k in d.get("osoby", []) if k in slugs]
+        ks = sorted(set(ks) & line_ks)
+        if not ks:
+            print(f"POZOR: dobová mapa {d['img']} nepatří žádnému rodu – na stránce rodu ani v mapě předků nebude "
+                  "(doplň „rod“, číslo rodu z LINES, v data/dokumenty.json)")
+        return ks
+
     has_story = os.path.exists(os.path.join(DATA, "pribeh.md"))
     public_cfg = {k: v for k, v in cfg.items() if k != "prihlaseni"}
     public_cfg["maPribeh"] = has_story
@@ -386,7 +398,10 @@ def main():
                         if isinstance(i, str) or (isinstance(i, (tuple, list)) and len(i) == 2)],   # jiné hlásí kontrola.py
                 stats=stats, hypotheses=hypotheses,
                 docs=[dict(img=d["img"], caption=d.get("popis", ""), people=[slugs[k] for k in d.get("osoby", []) if k in slugs])
-                      for d in docs_cfg if os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))])
+                      for d in docs_cfg if d.get("druh") != "mapa" and os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))],
+                maps=[dict(img=d["img"], caption=d.get("popis", ""), place=d.get("misto", ""), year=d.get("rok", ""),
+                           source=d.get("zdroj", ""), url=d.get("odkaz", ""), lines=map_lines(d))
+                      for d in docs_cfg if d.get("druh") == "mapa" and os.path.exists(os.path.join(VYREZY, d["img"] + ".jpg"))])
 
     write(os.path.join(WEB, "src", "data", "site.json"), json.dumps(site, ensure_ascii=False, indent=1))
     gen_dir = os.path.join(WEB, "src", "generated")

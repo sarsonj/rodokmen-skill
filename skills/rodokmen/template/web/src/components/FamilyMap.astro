@@ -9,7 +9,7 @@ const lines = Object.fromEntries(Object.values(lineByK).map((l) => [l.k, { name:
 lines[0] = { name: 'rodiče a prarodiče', color: ROOT_COLOR, slug: null };
 const names = {};
 for (const pl of site.places) for (const l of pl.lines) for (const s of l.people) names[s] = [people[s].name, people[s].years, href.person(s)];
-const payload = JSON.stringify({ places: site.places, lines, names, compact });
+const payload = JSON.stringify({ places: site.places, lines, names, compact, maps: site.maps ?? [] });
 ---
 <div class="fmap" style={`height:${height}`} data-map={payload}></div>
 {!compact && (
@@ -27,7 +27,7 @@ const payload = JSON.stringify({ places: site.places, lines, names, compact });
   const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
   for (const el of document.querySelectorAll<HTMLElement>('.fmap')) {
-    const { places, lines, names, compact } = JSON.parse(el.dataset.map!);
+    const { places, lines, names, compact, maps } = JSON.parse(el.dataset.map!);
     // Gesture handling: page scroll stays page scroll. Zoom with Ctrl/⌘ + wheel (or trackpad pinch),
     // on touch devices move the map with two fingers; otherwise show a short hint.
     const touch = window.matchMedia('(pointer: coarse)').matches;
@@ -77,6 +77,8 @@ const payload = JSON.stringify({ places: site.places, lines, names, compact });
         marker.bindPopup(
           `<strong>${esc(pl.name)}</strong>${pl.years ? ` <span class="y">${pl.years[0]}–${pl.years[1]}</span>` : ''}<br>` +
             `<span class="pl" style="--c:${esc(line.color)}">${head}</span><br>` +
+            (line.slug ? maps.filter((m: { place: string; lines: number[] }) => m.place === pl.name && m.lines.includes(ln.k))
+              .map((m: { img: string; year: string }) => `<a href="/rod/${esc(line.slug)}/#mapa-${esc(m.img)}">Dobová mapa${m.year ? ` ${esc(m.year)}` : ''} →</a><br>`).join('') : '') +
             (pl.hypothesis ? 'hypotéza – vazba zatím neprokázaná' : who),
           { maxHeight: 260 }
         );
