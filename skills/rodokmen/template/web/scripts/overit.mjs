@@ -14,9 +14,18 @@ const a = process.argv.slice(2);
 let url = a[a.indexOf("--url") + 1] && a.includes("--url") ? a[a.indexOf("--url") + 1] : null;
 let siteId = null;
 
+// Konec bez process.exit(): na Windows Node po fetch() spadne (libuv „Assertion failed … async.c“),
+// když process.exit() přijde ve chvíli, kdy se zavírá spojení. Proces proto doběhne sám s process.exitCode.
+class Konec extends Error {}
+process.on("uncaughtException", (e) => {
+  if (e instanceof Konec) return;
+  console.error(e);
+  process.exitCode = 1;
+});
 function konec(kod, ...radky) {
   console.log(radky.join("\n"));
-  process.exit(kod);
+  process.exitCode = kod;
+  throw new Konec();
 }
 
 function ochranaTymu() {
