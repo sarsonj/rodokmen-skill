@@ -59,8 +59,9 @@ def years(y):
         return "* " + ys[0]
     if len(ys) == 1:
         return approx + ys[0] + ("–?" if dash else "")
-    second = "?" if "před" in tail else ("po " if re.search(r"\bpo\b", tail) else "") + \
-        ("≈" if re.search(r"(asi|≈)", tail) else "") + ys[-1]
+    # „1889 – před 1936“ → „1889–před 1936“ (ne „1889–?“, horní odhad úmrtí se neztratí), „1849 (?)“ → „1849?“
+    second = ("před " if "před" in tail else ("po " if re.search(r"\bpo\b", tail) else "") +
+              ("≈" if re.search(r"(asi|≈)", tail) else "")) + ys[-1] + ("?" if "(?)" in tail else "")
     return f"{approx}{ys[0]}–{second}"
 
 
