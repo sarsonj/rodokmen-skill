@@ -45,6 +45,7 @@ const current = (url) => ((url === '/' ? path === '/' : path.startsWith(url)) ? 
     </main>
     {!full && <footer class="site-footer">
       {config.zapati || 'Dohledáno v digitalizovaných matrikách'} · rodinný web, neveřejný
+      {(config.kontakt?.email || config.kontakt?.telefon) && <><br />Kontakt: {config.kontakt.email && <a href={`mailto:${config.kontakt.email}`}>{config.kontakt.email}</a>}{config.kontakt.email && config.kontakt.telefon && ', '}{config.kontakt.telefon && <>tel. <a href={`tel:${config.kontakt.telefon.replace(/\s/g, '')}`}>{config.kontakt.telefon}</a></>}</>}
     </footer>}
   </body>
 </html>

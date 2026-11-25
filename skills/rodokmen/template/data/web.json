@@ -2,7 +2,7 @@
  "nazev": "",
  "popis": "",
  "zapati": "Dohledáno v digitalizovaných matrikách státních oblastních archivů",
- "kontakt": {"jmeno": "", "email": ""},
+ "kontakt": {"jmeno": "", "email": "", "telefon": ""},
  "prihlaseni": {
   "uvod": "Tenhle web je jen pro rodinu a příbuzné.",
   "otazka": "",
