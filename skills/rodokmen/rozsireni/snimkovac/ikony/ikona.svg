@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Snímkovač: stránka matriky v hledáčku (rohy záběru) na tmavě zeleném podkladu (barva úrovně „Záznam“) -->
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="#1b5e20"/>
+  <!-- stránka matriky -->
+  <rect x="34" y="26" width="60" height="76" rx="5" fill="#f6ecd2"/>
+  <rect x="34" y="26" width="60" height="12" rx="5" fill="#c9a86a"/>
+  <rect x="34" y="33" width="60" height="5" fill="#c9a86a"/>
+  <g stroke="#6b4f2a" stroke-width="4" stroke-linecap="round">
+    <line x1="42" y1="50" x2="86" y2="50"/>
+    <line x1="42" y1="62" x2="78" y2="62"/>
+    <line x1="42" y1="74" x2="86" y2="74"/>
+    <line x1="42" y1="86" x2="70" y2="86"/>
+  </g>
+  <!-- rohy hledáčku -->
+  <g fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 38 V18 H38"/>
+    <path d="M90 18 H110 V38"/>
+    <path d="M110 90 V110 H90"/>
+    <path d="M38 110 H18 V90"/>
+  </g>
+</svg>

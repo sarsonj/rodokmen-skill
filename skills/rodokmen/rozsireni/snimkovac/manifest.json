@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "Snímkovač",
+  "version": "0.18.2",
+  "description": "Pasivně ukládá snímky matrik, které sám zobrazíš (eBadatelna SOA Praha; jiné weby jen po tvém povolení). Nic nestahuje navíc, nic neposílá na internet.",
+  "permissions": [
+    "downloads",
+    "downloads.ui",
+    "storage",
+    "scripting",
+    "activeTab",
+    "unlimitedStorage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://ebadatelna.soapraha.cz/*"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://ebadatelna.soapraha.cz/*"
+      ],
+      "js": [
+        "content.js",
+        "ebad_fronta.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "ikony/ikona16.png",
+    "32": "ikony/ikona32.png",
+    "48": "ikony/ikona48.png",
+    "128": "ikony/ikona128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "ikony/ikona16.png",
+      "32": "ikony/ikona32.png",
+      "48": "ikony/ikona48.png"
+    },
+    "default_title": "Snímkovač",
+    "default_popup": "popup.html"
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "<all_urls>"
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Otevřít okénko Snímkovače (a povolit focení záložky)"
+    }
+  }
+}
