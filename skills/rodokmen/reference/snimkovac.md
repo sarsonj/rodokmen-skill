@@ -23,6 +23,7 @@ u „pošli mi snímek obrazovky“.
 |---|---|---|
 | eBadatelna SOA Praha | jeden obrázek | celý snímek hned po zobrazení |
 | MZA Acta Publica | OpenSeadragon (dlaždice) | skládá stránku z dlaždic, které prohlížeč sám načetl |
+| MZA ARON (lánové rejstříky, rektifikační akta) | OpenSeadragon přibalený v aplikaci (DeepZoom přes iipsrv) | od 0.18: bere dlaždice a popis `.dzi` z odpovědí, které stránka sama stáhla; přiblížení a výřez z kreslení dlaždic |
 | SOA Třeboň | Zoomify ve vloženém rámu | vykreslený pohled s polohou na snímku, skládá stránku |
 | AHMP Praha Publica | Zoomify, dlaždice z cizího serveru | snímek viditelné části záložky (obraz nejde přečíst) |
 | Matricula | OpenLayers, celý obrázek | celý snímek v plném rozlišení (na snímku vydržet ~1,5 s) |

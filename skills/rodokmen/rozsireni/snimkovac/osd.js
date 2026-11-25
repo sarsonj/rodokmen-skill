@@ -56,6 +56,14 @@
                adresa: xid ? `https://${location.hostname}/pragapublica/permalink?xid=${xid}&scan=${snimek || ''}` : location.href,
                klic: `${location.hostname}|${id}|${snimek}` };
     }
+    if (/\/aron\/apu\//.test(location.pathname)) {   // MZA ARON (lánové rejstříky, rektifikační akta…): /aron/apu/<jednotka>/dao/<…>/file/<snímek>
+      const m = location.pathname.match(/\/aron\/apu\/([0-9a-f-]{36})(?:\/dao\/([0-9a-f-]{36})(?:\/file\/([0-9a-f-]{36}))?)?/i) || [];
+      const apu = m[1] || '', soubor = m[3] || '';
+      const pole = [...document.querySelectorAll('input[type=text], input:not([type])')].find(i => /^\d+$/.test((i.value || '').trim()));
+      const snimek = pole ? parseInt(pole.value, 10) : null;
+      return { host: location.hostname, matrikaId: apu, snimek, obraz: soubor, kniha: `MZA ARON ${apu.slice(0, 8)}`,
+               adresa: location.origin + location.pathname, klic: `${location.hostname}|${apu}|${soubor || snimek}` };
+    }
     const detail = (location.pathname.match(/\/detail\/(\d+)/) || [])[1] || '';
     const obraz = u.searchParams.get('image') || '';
     const pole = document.getElementById('input-page');   // MZA: „Snímek: 70 z 146“

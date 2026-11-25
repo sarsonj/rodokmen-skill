@@ -170,6 +170,12 @@ Nic se nestahuje navíc. Číslo snímku se bere z prohlížeče („Snímek 43�
 větší (`/2231/44`). Kniha se jmenuje podle titulku stránky („Bílsko 12 1811-1895“).
 Pozor: u Třeboně každé otevření snímku stáhne dlaždice znovu – na snímku přibliž vše, co potřebuješ, najednou.
 
+## MZA ARON (od 0.18.0)
+ARON (`www.mza.cz/aron/…`, lánové rejstříky, rektifikační akta) má OpenSeadragon schovaný uvnitř své aplikace, takže ho
+háček nenajde. Od 0.18.0 si Snímkovač vezme dlaždice DeepZoom (`iipsrv.fcgi?Deepzoom=…_files/…`) a popis `.dzi` přímo
+z odpovědí a obrázků, které stránka sama stáhla (nic navíc nestahuje; dlaždice ARON jsou obyčejné obrázky, popis .dzi přes XHR). Přiblížení a výřez pohledu (minimapa, pole podle přiblížení) se počítají z toho, kam stránka dlaždice kreslí; „Přejít na výřez“ v ARONu nefunguje.
+Zapnout jako u Acta Publica: „Zapnout na tomto webu“ na `www.mza.cz`, pak stránku obnovit (F5).
+
 ## Analýza stránky (pro nové badatelny)
 Tlačítko **„Analyzovat stránku“** v okénku funguje na kterémkoli webu (i nepovoleném) a uloží zprávu
 `rodokmen-snimky/_analyza/<web>_<čas>.json`. Claude z ní pozná, jak daná badatelna snímky zobrazuje, a napíše pro ni úpravu.

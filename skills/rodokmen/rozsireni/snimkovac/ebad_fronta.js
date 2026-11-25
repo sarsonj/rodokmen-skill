@@ -87,12 +87,13 @@
     sez.replaceChildren(...fr.polozky.map(p => {
       const li = document.createElement('li');
       if (p.id === ID) li.className = 'ja';
-      li.textContent = `${p.nazev || p.id} – ${POPIS[p.stav] || p.stav}${p.stav === 'stahuje' && p.mb ? ` (${p.mb} MB)` : ''}`;
-      if (p.stav !== 'stahuje') {
-        const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Odebrat z fronty';
-        x.onclick = () => posli({ typ: 'fronta-odeber', id: p.id }).then(r => kresli(r));
-        li.append(x);
-      }
+      li.textContent = `${p.nazev || p.id} – ${POPIS[p.stav] || p.stav}${p.stav === 'stahuje' && p.mb ? ` (${p.mb} MB)` : ''}`
+        + (p.stav === 'chyba' && p.duvod ? ` (${p.duvod})` : '');
+      // odebrat jde i „stahuje“ – když se stahování zaseklo, uvolní se tím fronta (stahování v Chrome to nezruší)
+      const x = document.createElement('button'); x.className = 'x'; x.textContent = '×';
+      x.title = p.stav === 'stahuje' ? 'Odebrat z fronty (zaseknuté stahování – v Chrome ho zruš přes Ctrl+J)' : 'Odebrat z fronty';
+      x.onclick = () => posli({ typ: 'fronta-odeber', id: p.id }).then(r => kresli(r));
+      li.append(x);
       return li;
     }));
     const z = $('[data-zprava]');

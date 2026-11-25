@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Snímkovač",
-  "version": "0.17.3",
+  "version": "0.18.2",
   "description": "Pasivně ukládá snímky matrik, které sám zobrazíš (eBadatelna SOA Praha; jiné weby jen po tvém povolení). Nic nestahuje navíc, nic neposílá na internet.",
   "permissions": [
     "downloads",

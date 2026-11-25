@@ -1,4 +1,4 @@
-// Snímkovač – fronta ZIPů z eBadatelny SOA Praha (rozšíření jen upozorní, stahování spouští uživatel).
+// Snímkovač – fronta ZIPů z eBadatelny SOA Praha (varianta B: jen upozorní, stahování spouští uživatel).
 // Pomůcka pro ruční práci: knihu do fronty přidá uživatel klikem, stahování spouští VŽDY uživatel klikem na
 // „Stáhnout knihu jako ZIP“. Rozšíření jen hlídá konec stahování, připraví další kartu, zvýrazní tlačítko a ozve se.
 // Nic nestahuje samo, nečte cookies, nevolá odkazy …-downloadZip, při chybě se fronta zastaví a nic neopakuje.
@@ -16,8 +16,33 @@ async function frontaUloz(f) {
 }
 const zEbad = u => { try { return new URL(u).hostname === EBAD; } catch (e) { return false; } };
 
+// Pojistka proti zaseknutí (0.17.4): položka „stahuje“, jejíž stahování v Chrome už neběží (zrušené, ztracené,
+// nebo se po kliknutí vůbec nezačalo do 60 s), se uvolní – jinak by fronta i další kliky čekaly navždy.
+async function frontaOdblokuj(f) {
+  let zmena = false;
+  for (const p of f.polozky.filter(x => x.stav === 'stahuje')) {
+    let bezi = false;
+    if (p.dlId != null) {
+      try { const [d] = await chrome.downloads.search({ id: p.dlId }); bezi = !!d && d.state === 'in_progress'; if (d && d.state === 'complete') { p.stav = 'hotovo'; zmena = true; continue; } }
+      catch (e) { bezi = false; }
+    } else {
+      // stahování se nespárovalo – zkusit najít běžící ZIP, který začal po kliknutí
+      try {
+        const kand = (await chrome.downloads.search({ state: 'in_progress', startedAfter: new Date((p.cas || 0) - 5000).toISOString() }))
+          .filter(d => jeZip(d) || zEbad(d.url) || zEbad(d.referrer));
+        if (kand.length) { p.dlId = kand[0].id; zmena = true; continue; }
+      } catch (e) { /* nic */ }
+      bezi = Date.now() - (p.cas || 0) < 60000;   // čeká se, až Chrome stahování založí
+    }
+    if (!bezi) { p.stav = 'chyba'; p.duvod = p.dlId != null ? 'stahování v Chrome neběží' : 'stahování se nezačalo'; zmena = true; }
+  }
+  if (zmena) await frontaUloz(f);
+  return zmena;
+}
+
 // Další kniha na řadě: přepnout na její kartu, ať ji uživatel vidí, a dát vědět. Stahování nespouští.
 async function frontaDalsi(f) {
+  await frontaOdblokuj(f);
   if (f.zastaveno || f.polozky.some(p => p.stav === 'stahuje' || p.stav === 'na-rade')) return;
   const p = f.polozky.find(x => x.stav === 'ceka');
   if (!p) return;
@@ -40,6 +65,7 @@ chrome.runtime.onMessage.addListener((z, od, odpoved) => {
   (async () => {
     const f = await frontaNacti();
     const tabId = od.tab.id;
+    if (await frontaOdblokuj(f)) await frontaDalsi(f);
     if (z.typ === 'fronta-stav?') return f;
     if (z.typ === 'fronta-pridej') {
       if (f.polozky.some(p => p.id === z.id && p.stav !== 'hotovo' && p.stav !== 'chyba')) return f;
@@ -52,7 +78,8 @@ chrome.runtime.onMessage.addListener((z, od, odpoved) => {
       return f;
     }
     if (z.typ === 'fronta-odeber') { f.polozky = f.polozky.filter(p => p.id !== z.id); await frontaUloz(f); await frontaDalsi(f); return f; }
-    if (z.typ === 'fronta-vycisti') { f.polozky = f.polozky.filter(p => p.stav === 'stahuje'); f.zastaveno = ''; await frontaUloz(f); return f; }
+    // Vyprázdnit smaže všechno, i „stahuje“ (běžící stahování v Chrome tím nezruší, jen ho fronta přestane hlídat)
+    if (z.typ === 'fronta-vycisti') { f.polozky = []; f.zastaveno = ''; await frontaUloz(f); return f; }
     if (z.typ === 'fronta-pokracuj') { f.zastaveno = ''; await frontaUloz(f); await frontaDalsi(f); return f; }
     if (z.typ === 'fronta-klik') {   // uživatel klikl na „Stáhnout knihu jako ZIP“
       const bezi = f.polozky.find(p => p.stav === 'stahuje');
@@ -68,10 +95,13 @@ chrome.runtime.onMessage.addListener((z, od, odpoved) => {
 });
 
 // Stahování ZIPu z eBadatelny (vlastní snímky Snímkovače jsou data: adresy a sem nepatří)
+// ZIP může jít i z jiné adresy než ebadatelna.soapraha.cz (přesměrování) – stačí, že je to ZIP a začal do minuty po kliknutí
+const jeZip = d => /\.zip$/i.test(d.filename || '') || /zip/i.test(d.mime || '') || /downloadZip/i.test(d.url || '');
 chrome.downloads.onCreated.addListener(async d => {
-  if (!zEbad(d.url) && !zEbad(d.finalUrl) && !zEbad(d.referrer)) return;
+  if (/^(data|blob):/.test(d.url || '') && !zEbad(d.referrer)) return;   // vlastní snímky Snímkovače
+  if (!zEbad(d.url) && !zEbad(d.finalUrl) && !zEbad(d.referrer) && !jeZip(d)) return;
   const f = await frontaNacti();
-  const p = f.polozky.find(x => x.stav === 'stahuje' && !x.dlId);
+  const p = f.polozky.find(x => x.stav === 'stahuje' && !x.dlId && Date.now() - (x.cas || 0) < 60000);
   if (p) { p.dlId = d.id; await frontaUloz(f); }
 });
 

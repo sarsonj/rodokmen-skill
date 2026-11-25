@@ -149,6 +149,137 @@
     window.addEventListener('load', () => oprav(window.OpenSeadragon));
   }
 
+  // Záloha pro aplikace, které si OpenSeadragon přibalí do vlastního balíku (bez window.OpenSeadragon) – MZA ARON:
+  // dlaždice DeepZoom stahuje sám prohlížeč přes XMLHttpRequest/fetch. Bereme jen to, co stránka už stáhla
+  // (odpověď její vlastní žádosti), nic navíc se neposílá. Rozměry snímku čteme z popisu .dzi, který si stránka načetla.
+  const DZI = new Map();   // základ adresy (…/obraz) → {sirka, vyska, dlazdice, presah, maxLevel}
+  let posledniZaklad = '';
+  const rozeber = url => {
+    let u = String(url || '');
+    try { u = decodeURIComponent(u); } catch (x) { /* nic */ }
+    const d = u.match(/^(.*)\.dzi(?:[?&#]|$)/i);
+    if (d) return { typ: 'dzi', zaklad: d[1] };
+    const t = u.match(/^(.*)_files\/(\d+)\/(\d+)_(\d+)\.(?:jpe?g|png|webp)/i);
+    if (t) return { typ: 'dlazdice', zaklad: t[1], level: +t[2], x: +t[3], y: +t[4] };
+    return null;
+  };
+  function zDzi(zaklad, text) {
+    const n = (jm) => { const m = String(text).match(new RegExp(jm + '="(\\d+)"', 'i')); return m ? +m[1] : 0; };
+    const sirka = n('Width'), vyska = n('Height');
+    if (!sirka || !vyska) return;
+    DZI.set(zaklad, { sirka, vyska, dlazdice: n('TileSize') || 256, presah: n('Overlap'),
+                      maxLevel: Math.ceil(Math.log2(Math.max(sirka, vyska))), zdroj: zaklad.slice(0, 300) });
+    if (zaklad !== posledniZaklad) { posledniZaklad = zaklad; odeslane.clear(); posli('otevreno', {}); }
+  }
+  function zDlazdice(p, blob) {
+    if (viewer) return;   // prohlížeč nalezen – dlaždice jdou přes tile-loaded
+    const i = DZI.get(p.zaklad);
+    if (!i || !blob || !blob.size) return;
+    const k = `${p.zaklad}|${p.level}/${p.x}/${p.y}`;
+    if (odeslane.has(k)) return;
+    const skala = Math.pow(2, p.level - i.maxLevel);
+    createImageBitmap(blob).then(im => {
+      const ov = i.presah, ts = i.dlazdice;
+      const rect = [(p.x * ts - (p.x > 0 ? ov : 0)) / skala, (p.y * ts - (p.y > 0 ? ov : 0)) / skala, im.width / skala, im.height / skala];
+      odeslane.add(k);
+      posli('dlazdice', { info: i, level: p.level, x: p.x, y: p.y, skala, rect, blob });
+    }).catch(() => { /* není obrázek */ });
+  }
+  try {
+    const XO = XMLHttpRequest.prototype.open, XS = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (m, url) { this.__snimkovacUrl = url; return XO.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function () {
+      const p = rozeber(this.__snimkovacUrl);
+      if (p) this.addEventListener('load', () => {
+        if (this.status !== 200) return;
+        try {
+          if (p.typ === 'dzi') zDzi(p.zaklad, this.responseType === '' || this.responseType === 'text' ? this.responseText
+                                     : (this.responseType === 'document' && this.responseXML ? new XMLSerializer().serializeToString(this.responseXML) : ''));
+          else if (this.responseType === 'blob') zDlazdice(p, this.response);
+          else if (this.responseType === 'arraybuffer') zDlazdice(p, new Blob([this.response]));
+        } catch (x) { /* nic */ }
+      });
+      return XS.apply(this, arguments);
+    };
+    const F = window.fetch;
+    window.fetch = function (vstup) {
+      const url = typeof vstup === 'string' ? vstup : (vstup && vstup.url) || '';
+      const p = rozeber(url);
+      const r = F.apply(this, arguments);
+      if (p) r.then(o => {
+        if (!o.ok) return;
+        const c = o.clone();
+        if (p.typ === 'dzi') c.text().then(t => zDzi(p.zaklad, t)).catch(() => {});
+        else c.blob().then(b => zDlazdice(p, b)).catch(() => {});
+      }).catch(() => {});
+      return r;
+    };
+  } catch (x) { /* nejde – zůstane jen háček OpenSeadragonu */ }
+  // Dlaždice jako obyčejné obrázky (ARON: popis .dzi přes XHR, dlaždice přes new Image() mimo stránku): po načtení
+  // obrázku, který si stránka sama vyžádala, ho překreslit na plátno (stejný server, takže jde přečíst).
+  try {
+    const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    if (d && d.set) Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      configurable: true, enumerable: d.enumerable, get: d.get,
+      set(v) {
+        const p = !viewer && rozeber(v);
+        if (p && p.typ === 'dlazdice') {
+          const im = this;
+          im.__snimkovacP = p;
+          im.addEventListener('load', () => {
+            try {
+              const c = document.createElement('canvas');
+              c.width = im.naturalWidth; c.height = im.naturalHeight;
+              c.getContext('2d').drawImage(im, 0, 0);
+              c.toBlob(b => zDlazdice(p, b), 'image/jpeg', 0.95);
+            } catch (x) { /* cizí server – nejde přečíst */ }
+          }, { once: true });
+        }
+        return d.set.call(this, v);
+      }
+    });
+  } catch (x) { /* nic */ }
+  // Kde a jak velké se dlaždice kreslí na plátno prohlížeče → přiblížení (procent) a viditelný výřez (pohled) pro minimapu
+  // a pole podle přiblížení. Jen čte parametry kreslení, nic nemění.
+  try {
+    const DI = CanvasRenderingContext2D.prototype.drawImage;
+    let casStavuZ = 0, odlozeny = null;
+    CanvasRenderingContext2D.prototype.drawImage = function (src) {
+      try {
+        const p = !viewer && src && src.__snimkovacP;
+        if (p) {
+          const cil = this.canvas;
+          if (!cil.isConnected) cil.__snimkovacP = p;   // vnitřní mezipaměť dlaždice (plátno mimo stránku)
+          else if (arguments.length === 5 || arguments.length === 9) {
+            const a = arguments, n = a.length;
+            const dx = a[n - 4], dy = a[n - 3], dw = a[n - 2];
+            const i = DZI.get(p.zaklad);
+            const sw = n === 9 ? a[3] : (src.naturalWidth || src.width);
+            if (i && dw > 0 && sw > 0) {
+              const skala = Math.pow(2, p.level - i.maxLevel);
+              const ov = i.presah, ts = i.dlazdice;
+              const x0 = (p.x * ts - (p.x > 0 ? ov : 0) + (n === 9 ? a[1] : 0)) / skala;   // levý horní roh kreslené části v px snímku
+              const y0 = (p.y * ts - (p.y > 0 ? ov : 0) + (n === 9 ? a[2] : 0)) / skala;
+              const s = dw / (sw / skala);   // bodů plátna na 1 px snímku
+              const hust = window.devicePixelRatio || 1;
+              const vypocet = () => {
+                const W = cil.width, H = cil.height;
+                const ax = x0 - dx / s, ay = y0 - dy / s;
+                posli('stav', { info: i, procent: Math.round(s / hust * 100), hustota: hust, okno: [W / hust, H / hust], stupne: true,
+                                minPixelRatio: 0.5, pohled: [ax / i.sirka, ay / i.vyska, (ax + W / s) / i.sirka, (ay + H / s) / i.vyska] });
+              };
+              const t = Date.now();
+              clearTimeout(odlozeny);
+              if (t - casStavuZ > 300) { casStavuZ = t; vypocet(); }
+              odlozeny = setTimeout(vypocet, 350);   // konečný stav po doběhnutí animace
+            }
+          }
+        }
+      } catch (x) { /* nic */ }
+      return DI.apply(this, arguments);
+    };
+  } catch (x) { /* nic */ }
+
   // Pokyny z osd.js (jen na kliknutí uživatele v popupu)
   window.addEventListener('message', e => {
     if (e.source !== window || !e.data || e.data[TAG + '-pokyn'] === undefined) return;
