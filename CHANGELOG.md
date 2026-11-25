@@ -6,6 +6,24 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.11.1 – 25. 11. 2026
+
+Opravná verze: drobné opravy nástrojů a nový pomocník pro skok na folio v knize.
+
+**Nové**
+- `folio.py` – ze 2–3 dvojic snímek=folio, které už v knize znáš, odhadne snímek pro hledané folio nebo stranu
+  (`--pagina`); zvládne i knihy, kde se posun mezi foliem a snímkem mění oddíl od oddílu (knihy po vsích, vlepené listy).
+
+**Opravy**
+- `vyrez.py` odmítne vstup, který je zároveň jeho výstupem (`zdroje/<klíč>.jpg`) – dřív ho přepsal výřezem a další
+  oprava ořezávala už oříznutý obrázek.
+- `mista.py` při chybě geokodéru (HTTP 5xx, 629, výpadek sítě) jednou počká a zkusí to znovu; když to nepomůže, uloží
+  místa dohledaná do té doby a skončí jednou srozumitelnou větou místo výpisu chyby. Malou osadu, kterou OpenStreetMap
+  nenajde, přidá `mista.py pridej "Název" --souradnice 49.6512,15.2031`.
+
+**Návody**
+- Upřesňující úpravy v `portaly.md` a `matriky.md`.
+
 ## 0.11.0 – 24. 11. 2026
 
 Hlavní změny: **export rodokmenu do GEDCOM** (i do vlastního stromu na MyHeritage) a nový postup pro **ZA Opava
