@@ -250,6 +250,7 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko, Bavorsko, Polsko…) |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské, `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `mapa_knihy.py` | mapa knihy po vsích a montáž sloupce jmen (`matriky.md`) |
+| `folio.py` | folio nebo strana → číslo snímku z několika známých dvojic (`matriky.md`) |
 | `cache.py` | sdílená mezipaměť snímků; uložení snímku z prohlížeče |
 | `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage); `--ged-id` vazba osob na strom (`ged`, `uid`) – `data.md` |
 | `ged_export.py` | export rodokmenu do GEDCOM (ZIP s obrázky, `--slozka` rozbalený; do MyHeritage s obrázky jen přes Family Tree Builder) – `data.md` |

@@ -166,9 +166,11 @@ z 25. 8. 2026); nástroje pak skončí hláškou. Do té doby:
 
 **Nový Archivní katalog `https://digi.ahmp.cz/pragapublica/`** – stejný software jako ZA Opava (platí tamní postup
 a pasti: `vysledekDetail` přímou adresou, `showZoomifySeparate`, tlačítko „Uložit obrázek“ nefunguje). Nástroje
-nepouští (robots.txt „Disallow: /“, ochrana proti robotům):
-pracuj v **Claude in Chrome** tempem člověka, jen snímky, které čteš, žádné dávky ani pomocníci. Ověření projde
-v Chromu uživatele samo (24. 11. 2026). Hledání: dlaždice **Matriky** (nebo „Sbírka matrik“ na úvodní stránce) a obec
+nepouští (robots.txt „Disallow: /“, ochrana proti robotům). Úvodní stránka má stejné upozornění na automatizované
+prohlížení jako ZA Opava – platí tamní odstavec **Podmínky archivu** (vysvětli uživateli, nech rozhodnout jeho;
+jinak čte uživatel sám a posílá snímky obrazovky). Pracuj v **Claude in Chrome** tempem člověka, jen snímky, které
+čteš, žádné dávky ani pomocníci; ověření v Chromu uživatele obvykle proběhne bez CAPTCHY (24. 11. 2026).
+Hledání: dlaždice **Matriky** (nebo „Sbírka matrik“ na úvodní stránce) a obec
 v poli „Místo / Lokalita“; ID snímků a entitu zjistíš jako u ZA Opava. Čti ze **snímku obrazovky přiblíženého
 zápisu**; celý snímek složí `cache.py z-chromu` (dlaždice z `digi-images.ahmp.cz` drží Chrome jen **1 hodinu** –
 skládej hned po projití stránky). Správnou farnost najdeš podle seznamů na https://www.ahmp.cz/index.html?mid=75
@@ -216,14 +218,24 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
   má ochranu proti robotům (Radware) a nepouští nástroje ani k obrázkům (robots.txt „Disallow: /“, images.archives.cz
-  vrací skriptům 403/404) – `soal_zoomify.py`, curl ani WebFetch, brzda je zastaví. Archiv na úvodní stránce
-  upozorňuje, že nestandardní práce s aplikací vede k blokaci: pracuj jako člověk, jeden snímek po druhém.
-  **Prohlížeč: Claude in Chrome** (uživatel ho připojí příkazem `/chrome`) – v uživatelově Chromu ochrana projde sama,
-  často i bez CAPTCHY (ověřeno 24. 11. 2026). **Playwright ne:** od listopadu 2026 ho Radware pozná a po CAPTCHA se
+  vrací skriptům 403/404) – `soal_zoomify.py`, curl ani WebFetch, brzda je zastaví. Pracuj jako člověk, jeden
+  snímek po druhém, jen snímky, které čteš.
+  **Podmínky archivu:** úvodní stránka badatelny uvádí, že aplikace není určena k automatizovanému prohlížení
+  a vytěžování dat softwarovými nástroji. Správce skillu to vykládá tak, že jde o hromadné a automatické
+  procházení a stahování (skripty, roboti, dávky), ne o čtení jednotlivých snímků, které uživatel vede a jeho
+  asistent v jeho vlastním prohlížeči otevírá na jeho pokyn a jeho tempem. Je to výklad, ne svolení archivu:
+  řekni ho uživateli i se zněním oznámení a nech rozhodnout jeho. Když nesouhlasí on, nebo to nechceš dělat ty,
+  použij jinou cestu (FamilySearch, nebo čte uživatel sám – viz níže); nikdy neskonči bez ní.
+  **Prohlížeč: Claude in Chrome** (uživatel ho připojí příkazem `/chrome`) – v uživatelově Chromu ověření obvykle
+  proběhne bez CAPTCHY (24. 11. 2026). **Playwright ne:** od listopadu 2026 ho Radware pozná a po CAPTCHA se
   ověření („Verifying your browser…“) točí donekonečna. **Vestavěný prohlížeč aplikace Claude** archiv odmítne hned
-  („Anomaly detected“). Bez Claude in Chrome ať knihu najde a snímky pošle uživatel.
+  („Anomaly detected“).
   Ověření projde jen v kartě v popředí. Okno aspoň 1400×900, v užším se nezobrazí filtry ani snímek. **CAPTCHU**
   (když přijde, pak zhruba po hodině) **vyřeší uživatel** v okně prohlížeče, ty nikdy.
+- **Bez asistovaného prohlížení** (uživatel nechce, Claude in Chrome nemá, nebo to odmítneš): matriky ZA Opava
+  jsou i na FamilySearch (níže „Totéž na FamilySearch“), nebo čte uživatel sám – řekni mu svazek (signaturu)
+  a číslo snímku, on snímek otevře, přiblíží zápis a pošle snímek obrazovky; ty z něj čteš a zapisuješ jako jindy
+  (`vyrez.py` ze snímku obrazovky).
 - Hledej obec a vyfiltruj Matriky (ikona, potom znovu lupa). Hledání vrací i civilní matriky (u obce stovky svazků) –
   filtr „Datum od – do“ (podle začátku svazku, např. 1680–1873) nechá jen církevní. Knihy bývají řazené po obcích
   a na konci mají rejstřík. Vedle farních knih bývají i **druhopisy** („T“ v signatuře, viz `matriky.md`).

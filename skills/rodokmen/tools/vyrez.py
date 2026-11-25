@@ -40,6 +40,10 @@ def main():
     MAGICK = magick()
     full = os.path.join(ROOT, "zdroje", key + ".jpg")
     small = os.path.join(ROOT, "vyrezy", key + ".jpg")
+    if os.path.abspath(src) in (os.path.abspath(full), os.path.abspath(small)):   # jinak by se vstup přepsal výřezem
+        sys.exit(f"Vstup {src} je zároveň výstup výřezu – nástroj by ho přepsal a další oprava by ořezávala už "
+                 "oříznutý obrázek. Výřez dělej ze snímku celé stránky (pracovni/…, nebo cache.py najdi <adresa>); "
+                 "když máš jen tento soubor, zkopíruj ho nejdřív do pracovni/ a výřez udělej z kopie.")
     os.makedirs(os.path.dirname(full), exist_ok=True)
     os.makedirs(os.path.dirname(small), exist_ok=True)
     cmd = [MAGICK, src, "-auto-orient"]   # fotky z mobilu: otočit podle EXIF (EXIF i s GPS pak smaže +profile, barevný profil ICC zůstane)
