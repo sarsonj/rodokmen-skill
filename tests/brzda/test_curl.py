@@ -24,12 +24,14 @@ for i, x in enumerate(a):
 url = next((x for x in a if "://" in x), "")
 if w:
     w = w.replace("%{http_code}", os.environ.get("FAKE_KOD", "200")).replace("%{url_effective}", url)
+    w = w.replace("\\n", "\n")   # jako skutečný curl: \n v -w (zpětné lomítko + n) = nový řádek
     for i, part in enumerate(w.split("%{stderr}")):
         (sys.stdout if i == 0 else sys.stderr).write(part)
 ''')
 if os.name == "nt":
     CURL = os.path.join(TMP, "fakecurl.cmd")
-    open(CURL, "w").write(f'@"{sys.executable}" "{FAKE}" %*\n')
+    # cmd.exe čte .cmd v kódování konzole (OEM, např. cp852) – v UTF-8 by cesta s „Tomáš“ nešla najít
+    open(CURL, "w", encoding="oem").write(f'@"{sys.executable}" "{FAKE}" %*\n')
 else:
     CURL = os.path.join(TMP, "fakecurl")
     open(CURL, "w").write(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE}" "$@"\n')
@@ -73,10 +75,10 @@ over("hodnota -o („out.jpg“) není druhá adresa", k == 0 and len(v) == 1, f
 k, out, err, v = curl("-sSLo", "pracovni/x.jpg", "https://img.example.cz/x.jpg")
 over("sloučené -sSLo bere další argument jako soubor", k == 0 and len(v) == 1, f"kód {k}")
 
-k, out, err, v = curl("-s", "-o", "x.jpg", "-w", "%{http_code}", "https://digi.archives.cz/da/x", kod="429", stav="b")
+k, out, err, v = curl("-s", "-o", "x.jpg", "-w", "%{http_code}", "https://digi.nacr.cz/prihlasky2/x", kod="429", stav="b")
 over("vlastní -w: výstup uživateli zůstane", out == "429", repr(out))
 over("vlastní -w: 429 web zastaví", k == 3 and "zastaven" in err, f"kód {k}")
-k2, _, err2, v2 = curl("-s", "https://digi.archives.cz/da/y", stav="b")
+k2, _, err2, v2 = curl("-s", "https://digi.nacr.cz/prihlasky2/y", stav="b")
 over("po 429 další dotaz neodejde", k2 == 3 and not v2, f"kód {k2}")
 
 print(f"\n{sum(vysledky)} z {len(vysledky)} testů prošlo")

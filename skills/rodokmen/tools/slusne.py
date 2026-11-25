@@ -608,7 +608,9 @@ def _curl(args):
     for u in urls:
         pockej(u)
     # vlastní -w: brzda ho spojí se svou značkou (curl použije jen poslední -w); -w @soubor a starý curl beze značky
-    znacka = "%{stderr}\n@@slusne %{http_code} %{url_effective}\n"
+    # \n jako zpětné lomítko + n: curl ho v -w sám převede na nový řádek a argument nemá skutečný konec řádku –
+    # ten by se přes curl.cmd/.bat (i podvržený curl v testu na Windows) nepředal a značka by se usekla
+    znacka = r"%{stderr}\n@@slusne %{http_code} %{url_effective}\n"
     w_poz = [i for i, a in enumerate(args) if a in ("-w", "--write-out") or a.startswith("--write-out=")]
     vlastni = None
     if w_poz:
