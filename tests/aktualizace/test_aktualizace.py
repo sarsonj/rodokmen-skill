@@ -10,7 +10,7 @@ import glob, os, shutil, subprocess, sys, tempfile, time, traceback
 
 SKILL = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "skills/rodokmen")
 RADKY = [f"radek {i}" for i in range(1, 21)]
-POCET = 20   # počet případů v pripady()
+POCET = 21   # počet případů v pripady()
 PRESKOCENO = "přeskočeno: "   # případ, který tu nejde vyzkoušet (počítá se zvlášť)
 
 
@@ -343,6 +343,26 @@ def pripady(koren):
         yield f"cíl zálohy jako odkaz ({druh}) se odmítne"
     else:
         yield PRESKOCENO + "odkaz na místě zálohy nejde vytvořit (chybí oprávnění)"
+
+    # 15. .claude jako odkaz na složku mimo projekt a .skill_verze jako odkaz na cizí soubor (#193): nic venku nezapsat
+    shutil.rmtree(proj(".claude"), ignore_errors=True)
+    venku2 = os.path.join(koren, "venku2")
+    zapis(os.path.join(venku2, "settings.json"), '{"cizi": 1}\n')
+    cizi = os.path.join(koren, "cizi_verze.txt")
+    zapis(cizi, "cizi\n")
+    os.remove(proj(".skill_verze"))
+    try:
+        os.symlink(venku2, proj(".claude"), target_is_directory=True)
+        os.symlink(cizi, proj(".skill_verze"))
+    except (OSError, NotImplementedError):
+        yield PRESKOCENO + "odkaz nejde vytvořit (chybí oprávnění)"
+    else:
+        out = spust(s, p, "--hlidac")
+        assert sorted(os.listdir(venku2)) == ["settings.json"], out
+        assert cti(os.path.join(venku2, "settings.json")) == '{"cizi": 1}\n', out
+        assert cti(cizi) == "cizi\n", out
+        assert not os.path.islink(proj(".skill_verze")) and cti(proj(".skill_verze")) == "9.9.9\n", out
+        yield ".claude a .skill_verze jako odkaz mimo projekt se nezapíšou"
 
 
 def main():

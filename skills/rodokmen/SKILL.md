@@ -47,7 +47,7 @@ Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `re
 2. Projekt ještě není → **Fáze 0**.
 
 ## Fáze 0 – Příprava (jednou)
-**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 20, ImageMagick, git), certifikáty na
+**Než začneš, přečti `reference/instalace.md`** a postupuj podle něj: kontrola nástrojů (Python ≥ 3.9, Node ≥ 22.12, ImageMagick, git), certifikáty na
 macOS, Windows, prohlížeč pro archivy, založení projektu (`python3 -I SKILL_DIR/tools/novy_projekt.py <složka>`,
 volitelně `--ukazka` a `--hlidac`), `git init`, „Pro koho“ ve `STAV.md` a název webu.
 **Windows:** ve všech příkazech skillu místo `python3 -I` piš `python -I -X utf8` (`python3` je tam nefunkční alias
@@ -65,8 +65,15 @@ Cíl: znát co nejvíc o 3–4 generacích nazpět, než sáhneš do matrik.
 - Vše zapiš: `data/udaje_od_rodiny.md` (kdo co řekl), osoby do `data/osoby.py` se stavem `fam`
   (formát v hlavičce souboru a v `reference/data.md`). Žijící lidé jen jméno a rok narození.
 - **Rodinný strom** (GEDCOM `.ged`, záloha MyHeritage `.ftb`): `tools/ged_import.py`, `tools/ftb_export.py` – postup
-  v `reference/data.md` → Import rodinného stromu. Strom, který si rodina vede sama, má stav `fam`; cizí stromy
+  v `reference/data.md` → Import rodinného stromu. Pole `ged`/`uid` z importu u osob nech (vazba pro sloučení s MyHeritage). Strom, který si rodina vede sama, má stav `fam`; cizí stromy
   z internetu (MyHeritage, Geni, FamilySearch, Smart Match) jsou **jen vodítko**, stav `mh`, nikdy `doc`.
+- **Export do GEDCOM** (rodokmen do MyHeritage, Gramps a jiných programů; do vlastního stromu na MyHeritage
+  rozdílově `--rozdil`, přehled změn projdi s uživatelem před importem): `tools/ged_export.py` – postup
+  a soukromí v `reference/data.md` → Export do GEDCOM. **Před spuštěním se zeptej, zda exportovat i žijící osoby**
+  (výchozí ne: žijící a nedávno zemřelí jsou jen „Žijící / Chráněná osoba“; ano = `--zijici`, vysvětli, že údaje dostane cílová služba).
+  Export nabídni sám, když uživatel zmíní MyHeritage, Ancestry, Geni nebo test DNA; jinak občas (na konci kola,
+  u hotové větve) jednou větou připomeň, že export jde. Nevnucuj ho. Sloučení s vlastním stromem na MyHeritage
+  (`--rozdil`) je pokročilý postup: uživatel potřebuje Family Tree Builder a kotvy v něm spojuje ručně.
 
 ## Fáze 2 – Matriky, generace po generaci
 Podrobný postup čtení: `reference/matriky.md`. Archivy: `reference/portaly.md`. Sporná ztotožnění, mrtvé body,
@@ -82,7 +89,7 @@ Základní smyčka pro každou osobu:
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
    dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
-   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh`; SOA Praha, MZA Brno a SOA Třeboň
+   `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh` (do 30. 11. 2026, pak prohlížeč); SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči (uživateli se hodí rozšíření Snímkovač, `reference/snimkovac.md`: snímky, které si sám prohlédne,
    uloží i s údaji a `tools/snimky_import.py` je převezme), ostatní v `reference/portaly.md`. Sňatek hledej nejdřív
    ve farnosti nevěsty. Je-li ke svazku
@@ -98,7 +105,8 @@ Základní smyčka pro každou osobu:
    6. osobu/osoby do `data/osoby.py` (`f` fakta, `r` klíč zápisu, `st="doc"`), sourozence a kmotry-příbuzné do `SIDE`;
       klíč zápisu k existující osobě přidej `python3 -I tools/zapis.py odkaz <číslo osoby | část jména z SIDE> <klíč>`.
    Nová obec předků → `tools/mista.py pridej "Obec"` (mapa), nový pradědeček nebo prababička (8–15) → rod do `LINES`.
-6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel).
+6. **Zapiš hledání do deníku** `data/research_log.md` – i neúspěšné, s rozsahem (které roky / snímky jsi prošel)
+   a u neúspěšného, jestli s dokladem, nebo jen orientačně (Pomocníci níže).
    **Zjevně související výskyt** po cestě (vzácné příjmení rodu, stejný dům, jméno z rodinného vyprávění) zapiš do
    výsledku se snímkem – je to stopa, ne doklad. Když se hledání zasekne, projdi deník právě kvůli takovým stopám.
 7. Spusť `python3 -I tools/kontrola.py` a oprav chyby.
@@ -161,6 +169,12 @@ tolik neubývají.
   související výskyty. Rejstřík ať čte po sloupcích (`mapa_knihy.py … --sloupce`, `reference/matriky.md` → Čtení
   písma) – jeho „v rejstříku není“ bez toho neber jako výsledek.
 - Pomocník píše jen do `pracovni/pom_<větev>/`, **do `data/` nikdy**. Zapisuješ ty; výstupy nemaž, dokud nejsou vytěžené.
+- **Záporný výsledek pomocníka („prošel jsem snímky 20–60, není tam“) není hotový výsledek** – chybné „není“ schová
+  předka natrvalo. Přijmi ho jen s dokladem: u každého snímku první a poslední jméno a rozsah dat, čtené ve zvětšení
+  (celá strana zmenšená na obrazovku nestačí); navazující úseky ať se o snímek překrývají. Do zadání mu napiš strukturu
+  pramene (co je v kterém sloupci, jestli je rejstřík jen zemřelých, nebo společný). V deníku rozliš úsek prošlý
+  **s dokladem** a jen **orientačně** – „už prošlé, znovu nehledat“ platí jen pro první. Čtení knihy bez rejstříku
+  (hledání naslepo) dej silnějšímu modelu, ne levnějšímu.
 - **Jejich čtení vždy ověř sám na snímku** (`python3 -I tools/overit.py <snímek> x0,y0,x1,y1 pracovni/over`, zlomky
   0–1, rozdělí zápis na dvě čitelné poloviny), než ho zapíšeš jako `doc`. Uživateli to vysvětli správně: je to stejný
   model, jde o princip čtyř očí – pomocník nemá kontext (dvě rodiny stejného jména ve vsi).
@@ -232,14 +246,16 @@ a `zdroje/` (výřezy pro web / plné rozlišení), `dokumenty/` (originály od 
 | `aron_search.py`, `aron_img.py` | ARON (SOA Zámrsk): hledání svazků; snímek, trvalý odkaz, zápis svazku |
 | `portafontium.py` | SOA Plzeň (Porta fontium) bez prohlížeče |
 | `ebadatelna.py` | SOA Praha: trvalý odkaz, náhled a výřez ze snímku uloženého z prohlížeče (stahovat nesmí) |
-| `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) |
+| `ahmp_search.sh`, `ahmp_scan.py` | matriky Prahy (AHMP) – jen do 30. 11. 2026, pak prohlížeč (`portaly.md`) |
 | `policie_prihlasky.py` | pražské policejní přihlášky 1850–1914 |
 | `soal_zoomify.py` | snímek SOA Litoměřice (knihu najdi v prohlížeči); ZA Opava jen v prohlížeči (`portaly.md`) |
 | `matricula_dl.sh`, `matricula_batch.sh` | snímky z Matriculy (Rakousko, Bavorsko, Polsko…) |
 | `anno.py`, `anno_snap.py`, `kramerius.py` | noviny: ANNO (rakouské, `--ztraty` = seznamy ztrát 1914–1919), Kramerius (české) |
 | `mapa_knihy.py` | mapa knihy po vsích a montáž sloupce jmen (`matriky.md`) |
+| `folio.py` | folio nebo strana → číslo snímku z několika známých dvojic (`matriky.md`) |
 | `cache.py` | sdílená mezipaměť snímků; uložení snímku z prohlížeče |
-| `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage) – `data.md` |
+| `ged_import.py`, `ftb_export.py` | rodinný strom (GEDCOM, záloha MyHeritage); `--ged-id` vazba osob na strom (`ged`, `uid`) – `data.md` |
+| `ged_export.py` | export rodokmenu do GEDCOM (ZIP s obrázky, `--slozka` rozbalený; do MyHeritage s obrázky jen přes Family Tree Builder) – `data.md` |
 | `vyrez.py`, `ramecek.py`, `overit.py` | výřez zápisu (zlomky stránky), rámeček (zlomky výřezu, `--pozn` poznámka), ověření čtení na dvou polovinách |
 | `zapis.py` | zápis do `data/*.json` a odkazů `r` v `osoby.py` beze změny formátu |
 | `mista.py` | místa pro mapu (OpenStreetMap) |

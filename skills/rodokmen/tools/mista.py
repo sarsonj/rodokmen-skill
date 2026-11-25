@@ -7,6 +7,8 @@ Použití:
       dotaz pro OpenStreetMap (výchozí = "Název, Česko", když nic nenajde, zkusí Slovensko a další sousední země);
       historickou část obce, kterou mapa nezná, zadej jako celou obec; u víceznačných názvů (Podolí, Dub) přidej sousední obec:
       "Podolí, Odlochovice" – a ve výpisu vždy zkontroluj okres
+  mista.py pridej "Název" --souradnice 49.6512,15.2031
+      malá osada, kterou OpenStreetMap nenajde: souřadnice zadáš sám (zjistíš je na mapy.cz nebo openstreetmap.org)
   mista.py
       dohledá souřadnice u míst, která je ještě nemají (OpenStreetMap Nominatim, 1 dotaz za sekundu),
       a vypíše seznam. Když bod nesedí, opravte lat/lon v data/mista.json ručně.
@@ -17,7 +19,7 @@ stejného jména. Vystěhovalci (Chicago, Vídeň) varování dostanou taky, jen
 
 Položka může mít "hypoteza": true a "rod": <Kekulé 8–15> – pak se na mapě ukáže jako hypotéza bez osob.
 """
-import json, math, os, re, sys, time, urllib.parse, urllib.request
+import json, math, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 if sys.argv[1:2] in (["-h"], ["--help"]):   # nápověda místo pádu
     sys.exit(__doc__.strip())
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__))); import slusne  # noqa: E402 – brzda proti zablokování archivem (společný limit dotazů, tools/slusne.py)
@@ -32,13 +34,26 @@ OUT = os.path.join(ROOT, "data", "mista.json")
 VZDALENE_KM = 50   # nový bod dál než tohle od všech ostatních míst projektu = asi jiná obec stejného jména
 
 
+class Nedostupny(Exception):
+    """Geokodér nejde použít (chyba serveru, síť) ani po druhém pokusu."""
+
+
 def nominatim(par):
     url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode(par)
     req = urllib.request.Request(url, headers={"User-Agent": "rodokmen-skill/1.0 (family genealogy map, occasional geocoding)"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        res = json.load(r)
-    time.sleep(1.1)
-    return res
+    for pokus in (1, 2):   # dočasná chyba serveru (5xx, 629 …) nebo sítě: jednou počkat a zkusit znovu
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                res = json.load(r)
+            time.sleep(1.1)
+            return res
+        except urllib.error.HTTPError as e:
+            if e.code == 429 or pokus == 2:   # 429 = příliš mnoho dotazů – znovu nezkoušet
+                raise Nedostupny(f"HTTP {e.code}") from None
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            if pokus == 2:
+                raise Nedostupny(type(e).__name__) from None
+        time.sleep(10)
 
 
 SIDLA = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "isolated_dwelling", "farm",
@@ -100,6 +115,17 @@ def nejblizsi(name, cache):
 
 def main():
     cache = json.load(open(OUT, encoding="utf-8-sig")) if os.path.exists(OUT) else {}
+    argv = sys.argv
+    souradnice = None
+    if "--souradnice" in argv:
+        i = argv.index("--souradnice")
+        m = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*", argv[i + 1] if i + 1 < len(argv) else "")
+        if not m or not (-90 <= float(m.group(1)) <= 90 and -180 <= float(m.group(2)) <= 180):
+            sys.exit("--souradnice potřebuje zeměpisnou šířku a délku v desetinných stupních, např. --souradnice 49.6512,15.2031")
+        souradnice = (round(float(m.group(1)), 4), round(float(m.group(2)), 4))
+        sys.argv = argv = argv[:i] + argv[i + 2:]
+    if souradnice and argv[1:2] != ["pridej"]:
+        sys.exit('--souradnice jen s „pridej“: mista.py pridej "Název" --souradnice 49.6512,15.2031')
     if len(sys.argv) > 2 and sys.argv[1] == "pridej":
         name = sys.argv[2]
         stem = re.escape(name.split()[0][:5]) if len(name.split()) == 1 else re.escape(name)
@@ -111,14 +137,26 @@ def main():
             for k in ("lat", "lon", "osm"):
                 cache[name].pop(k, None)
             print(f"přepočítávám: {name} (nový dotaz „{dotaz}“)")
+        if souradnice:
+            cache[name].update(lat=souradnice[0], lon=souradnice[1], osm="souřadnice zadané ručně")
     pozor, nove = [], []   # varování se vypíšou až pod seznamem, aby se v něm neztratila
+    def uloz():
+        json.dump(cache, open(OUT, "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
+
     for name, e in cache.items():
         if "lat" not in e:
-            g = geocode(e.get("dotaz") or f"{name}, Česko")
-            if not g and e.get("dotaz", f"{name}, Česko") == f"{name}, Česko":   # výchozí dotaz: zkus sousední země
-                g = geocode(name, "sk,pl,at,de,hu")
-                if g:
-                    pozor.append(f"MIMO ČESKO: {name} → {g[2][:80]} – zkontroluj, že je to ono")
+            try:
+                g = geocode(e.get("dotaz") or f"{name}, Česko")
+                if not g and e.get("dotaz", f"{name}, Česko") == f"{name}, Česko":   # výchozí dotaz: zkus sousední země
+                    g = geocode(name, "sk,pl,at,de,hu")
+                    if g:
+                        pozor.append(f"MIMO ČESKO: {name} → {g[2][:80]} – zkontroluj, že je to ono")
+            except (Nedostupny, slusne.Zastaveno) as chyba:   # hotová místa neztratit, jedna srozumitelná věta
+                uloz()
+                duvod = f" ({chyba})" if isinstance(chyba, Nedostupny) else ""
+                sys.exit(f"Geokodér OpenStreetMap teď neodpovídá{duvod} – místa dohledaná do teď jsem uložil, zbytek "
+                         f"zkus za chvíli znovu (od „{name}“). Malou osadu přidáš i bez něj: "
+                         f'mista.py pridej "{name}" --souradnice <šířka>,<délka>')
             if g:
                 e["lat"], e["lon"], e["osm"] = g[:3]
                 if not g[3]:
@@ -130,7 +168,7 @@ def main():
         n = nejblizsi(name, cache)
         if n and n[0] > VZDALENE_KM:
             pozor.append(f"POZOR: {name} je {n[0]:.0f} km od nejbližšího místa ({n[1]}) – je to ono? {cache[name]['osm'][:80]}")
-    json.dump(cache, open(OUT, "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
+    uloz()
     for n, e in cache.items():
         print(f"{n:28} {str(e.get('lat', '?')):>8} {str(e.get('lon', '?')):>8}  hledá „{e.get('re')}“  {e.get('osm', '')[:60]}")
     for p in pozor:

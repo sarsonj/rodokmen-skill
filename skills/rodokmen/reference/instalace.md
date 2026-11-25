@@ -3,7 +3,7 @@
 Čti při zakládání projektu nebo když nějaký nástroj chybí či padá na instalaci.
 
 ## Nástroje
-Zkontroluj: `python3 --version` (≥ 3.9), `node --version` (≥ 20), `magick -version` (ImageMagick 7; je-li jen verze 6
+Zkontroluj: `python3 --version` (≥ 3.9), `node --version` (≥ 22.12, kvůli Astru 7), `magick -version` (ImageMagick 7; je-li jen verze 6
 s příkazem `convert`, nástroje ji mimo Windows použijí samy), `git --version`.
 Co chybí, pomoz nainstalovat. Instalace systémových věcí nech uživatele potvrdit; interaktivní příkazy mu dej
 s předponou `!`, ať je spustí sám.
@@ -40,7 +40,8 @@ Potřebuješ ho pro archivy, které nástroje nepouštějí (SOA Praha, MZA Brno
 Litoměřice). Když předci žili tam a nemáš nástroje `mcp__…playwright…`, nabídni doplněk Playwright:
 `/plugin install playwright@claude-plugins-official` (dej ho uživateli s `!` jako
 `claude plugin install playwright@claude-plugins-official`), pak restart Claude Code. Jinou možností je Claude in Chrome
-(`/chrome`); postupy v `portaly.md` jsou vyzkoušené hlavně s Playwrightem (snímek obrazovky do souboru).
+(`/chrome`); postupy v `portaly.md` jsou vyzkoušené hlavně s Playwrightem (snímek obrazovky do souboru), **ZA Opava
+jde jen v Claude in Chrome** (Playwright tamní ochrana proti robotům od 11/2026 nepustí).
 Bez prohlížeče ať uživatel posílá snímky obrazovky.
 
 ## Založení projektu

@@ -74,7 +74,7 @@ def over_kartu(h, poradi, prijmeni, jmeno, od, do, radek):
 
 def karta(session, poradi, out, overeni):
     h = get(f"{BASE}?session={session}&action=image&record={poradi}")
-    m = re.search(r'src="images/((\d+)-(\d+)\.jpg)"', h)
+    m = re.search(r'src="images/((\d+)-(\d+)\.jpg)"', h, re.I)   # i .JPG
     if not m:
         sys.exit(f"karta č. {poradi} nenalezena (je pořadí z tohoto hledání?)")
     lide = over_kartu(h, poradi, *overeni)

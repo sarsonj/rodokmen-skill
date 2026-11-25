@@ -6,6 +6,74 @@ dá v repozitáři **Watch → Custom → Releases**.
 
 Projekt založený starší verzí Claude sám nabídne aktualizovat (pozná to podle souboru `VERZE`).
 
+## 0.11.1 – 25. 11. 2026
+
+Opravná verze: drobné opravy nástrojů a nový pomocník pro skok na folio v knize.
+
+**Nové**
+- `folio.py` – ze 2–3 dvojic snímek=folio, které už v knize znáš, odhadne snímek pro hledané folio nebo stranu
+  (`--pagina`); zvládne i knihy, kde se posun mezi foliem a snímkem mění oddíl od oddílu (knihy po vsích, vlepené listy).
+
+**Opravy**
+- `vyrez.py` odmítne vstup, který je zároveň jeho výstupem (`zdroje/<klíč>.jpg`) – dřív ho přepsal výřezem a další
+  oprava ořezávala už oříznutý obrázek.
+- `mista.py` při chybě geokodéru (HTTP 5xx, 629, výpadek sítě) jednou počká a zkusí to znovu; když to nepomůže, uloží
+  místa dohledaná do té doby a skončí jednou srozumitelnou větou místo výpisu chyby. Malou osadu, kterou OpenStreetMap
+  nenajde, přidá `mista.py pridej "Název" --souradnice 49.6512,15.2031`.
+
+**Návody**
+- Upřesňující úpravy v `portaly.md` a `matriky.md`.
+
+## 0.11.0 – 24. 11. 2026
+
+Hlavní změny: **export rodokmenu do GEDCOM** (i do vlastního stromu na MyHeritage) a nový postup pro **ZA Opava
+a AHMP Praha**, které nástroje ani Playwright nepouštějí – čtení v Claude in Chrome, celý snímek z mezipaměti
+prohlížeče.
+
+**Nové**
+- Export do GEDCOM 5.5.1 (`tools/ged_export.py`) – osoby, zápisy s citacemi a výřezy, svazky, místa i dokumenty;
+  ZIP s obrázky, nebo rozbalená složka pro Family Tree Builder (cesta do MyHeritage i s obrázky). Žijící a nedávno
+  zemřelí jsou jen „Žijící / Chráněná osoba“, pokud uživatel výslovně nechce jinak. Claude export nabídne sám,
+  když zmíníte MyHeritage, Ancestry, Geni nebo test DNA (#246, #33; díky Tomáši Krausovi).
+- Sloučení s vlastním stromem na MyHeritage: osoby si pamatují ID z importovaného stromu a `ged_export.py --rozdil`
+  vyveze jen nové předky a místa napojení, s přehledem ke kontrole před importem do Family Tree Builderu (#247).
+- `cache.py z-chromu` složí celý snímek ZA Opava nebo AHMP z dlaždic, které si prohlížeč snímků sám načetl do
+  mezipaměti Chromu – archiv nedostane žádný dotaz navíc.
+
+**Opravy**
+- Brzda už nezastaví Českou digitální knihovnu (`api.ceskadigitalniknihovna.cz`) kvůli 403 u neveřejného díla.
+- `ahmp_scan.py` a `ahmp_search.sh` po sobě mažou dočasné složky – v `/tmp` jich dřív zůstávaly tisíce (#220).
+- `napady.py` už nebere datum zdroje v závorce za datum události („dožil se 131 let“).
+- Hlídač sítě pozná i `python3.11` a podobné.
+- `policie_prihlasky.py` najde i karty s příponou `.JPG`.
+
+**Návody**
+- **ZA Opava:** jen v Claude in Chrome (Playwright od listopadu ochrana proti robotům nepustí). Čtení ze snímku
+  obrazovky přiblíženého zápisu, celý snímek volitelně z mezipaměti prohlížeče. Tlačítko „Uložit obrázek“
+  v badatelně nefunguje (chyba na straně archivu).
+- **AHMP Praha:** starý katalog katalog.ahmp.cz archiv 30. 11. 2026 ukončuje – do té doby fungují nástroje, pak nový
+  Archivní katalog digi.ahmp.cz jen v Claude in Chrome (stejný postup jako ZA Opava).
+
+## 0.10.2 – 16. 11. 2026
+
+Opravná verze: bezpečnější založení a aktualizace projektu, správný požadavek na Node a pravidla, aby chybné „není
+tam“ od pomocníka neschovalo předka.
+
+**Opravy**
+- Založení a aktualizace projektu už nemůžou zapsat mimo projekt, když je `.claude/` nebo `.skill_verze` symbolický
+  odkaz jinam (#193). Komentář v hlídači sítě, který skener Hermes Agent mylně bral jako nebezpečný kód, je
+  přeformulovaný.
+- Web potřebuje Node 22.12 nebo novější (Astro 7) – návod chtěl jen Node 20 a s ním web nešel sestavit. `npm run data`
+  teď starší Node hned srozumitelně ohlásí.
+- `kontrola.py` upozorní na hypotézu (`HYPOTEZY`) zapsanou jinak než `dict(…)` – export webu na ní padal.
+- Brzda už nezastaví celý Kramerius na hodiny kvůli HTTP 403 u neveřejného díla (OCR, stránky, obrázky) – to není
+  blokace, dílo jen není volně dostupné.
+
+**Návody**
+- Záporný výsledek pomocníka („prošel jsem snímky 20–60, není tam“) Claude přijme jen s dokladem – první a poslední
+  jméno a data z každého snímku, čtené ve zvětšení – a v deníku rozliší úsek prošlý s dokladem a jen orientačně.
+  Chybné „není“ dřív mohlo předka schovat natrvalo.
+
 ## 0.10.1 – 13. 11. 2026
 
 Hlavní změna: **ZA Opava a SOA Praha omezily automatizovaný přístup.** ZA Opava od listopadu nepouští nástroje ani

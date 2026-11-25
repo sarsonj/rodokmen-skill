@@ -40,7 +40,7 @@ def event(p, sym):
     out = []
     for f in p.get("f", []):
         if f.strip().startswith(sym) and not NEPRESNE.match(f.strip()):
-            m = re.search(DATE, f)
+            m = re.search(DATE, re.sub(r"\([^)]*\)", "", f))   # ne datum zdroje v závorce („(zdroj, 17. 11. 2026)“)
             if m:
                 try:
                     out.append((datetime.date(int(m.group(3)), int(m.group(2)), int(m.group(1))), f))

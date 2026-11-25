@@ -12,7 +12,7 @@ import json, os, re, sys
 
 CMD = r"(?:^|[;&|(\n`]|\$\(|\b(?:then|do|else|exec|env|time|nohup|xargs|sudo)\s|\b(?:bash|sh|zsh)\s+-c\s+[\"']|\beval\s+[\"']?)\s*"
 CURL = re.compile(CMD + r"(curl|wget)(?:\.exe)?(?=\s|$)", re.I)
-PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python3?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)
+PYTHON = re.compile(CMD + r"(?:\S*/)?(?:python(?:3(?:\.\d+)?)?|py)(?:\.exe)?(?:\s+-3)?(?=\s|$)", re.I)   # i python3.11
 SHELL = re.compile(CMD + r"(?:(?:bash|sh|zsh)\s+|\./)(\S+\.sh)\b")
 SIT_MOD = r"(?:requests|httpx|aiohttp|urllib3|pycurl|socket|urllib\.request|http\.client)\b"
 ZAC = r"(?:^|[;\"'])\s*"   # začátek řádku, příkazu za středníkem nebo kódu v python -c "…"
@@ -110,7 +110,7 @@ def posoudit(tool, cmd, cwd):
             if SIT_PY.search(obsah) and not jen_volne(obsah):   # síť jen na povolené weby (verze.py → GitHub) projde
                 return f"Python skript {args[0]} používá síť"
         c_kod, heredocy = python_kod(cmd, m.end())   # jen kód, který Python opravdu spustí, ne zbytek příkazu
-        if args and args[0] == "-" and not heredocy:   # kód rourou („echo … | python -“): posoudit celý příkaz
+        if args and args[0] == "-" and not heredocy:   # kód na standardním vstupu z roury (python -): posoudit celý příkaz
             c_kod.append(cmd)
         if any(SIT_PY.search(k) and not jen_volne(k) for k in c_kod) or \
                 any(SIT_PY_RADEK.search(t) and not jen_volne(t) for t in heredocy):

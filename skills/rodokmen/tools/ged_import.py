@@ -6,7 +6,13 @@ Použití (z kořene projektu):
   python3 -I tools/ged_import.py dokumenty/strom.ged "Jméno Příjmení" -> předci této osoby s Kekulého čísly
                                                                         (1 = ona, 2 = otec, 3 = matka…), všechny
                                                                         události, poznámky a FRONTA ZÁPISŮ k vyhledání
-  … "Jméno Příjmení" --osoby   -> totéž jako kostra pro data/osoby.py (stav "fam", ke kontrole a doplnění)
+  … "Jméno Příjmení" --osoby   -> totéž jako kostra pro data/osoby.py (stav "fam", ke kontrole a doplnění);
+                                 u každé osoby i ged="@I…@" a uid (_UID) – vazba na tento strom pro pozdější
+                                 sloučení s MyHeritage (ged_export.py)
+  … "Jméno Příjmení" --ged-id [--zapsat]
+                              -> doplní vazbu do existujícího data/osoby.py (projekt, který strom importoval dřív):
+                                 projde strom od výchozí osoby, stejné Kekulé číslo = stejná osoba, ověří jméno
+                                 a rok narození; vypíše shody a neshody. S --zapsat shody zapíše (zapis.py ged).
 
 Fronta zápisů: u každého předka nejmladší známá událost s místem (úmrtí, pak sňatek, pak narození) –
 úmrtní a oddací zápisy uvádějí datum a místo narození i rodiče, proto se hledá od nejmladšího zápisu.
@@ -14,13 +20,8 @@ E-maily a adresy ze stromu se nevypisují.
 Kódování: UTF-8; starší soubory s hlavičkou „1 CHAR ANSI“ (Brother's Keeper) se čtou jako Windows-1250 a česká data
 („SRPEN 1945“, „PODZIM 1951“, „1926 NEBO 1927“, „11.11.1934“) se převedou na tvar „8. 1945“, „podzim 1951“…
 """
-import datetime, re, sys
-if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):   # nápověda místo pádu
-    sys.exit(__doc__.strip())
-from collections import defaultdict
-for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
-    if hasattr(_s, "reconfigure"):
-        _s.reconfigure(encoding="utf-8", errors="replace")
+import datetime, os, re, sys, unicodedata
+# Modul jde i importovat (read() používají ged_export.py a testy) – nápověda a nastavení výstupu jsou proto v main().
 
 EVENTS = {"BIRT": "*", "CHR": "* (křest)", "DEAT": "†", "BURI": "† (pohřeb)", "MARR": "×"}
 MONTHS = {m: i for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(), 1)}
@@ -141,32 +142,8 @@ def parents(ind, recs):
     return None, None
 
 
-def find(recs, query):
-    q = query.lower().split()
-    hits = [r for r in recs.values() if r["_type"] == "INDI" and all(w in name(r).lower() for w in q)]
-    if not hits:
-        sys.exit(f"Osoba „{query}“ ve stromu není. Spusť bez jména pro seznam osob.")
-    if len(hits) > 1:
-        print("Víc osob odpovídá, použij id místo jména:", file=sys.stderr)
-        for h in hits:
-            print(f"  {h['_id']} | {name(h)}", file=sys.stderr)
-        sys.exit(1)
-    return hits[0]
-
-
-def main():
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    recs = read(sys.argv[1])
-    args = [a for a in sys.argv[2:] if not a.startswith("--")]
-    as_py = "--osoby" in sys.argv
-    if not args:
-        for r in recs.values():
-            if r["_type"] == "INDI":
-                b = next((e for e in events(r, recs) if e[0] == "BIRT"), None)
-                print(f"{r['_id']} | {name(r)} | {('* ' + b[1] + ' ' + b[2]).strip() if b and (b[1] or b[2]) else ''}")
-        return
-    start = recs.get(args[0]) or find(recs, args[0])
+def ancestors(recs, start):
+    """Předci výchozí osoby s Kekulého čísly {1: osoba, 2: otec, 3: matka, …}."""
     tree, todo = {1: start}, [1]
     while todo:
         k = todo.pop(0)
@@ -183,6 +160,123 @@ def main():
                     continue
                 tree[kk] = p
                 todo.append(kk)
+    return tree
+
+
+def find(recs, query):
+    q = query.lower().split()
+    hits = [r for r in recs.values() if r["_type"] == "INDI" and all(w in name(r).lower() for w in q)]
+    if not hits:
+        sys.exit(f"Osoba „{query}“ ve stromu není. Spusť bez jména pro seznam osob.")
+    if len(hits) > 1:
+        print("Víc osob odpovídá, použij id místo jména:", file=sys.stderr)
+        for h in hits:
+            print(f"  {h['_id']} | {name(h)}", file=sys.stderr)
+        sys.exit(1)
+    return hits[0]
+
+
+def tokens(text, keep_brackets=False):
+    """Slova jména bez diakritiky, malými písmeny, bez „?“; text v závorkách jen s keep_brackets."""
+    text = text or ""
+    text = unicodedata.normalize("NFD", text if keep_brackets else re.sub(r"\([^)]*\)", " ", text))
+    text = "".join(c for c in text if not unicodedata.combining(c)).casefold()
+    return [w for w in re.split(r"[^\w]+", text.replace("/", " ")) if w]
+
+
+def same_name(project_name, tree_name, married=()):
+    """Shoda: první křestní jméno a příjmení z projektu jsou ve jménu ve stromu (strom má navíc druhá jména…).
+    Příjmení se porovná podle začátku (Novák × Nováková, Dvořák × Dvořáková); married = příjmení po sňatku
+    z faktu „provd. Nováková“ (strom ženu často vede pod ním)."""
+    a = tokens(project_name)
+    alt = [w for w in tokens(project_name, True) if w not in a]   # „Martin Novák (Vopat)“ – druhé příjmení v závorce
+    if len(a) >= 2 and any(same_name(f"{a[0]} {m}", tree_name) for m in [*married, *alt]):
+        return True
+    b = tokens(tree_name, True)   # strom: „MARTIN VOPAT (NOVÝ)“ – i závorka
+    if len(a) < 2 or not b:
+        return bool(a) and a[0] in b
+    def similar(x, y, least):   # společný začátek: Novák/Nováková, Dvořák/Dvořáková (dvorak × dvorakova)
+        common = len(os.path.commonprefix([x, y]))
+        return x == y or (common >= least and common >= min(len(x), len(y)) - 2)
+    # křestní jméno podle začátku aspoň 4 znaků: Anton × Antonín, Johanna × Johana (Martin × Marie ne);
+    # příjmení stačí 3: Kočí × Kočová (Rosalie × Rozálie ne – ověří člověk)
+    return any(similar(a[0], w, 4) for w in b) and any(similar(a[-1], w, 3) for w in b[1:] or b)
+
+
+def ged_id(recs, tree, write):
+    """Vazba existujícího data/osoby.py na strom: stejné Kekulé číslo = stejná osoba, ověří jméno a rok narození."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ns = {}
+    try:
+        exec(open(os.path.join(root, "data", "osoby.py"), encoding="utf-8-sig").read(), ns)
+    except Exception as e:  # noqa: BLE001
+        sys.exit(f"data/osoby.py nejde načíst ({e}) – oprav ho nejdřív.")
+    P, SAME = ns.get("P", {}), ns.get("SAME", {})
+    ok, bad, have, conflict = [], [], [], []
+    for k in sorted(P):
+        if k in SAME or k not in tree:
+            continue
+        p, ind = P[k], tree[k]
+        gid, uid = ind["_id"], first(ind, "_UID").strip()
+        by = next((year(d) for t, d, pl, x in events(ind, recs) if t in ("BIRT", "CHR") and year(d)), None)
+        py = next((int(m) for m in re.findall(r"\b(\d{4})\b", str(p.get("y", "")) + " " + " ".join(
+            f for f in p.get("f", []) if str(f).lstrip().startswith("*")))), None)
+        row = (k, p.get("n", ""), name(ind), gid, uid, py, by)
+        married = [m for f in p.get("f", []) for m in re.findall(r"provd\.\s+(\S+)", str(f))]
+        if p.get("ged"):
+            (have if p["ged"] == gid else conflict).append(row)
+        elif not same_name(p.get("n", ""), name(ind), married) or (py and by and abs(py - by) > 1):
+            bad.append(row)
+        else:
+            ok.append(row)
+    fmt = lambda r: f"  {r[0]:>4} {r[1]} ({r[5] or '?'}) ↔ {r[3]} {r[2]} ({r[6] or '?'})"
+    print(f"Shoda ({len(ok)}):")
+    for r in ok:
+        print(fmt(r))
+    if bad:
+        print(f"\nNESEDÍ – jméno nebo rok narození se liší o víc než rok, nezapisuji ({len(bad)}); ověř a případně"
+              " zapiš ručně: zapis.py ged <číslo> <@I…@> [<uid>]")
+        for r in bad:
+            print(fmt(r))
+    if conflict:
+        print(f"\nJINÉ ID – osoba už má ged, ale strom má na tomto místě jinou osobu ({len(conflict)}); nic neměním:")
+        for r in conflict:
+            print(fmt(r) + f"  (v datech {P[r[0]]['ged']})")
+    if have:
+        print(f"\nUž mají správné ged: {len(have)}")
+    rest = [k for k in P if k not in SAME and k not in tree and not P[k].get("ged")]
+    if rest:
+        print(f"\nNejsou ve stromu (nově zjištění předci, při sloučení budou nové osoby): {len(rest)} – "
+              + ", ".join(str(k) for k in sorted(rest)[:30]) + (" …" if len(rest) > 30 else ""))
+    if not write:
+        if ok:
+            print("\nZapsat shody: totéž s --zapsat.")
+        return
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import zapis
+    for k, n, tn, gid, uid, py, by in ok:
+        zapis.nastav(k, {"ged": gid, **({"uid": uid} if uid else {})})
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):   # nápověda místo pádu
+        sys.exit(__doc__.strip())
+    for s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+    recs = read(sys.argv[1])
+    args = [a for a in sys.argv[2:] if not a.startswith("--")]
+    as_py = "--osoby" in sys.argv
+    if not args:
+        for r in recs.values():
+            if r["_type"] == "INDI":
+                b = next((e for e in events(r, recs) if e[0] == "BIRT"), None)
+                print(f"{r['_id']} | {name(r)} | {('* ' + b[1] + ' ' + b[2]).strip() if b and (b[1] or b[2]) else ''}")
+        return
+    start = recs.get(args[0]) or find(recs, args[0])
+    tree = ancestors(recs, start)
+    if "--ged-id" in sys.argv:
+        return ged_id(recs, tree, "--zapsat" in sys.argv)
     queue = []
     if as_py:
         print("P = {")
@@ -205,7 +299,9 @@ def main():
         y = f"{b}–{dd}" if b and dd else (f"* {b}" if b else (f"† {dd}" if dd else ""))
         if as_py:
             note = " ".join(notes)   # !r = platný Python i pro uvozovky a „\“ ve jménech a poznámkách (osoby.py se spouští přes exec)
-            print(f' {k}: dict(n={name(ind)!r}, y={y!r}, st="fam", f={facts!r}, r=[]' + (f', note={note[:300]!r}' if note else "") + "),")
+            ids = f", ged={ind['_id']!r}" + (f", uid={first(ind, '_UID').strip()!r}" if first(ind, "_UID").strip() else "")
+            print(f' {k}: dict(n={name(ind)!r}, y={y!r}, st="fam", f={facts!r}, r=[]' + ids
+                  + (f', note={note[:300]!r}' if note else "") + "),")
         else:
             print(f"\n{k} | {name(ind)} | {y}")
             for f in facts:
