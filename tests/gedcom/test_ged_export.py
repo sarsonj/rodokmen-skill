@@ -403,6 +403,42 @@ def test_umely():
     shutil.rmtree(os.path.dirname(d), ignore_errors=True)
 
 
+def test_same_bez_radku():
+    d = projekt(False)
+    try:
+        data = os.path.join(d, "data")
+        with open(os.path.join(data, "osoby.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('''
+P = {
+    1: dict(n="Anna Malá", y="1850–1920", st="doc", f=[]),
+    2: dict(n="Jan Malý", y="1820–1890", st="doc", f=[], r=["spolecny"]),
+    6: dict(n="Jan Malý", y="1820–1890", st="doc", f=[], r=["spolecny", "z_aliasu"]),
+}
+SAME = {4: 2, 6: 2}
+''')
+        with open(os.path.join(data, "zaznamy.json"), "w", encoding="utf-8", newline="\n") as f:
+            json.dump([dict(klic="spolecny", nazev="Společný zápis"),
+                       dict(klic="z_aliasu", nazev="Zápis z aliasu")], f, ensure_ascii=False)
+
+        export(d)
+        _, recs, _ = nacti_zip(os.path.join(d, "pracovni", "rodokmen.zip"))
+        ids = {r["_id"] for r in recs.values() if r["_type"] == "INDI"}
+        ok("SAME bez řádku: exportuje jen hlavní osoby", ids == {"@I1@", "@I2@"}, ids)
+        rodina = fam_of(recs, "@I2@", "")
+        ok("SAME bez řádku: rodina má otce 2 a dítě 1",
+           rodina is not None and [n["val"] for n in sub(rodina, "CHIL")] == ["@I1@"])
+        citace = page(recs, recs["@I2@"])
+        ok("SAME: spojí citace hlavní osoby a aliasu bez duplicit",
+           sorted(citace) == ["Společný zápis", "Zápis z aliasu"], citace)
+
+        export(d, "--koren", "4")
+        _, recs4, _ = nacti_zip(os.path.join(d, "pracovni", "rodokmen_koren4.zip"))
+        ids4 = {r["_id"] for r in recs4.values() if r["_type"] == "INDI"}
+        ok("--koren 4: SAME bez řádku vybere osobu 2", ids4 == {"@I2@"}, ids4)
+    finally:
+        shutil.rmtree(os.path.dirname(d), ignore_errors=True)
+
+
 def test_data():
     for vstup, cil in (("14. 2. 1890", "14 FEB 1890"), ("1797", "1797"), ("3/1867", "MAR 1867"), ("asi 1720", "ABT 1720"),
                        ("po 1921", "AFT 1921"), ("mezi 1720 a 1725", "BET 1720 AND 1725"), ("", "")):
@@ -422,6 +458,7 @@ if __name__ == "__main__":
     test_import_bez_argumentu()
     test_ukazka()
     test_umely()
+    test_same_bez_radku()
     test_vystup()
     print(f"\n{sum(vysledky)}/{len(vysledky)} v pořádku")
     sys.exit(0 if all(vysledky) else 1)

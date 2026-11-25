@@ -352,7 +352,7 @@ class Export:
     def records_of(self, k):
         rs = list(self.P[k].get("r", []))
         for a in self.aliases.get(k, []):
-            rs += self.P[a].get("r", [])
+            rs += self.P.get(a, {}).get("r", [])
         return [r for r in dict.fromkeys(rs) if r in self.recs]
 
     def rec_year(self, key):
