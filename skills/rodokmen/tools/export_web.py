@@ -264,6 +264,38 @@ def main():
         g = gen(k)
         return k >> (g - 3) if g >= 3 else None
 
+    def chrono_facts(facts):
+        """Údaje o osobě chronologicky: narození/křest první, úmrtí/pohřeb poslední,
+        ostatní podle prvního data v textu; údaj bez data zůstane za údajem, za kterým byl."""
+        def date_key(t):
+            m = re.search(r"(\d{1,2})\.\s*(\d{1,2})\.\s*(1[5-9]\d\d|20\d\d)", t)
+            if m:
+                return (int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            m = re.search(r"(\d{1,2})\.\s*([IVX]{1,4})\.?\s*(1[5-9]\d\d|20\d\d)", t)
+            if m:
+                rom = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10, "XI": 11, "XII": 12}
+                return (int(m.group(3)), rom.get(m.group(2), 0), int(m.group(1)))
+            m = re.search(r"\b(1[5-9]\d\d|20\d\d)\b", t)
+            return (int(m.group(1)), 0, 0) if m else None
+
+        def cat(t):
+            s = t.lstrip()
+            if s.startswith(("*", "~")):
+                return 0
+            if s.startswith("†") or s.lower().startswith(("pohřben", "zemřel")):
+                return 2
+            return 1
+
+        keyed, prev = [], (0, 0, 0)
+        for i, t in enumerate(facts):
+            dk = date_key(t)
+            if dk is None:
+                dk = prev
+            else:
+                prev = dk
+            keyed.append(((cat(t), dk if cat(t) == 1 else (0, 0, 0), i), t))
+        return [t for _, t in sorted(keyed, key=lambda x: x[0])]
+
     people = {}
     for k, p in sorted(P.items()):
         if k not in slugs or k in SAME:
@@ -275,7 +307,7 @@ def main():
         people[slugs[k]] = dict(
             k=k, slug=slugs[k], name=p["n"], y=p.get("y", ""), years=years(p.get("y")), st=p.get("st", "unk"),
             status=STATUS.get(p.get("st"), ""), gen=gen(k), sex="M" if k == 1 and p.get("sex", "M") == "M" or k > 1 and k % 2 == 0 else "F",
-            rel=relation(k), line=line_of(k), facts=p.get("f", []), note=p.get("note", ""), records=[r for r in p.get("r", []) if r in recs],
+            rel=relation(k), line=line_of(k), facts=chrono_facts(p.get("f", [])), note=p.get("note", ""), records=[r for r in p.get("r", []) if r in recs],
             father=slugs.get(2 * k), mother=slugs.get(2 * k + 1),
             fatherUnknown=(2 * k in P and placeholder(P[2 * k])), motherUnknown=(2 * k + 1 in P and placeholder(P[2 * k + 1])),
             child=slugs.get(k // 2) if k > 1 else None, spouse=slugs.get(k ^ 1) if k > 1 else None,
