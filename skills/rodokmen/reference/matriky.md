@@ -8,8 +8,8 @@
 | **Z** | zemřelí, *Liber defunctorum*, *Sterbebuch* | datum úmrtí a pohřbu, dům, jméno, věk, příčina | věk → odhad roku narození, stav (vdova po…) |
 | **I** | index (rejstřík) k N/O/Z | jméno → datum / strana | rychlé hledání; **index bývá neúplný**, negativní výsledek v indexu nic nedokazuje – a „v rejstříku není“ ověř čtením po sloupcích (Čtení písma) |
 
-Další prameny: sčítání lidu (1857–1921; domácnosti s daty narození; operáty 1930 jsou jen v Národním archivu,
-běžně nepřístupné a online nejsou), soupis poddaných 1651 (celé rodiny s věkem),
+Další prameny: sčítání lidu (1857–1921; celé domácnosti po domech, 1857 s rokem, od 1869 s datem a místem narození;
+operáty 1930 jsou jen v Národním archivu a online nejsou – `scitani.md`), soupis poddaných 1651 (celé rodiny s věkem),
 berní rula 1654 (jen hospodáři), gruntovní/pozemkové knihy (kdo vlastnil který dům – propojí generace přes dům),
 vojenské záznamy, domovské listy, parte. Viz `portaly.md` a `metodika.md` (prameny mimo ČR).
 

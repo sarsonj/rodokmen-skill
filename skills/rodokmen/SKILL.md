@@ -16,8 +16,8 @@ uživatel dodává znalost rodiny, rozhoduje sporná místa a schvaluje, co jde 
 **Složka tohoto skillu** (dále `SKILL_DIR`) je ta, kterou ti systém ukázal při načtení skillu („Base directory“).
 Najdeš v ní `tools/` (nástroje), `template/` (šablona projektu a webu) a `reference/` (podrobné návody – čti je, až je potřebuješ):
 `instalace.md` (příprava počítače, Windows), `matriky.md` (čtení matrik, pasti), `portaly.md` (archivy), `metodika.md`
-(spojování záznamů, ztotožnění, mrtvé body, prameny mimo ČR), `data.md` (formát dat, import stromu), `pribehy.md`,
-`web.md`, `soukromi.md`.
+(spojování záznamů, ztotožnění, mrtvé body, prameny mimo ČR), `scitani.md` (sčítání lidu 1857–1921), `data.md`
+(formát dat, import stromu), `pribehy.md`, `web.md`, `soukromi.md`.
 
 ## Jak mluvit s uživatelem
 - **Česky, stručně, lidsky.** Žádný žargon bez vysvětlení (Kekulé, N/O/Z, apu…). Místo „commitnu“ řekni „uložím“.
@@ -87,7 +87,8 @@ Základní smyčka pro každou osobu:
    sňatek rodičů, rejstříky), a chybějící zápis dej do `archivni_dotazy.md`.
 2. **Ověř přístupnost**: matriky jsou v archivu až po uplynutí lhůty od *posledního* zápisu ve svazku (narození 100 let,
    sňatky 75, úmrtí 30; `matriky.md` → Lhůty). Mladší údaje jsou na matričním úřadě – zápis starší lhůty tam
-   dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`.
+   dostane kdokoli, mladší jen rodina (`matriky.md` → Lhůty); zapiš do `data/archivni_dotazy.md`. Narození
+   po ~1910 a celou domácnost často ukáže sčítání lidu 1921 – znáš-li obec a dům, zkus ho dřív (`reference/scitani.md`).
 3. **Najdi svazek**: podle obce → farnost → archiv. ARON: `python3 -I tools/aron_search.py "Obec"`, SOA Plzeň:
    `python3 -I tools/portafontium.py obec "Obec"`, Praha: `tools/ahmp_search.sh` (do 30. 11. 2026, pak prohlížeč); SOA Praha, MZA Brno a SOA Třeboň
    jen v prohlížeči, ostatní v `reference/portaly.md`. Sňatek hledej nejdřív ve farnosti nevěsty. Je-li ke svazku
@@ -122,6 +123,8 @@ Pravidla, která chrání kvalitu:
 - **Rodina přes čísla domů**: stejné číslo popisné a řemeslo přes generace je silná stopa; v knize hledej celé domácnosti.
 - **Ztotožnění míst ověř** podle panství/kraje v zápisu (německé „Langenau“ je v Čechách několikrát – rozhodne
   „bey Hohenelbe“ = u Vrchlabí).
+- **Sčítání lidu 1857–1921** ukáže, kdo spolu v domě bydlel (sourozenci, tchyně, výměnkáři), rodiště přistěhovalých
+  a domovskou obec; data narození v něm bývají o rok vedle – matrika má přednost (`reference/scitani.md`).
 - U úředníků, vojáků, lékařů, učitelů, farářů zkus noviny a ročenky (`portaly.md` → Noviny); pro 17. století soupis
   poddaných 1651, berní rulu a gruntovní knihy (`portaly.md` → Starší prameny) – matriky před ~1650 skoro nejsou.
 - **Spornou věc**, kterou nerozhodneš (dvě čtení, dva kandidáti), ukaž uživateli s výřezem a nech ho rozhodnout; do té

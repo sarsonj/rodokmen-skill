@@ -82,8 +82,8 @@ z nich brát snímky: `portaly.md`, formát dat: `data.md`.
   → 2. gruntovní knihy panství → 3. sirotčí knihy, svatební smlouvy → 4. tereziánský katastr (1713–57) → 5. soupis
   poddaných 1651, berní rula 1654 (Morava: lánové rejstříky 1669–79). Spojuje **grunt/dům a posloupnost držitelů**.
   U sedláků se zachovanými gruntovními knihami je reálné dno **kolem roku 1650**.
-- **Kniha se nedochovala:** druhopisy a samostatné rejstříky, gruntovní knihy, soupisy (konskripce), u mužů
-  vojenské odvodní listiny (Musterlisten). Spojuje číslo domu.
+- **Kniha se nedochovala:** druhopisy a samostatné rejstříky, gruntovní knihy, soupisy (konskripce), po 1857
+  sčítání lidu (`scitani.md`), u mužů vojenské odvodní listiny (Musterlisten). Spojuje číslo domu.
 - **Nemanželské dítě:** legitimace na okraji → pozdější sňatek matky → kmotři → soudní spis o otcovství →
   gruntovní kniha. Spojuje matka a dům dítěte.
 - **Odešel do Vídně:** vídeňská farnost → policejní přihlášky: pro narozené před 1897 sbírka „Austria, Vienna,
@@ -182,9 +182,13 @@ nemanželský původ, příčina smrti) u nedávno zemřelých nezveřejňuj –
 | 1785–89 | josefský katastr | majitelé pozemků po obcích (ne po domech) – Národní archiv (Čechy), MZA (Morava), jen badatelna |
 | 1820 | kmenové listy vojáků (Grundbuchblätter) | osobní list s civilním povoláním, sňatkem a dětmi |
 | 1850 | konec panství, vznik okresních hejtmanství a soudních okresů | pozemkové a sirotčí záznamy přecházejí z fondů velkostatků do soudních fondů |
+| 1857 | první moderní sčítání lidu (31. 10.) | domácnosti po domech, jen rok narození – `scitani.md` |
+| 1869–1910 | sčítání lidu vždy k 31. 12. (1869, 1880, 1890, 1900, 1910) | datum a místo narození, domovská obec; hledá se podle soudního okresu |
 | 1871 | nové pozemkové knihy u soudů | do 1950/64 u katastrálních úřadů, jen badatelna |
 | 1895 | civilní matriky v Uhrách (i Slovensko) | souběžná státní řada, církevní knihy pokračují |
 | 1914–18 | seznamy ztrát, kartotéky ztrát | hlavní náhrada za ztracené kmenové listy |
 | 1919 | kmenové listy ročníků 1865–1900 s domovem v nástupnických státech zůstaly tam | listy Čechů ve VHA Praha, mladší ročníky z velké části zničené |
+| 1921 | sčítání lidu (15. 2.) | celé domácnosti s daty narození – náhrada za knihy narozených, které ještě nejsou v archivu |
+| 1930 | sčítání lidu | jen Národní archiv, online ne |
 | 1939 | Rakousko: civilní matriky | církevní knihy po 1938 bez práva nahlížet |
 | 1950 | Československo: státní matriky | farní knihy přestávají být úředními záznamy |

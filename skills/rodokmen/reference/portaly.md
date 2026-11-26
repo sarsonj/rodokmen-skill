@@ -14,6 +14,7 @@ Matriky jsou online u osmi státních archivů – podle toho, **kde předci ži
 | ZA Opava | severní Morava a Slezsko, Olomoucko a Litovelsko | Digitální badatelna – digi.archives.cz/da/ | **jen v prohlížeči, Claude in Chrome** – snímek obrazovky přiblíženého zápisu, celý snímek z mezipaměti prohlížeče (postup níže; CAPTCHU řeší uživatel) |
 | Národní archiv | židovské matriky (HBMa), soupisy; pražské policejní přihlášky 1850–1914 | HBMa: VadeMeCum NA – vademecum.nacr.cz (Digitální badatelna → Matriky židovských náboženských obcí; stará adresa badatelna.eu už nepatří archivu); digi.nacr.cz/prihlasky2 | přihlášky **ano – `policie_prihlasky.py`** |
 
+Sčítání lidu (sčítací operáty 1857–1921) po archivech: `scitani.md`.
 Adresy u nevyzkoušených portálů ověř při prvním použití (portály se mění). Pro pohraničí a mimo ČR viz `metodika.md`
 (Matricula pro Rakousko/Německo, Geneteka pro Polsko, FamilySearch pro Slovensko) a níže.
 
@@ -36,7 +37,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   další výřezy téže stránky už na archiv nejdou. Dlaždice (desítky pomalých požadavků) jen jako záloha.
 - **Odkaz na snímek** (pole `odkaz` v `zaznamy.json`): `python3 -I tools/aron_img.py <apu_id> link <snímek>`.
 - **Svazek do dat:** `python3 -I tools/aron_img.py <apu_id> svazek` (klíč = prvních 8 znaků apu_id → pole `svazek` v zápisu).
-- V ARON jsou i další fondy (sčítání lidu, některé gruntovní knihy, kroniky) – `aron_search.py "Obec" "název fondu"`.
+- V ARON jsou i další fondy (některé gruntovní knihy, kroniky, sčítací operáty okresních archivů – `scitani.md`) –
+  `aron_search.py "Obec" "název fondu"`.
 - Stejnojmenných obcí bývá víc (Vinice u Hořic × Vinice u Velké Jesenice). Výsledky jsou seřazené podle farnosti;
   zúžit jde víc slovy oddělenými čárkou, která musí být v popisu všechna: `aron_search.py "Vinice,Hořice"`
   (nebo hledej sousední obec či farní obec).
@@ -83,6 +85,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
   Souřadnice ber vždy z aktuálního snímku okna (po načtení stránky nebo `vp.reset()`), ne ze staršího.
 - Svazek do `svazky.json` přes `zapis.py` (Ostatní portály, krok 4, klíč `trebon_<kniha>`).
 - Některé fary mají knihy po vesnicích, které nejsou v seznamu knih místa (Vacov → Žár) – hledej podle titulků knih fary.
+- **Sčítání lidu 1857–1921** se jmennými rejstříky napříč archivem (HLEDÁNÍ → Jmenné rejstříky → Typ materiálu:
+  Sčítání lidu): postup v `scitani.md`.
 - **Civilní matriky (1920–1945) lidí bez vyznání** jsou v knihách okresních úřadů (např. Tábor, kniha 12304) a mají
   dobrovolnický rejstřík. Dobrá cesta, když farní matrika mlčí. U obce se neukážou (patří okresu) – hledej u okresního města.
 
@@ -105,6 +109,8 @@ Adresy u nevyzkoušených portálů ověř při prvním použití (portály se m
 - **Tempo:** portál žádá 10 s mezi dotazy (robots.txt „Crawl-delay: 10“) – brzda to drží sama, i u snímků.
 - Bez prohlížečového User-Agentu portál vrací 403 (nástroj ho posílá). Jmenné hledání portál nemá – indexy jsou jen uvnitř knih
   (`*i`, `ooi`, `+i` v seznamu knih fary).
+- **Sčítání lidu 1857–1921** (SOkA západních Čech): `portafontium.py scitani "<obec>" "<soudní okres>"`, `domy <id>` –
+  postup v `scitani.md`.
 
 ## SOA Praha (eBadatelna, ebadatelna.soapraha.cz) – jen v prohlížeči
 - **Od listopadu 2026 archiv omezuje i automatizovaný provoz** (oznámení na úvodní stránce: „automatizované bezpečnostní
@@ -214,6 +220,8 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   `fetch`). Ohlásí ji stránka „!“ s **HTTP 200** (asi 116 bajtů) – kontroluj obsah, ne stavový kód. Dotazy jen postupně
   (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka; po blokaci 35 minut nic (další pokusy ji prodlužují).
   Pomocníkům to napiš do zadání.
+- **Sčítání lidu** (ikona Operáty, okresní archivy kraje): postup v `scitani.md`.
+
 ## ZA Opava (severní Morava, Slezsko, Olomoucko, Litovelsko) – jen v prohlížeči, Claude in Chrome
 - Pozor na hranici: obce na Litovelsku a Olomoucku patří pod **ZA Opava**, ne pod MZA Brno.
 - **Bez prohlížeče to nejde.** Badatelna `https://digi.archives.cz/da/` (stará adresa matriky.archives.cz jen přesměruje)
@@ -351,12 +359,8 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
 - Doména actapublica.eu MZA nepatří (MZA to potvrdila) – nepoužívej ji, jen www.mza.cz/actapublica. Když MZA nejde
   načíst ani v prohlížeči, ať uživatel zkusí vypnout VPN nebo jinou síť.
 - **Sčítací operáty (1857–1921) nejsou v Acta Publica**, ale v samostatném portálu
-  `https://www.mza.cz/scitacioperaty/digisada/search` – jen v prohlížeči (brzda jiné adresy MZA nepustí), stejná pravidla
-  jako u matrik: žádné stahování ani skládání dlaždic. Hledej obec (pole „Město/obec nebo část obce/osada“); sada =
-  jedna obec a jeden rok (u obce bývá jen některý rok, např. jen 1921), s rozsahem čísel popisných. Detail
-  `…/digisada/detail/<id>` má stejný prohlížeč `viewer` jako matriky (postup výše). Snímek 1 je soupis s metadaty
-  (rozpis čísel, poznámky typu „čp. 134 má 2 archy“), pak archy po domech. 1857 uvádí jen rok narození, 1869 a 1880
-  místo i datum; sloupec dat narození bývá psaný svisle – při čtení přiblížený výřez otoč o 90°.
+  `https://www.mza.cz/scitacioperaty/digisada/search` – jen v prohlížeči, stejná pravidla jako u matrik; postup
+  v `scitani.md` (MZA Brno).
 
 ## Pražské policejní přihlášky 1850–1914 (Národní archiv) – `tools/policie_prihlasky.py`
 - Karty pražských rodin: hlava rodiny, manželka s rokem a místem narození, děti s roky, adresy, někdy místo sňatku.
