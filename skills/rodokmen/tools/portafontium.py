@@ -14,6 +14,13 @@ Použití (z kořene projektu `python3 -I tools/portafontium.py …`, na Windows
                                                 x0,y0,x1,y1 = jen výřez (zlomky 0..1)
   portafontium.py link <kniha> <snímek>      -> trvalý odkaz na snímek (pole „odkaz“ v zaznamy.json)
   portafontium.py svazek <kniha>             -> zapíše svazek do data/svazky.json (klíč pf_<kniha>)
+Sčítání lidu 1857–1921 (sčítací operáty SOA Plzeň a okresních archivů, reference/scitani.md):
+  portafontium.py scitani                    -> přehled: archiv | soudní okres | roky
+  portafontium.py scitani <obec> [okres]     -> rok | obec (i osada jiné obce) | domů | id prvního domu | id souhrnu
+                                                okres = SOUDNÍ okres (např. „Plánice“); bez něj projde všech ~32 okresů
+                                                (jen poslední rok, asi 6 minut – stránky se ukládají, podruhé hned)
+  portafontium.py domy <id>                  -> čísla popisná sady: čp. | id stránky domu; tentýž dům v jiných letech
+  info / snimek / link / svazek <id> …       -> totéž co u knih, místo <kniha> číslo stránky domu (id z „domy“)
 Snímek = pořadové číslo náhledu v prohlížeči portálu (1, 2, 3…). Stránky knih se ukládají do pracovni/.cache_pf/.
 Ber ohled na server: stahuj jen snímky, které čteš.
 """
@@ -113,14 +120,21 @@ def text(s):
 def kniha_page(kniha):
     kniha = kniha.strip("/").split("/")[-1]
     os.makedirs(CACHE, exist_ok=True)
-    path = os.path.join(CACHE, kniha + ".html")
+    path = os.path.join(CACHE, ("census_" if kniha.isdigit() else "") + kniha + ".html")
     if os.path.exists(path):
         return kniha, open(path, encoding="utf-8").read()
-    page = get(f"/register/{ARCHIV}/{kniha}")
+    # číslo = stránka domu ze sčítání lidu (/iipimage/<id>), jinak kniha matriky
+    page = get(f"/iipimage/{kniha}" if kniha.isdigit() else f"/register/{ARCHIV}/{kniha}")
     if "data-iip-path" in page:   # kešuj jen opravdovou stránku knihy se snímky
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(page)
     return kniha, page
+
+
+def _cislo_domu(page):
+    """Číslo popisné stránky domu ze sčítání: v seznamu domů je zvýrazněné, titulek ho u prvního domu nemá."""
+    m = re.search(r"<big>\s*Nr\.\s*([^<]+?)\s*</big>", page) or re.search(r"Nr\.\s*([^<|]+?)\s*(?:\||</title>)", page)
+    return m.group(1).strip() if m else ""
 
 
 def info(kniha):
@@ -130,6 +144,16 @@ def info(kniha):
         lab, val = text(m.group(1)).rstrip(":"), text(m.group(2))
         if val and lab not in fields:
             fields[lab] = val
+    if kniha.isdigit():   # stránka domu ze sčítání: název „Census 1921 Neprochovy (…), Nr. 12“ a okresy
+        m = re.search(r"<title>(.*?)(?:\s*\|[^|<]*)?</title>", page, re.S)
+        if m:
+            fields["Název"] = text(m.group(1))
+            cp = _cislo_domu(page)
+            if cp and "Nr." not in fields["Název"]:   # titulek prvního domu sady číslo neuvádí
+                fields["Název"] += f", Nr. {cp}"
+        m = re.search(r"Politický okres:.*?</div>", page, re.S)
+        if m:
+            fields["Okres"] = text(m.group(0)).replace(" ,", ",")
     scans = re.findall(r'data-iip-path="([^"]+)"', page)
     # odkaz patří ke snímku, jehož náhled obaluje (<a href="/iipimage/…"><img data-iip-path="…">) – ne podle pořadí,
     # jinak by jiný odkaz na stránce posunul párování a citace by vedla na vedlejší snímek
@@ -237,15 +261,133 @@ def zkrat(s, n=300):
     return s if len(s) <= n else s[:n].rsplit(" ", 1)[0] + " …"
 
 
+# --- sčítání lidu (sčítací operáty 1857–1921) ---
+# kód archivu v adrese sady → archiv, který operáty uchovává
+ARCHIVY_SCITANI = {"amp": "Archiv města Plzně", "soap-ch": "SOkA Cheb", "soap-do": "SOkA Domažlice",
+                   "soap-kt": "SOkA Klatovy", "soap-pj": "SOkA Plzeň-jih", "soap-pn": "SOA Plzeň",
+                   "soap-ps": "SOkA Plzeň-sever", "soap-ro": "SOkA Rokycany", "soap-tc": "SOkA Tachov"}
+
+
+def _bez_diakritiky(s):
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower().strip()
+
+
+def _stranka(url, nazev):
+    """Stránka přehledu / okresu ze sčítání – mění se zřídka, proto se ukládá do mezipaměti."""
+    os.makedirs(CACHE, exist_ok=True)
+    path = os.path.join(CACHE, nazev + ".html")
+    if os.path.exists(path):
+        return open(path, encoding="utf-8").read()
+    page = get(url)
+    if "/census/" in page or "/iipimage/" in page:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(page)
+    return page
+
+
+def scitani_prehled():
+    """[(archiv, okres, [roky])] – soudní okresy s digitalizovanými sadami (tabulka na /contents/census)."""
+    page = _stranka("/contents/census", "census_prehled")
+    okresy = {}
+    for arch, rok, okres in re.findall(r'href="/census/([^/"]+)/(\d{4})/([^"?/]+)', page):
+        okresy.setdefault((arch, okres), set()).add(int(rok))
+    if not okresy:
+        sys.exit("Porta fontium: přehled sčítání (/contents/census) nemá očekávaný tvar – portál se asi změnil. "
+                 "Hledej v prohlížeči a nahlas to (poznamky_pro_skill.md).")
+    return [(a, o, sorted(r)) for (a, o), r in sorted(okresy.items())]
+
+
+def scitani_okres(arch, rok, okres):
+    """Obce a osady jednoho soudního okresu a roku: [(název, domů, id prvního domu, id souhrnu)]."""
+    page = _stranka(f"/census/{arch}/{rok}/{okres}", f"census_{arch}_{rok}_{okres}")
+    out, videno = [], set()
+    # česká část stránky („domů“; německá opakuje totéž s „Häuser“): odkaz na první dům, počet domů, souhrn
+    for m in re.finditer(r'<a href="/iipimage/(\d+)[^"]*" title="([^"]*)">[^<]*</a>\s*\((\d+) (?:domů|domy|dům)'
+                         r'(?:,\s*<a href="/iipimage/(\d+)[^"]*">souhrn)?', page):
+        if m.group(1) not in videno:
+            videno.add(m.group(1))
+            out.append((text(m.group(2)), int(m.group(3)), m.group(1), m.group(4) or ""))
+    # obec jen se souhrnem, bez archů domů: „Ústaleč (<a …>souhrn</a>)“
+    for nazev, souhrn in re.findall(r'(?:<br\s*/?>|<td[^>]*>)\s*([^<>()]+?)\s*\(<a href="/iipimage/(\d+)[^"]*">souhrn<', page):
+        if souhrn not in videno:
+            videno.add(souhrn)
+            out.append((text(nazev), 0, "", souhrn))
+    return out
+
+
+def _sedi(nazev, hledana):
+    """Obec „Neprochovy“ sedí na „Neprochovy (Neprachow)“ i na osadu „Těchonice - Neprochovy (…)“."""
+    casti = re.split(r"\s+-\s+|\s*[(),]\s*", nazev)
+    return _bez_diakritiky(hledana) in [_bez_diakritiky(c) for c in casti if c.strip()]
+
+
+def scitani(obec, okres=None):
+    prehled = scitani_prehled()
+    if okres:
+        ok = _bez_diakritiky(okres).replace(" ", "-")
+        okresy = [x for x in prehled if x[1] in (ok, "okres-" + ok) or x[1].endswith("-" + ok)]
+        if not okresy:
+            sys.exit(f"Soudní okres „{okres}“ v přehledu sčítání není. Okresy: "
+                     + ", ".join(sorted({o.replace("okres-", "") for _, o, _ in prehled})))
+    else:
+        print(f"Prohledávám poslední rok všech {len(prehled)} soudních okresů (asi {len(prehled) * 11 // 60 + 1} min, "
+              "stránky se ukládají) – příště zadej soudní okres.", file=sys.stderr)
+        okresy = []
+        for arch, o, roky in prehled:
+            if any(_sedi(n, obec) for n, *_ in scitani_okres(arch, roky[-1], o)):
+                okresy.append((arch, o, roky))
+    nalez = []
+    for arch, o, roky in okresy:
+        for rok in roky:
+            for nazev, domu, prvni, souhrn in scitani_okres(arch, rok, o):
+                if _sedi(nazev, obec):
+                    nalez.append((rok, nazev, domu, prvni, souhrn, f"{arch}/{o}"))
+    if not nalez:
+        sys.exit(f"Obec „{obec}“ ve sčítání na Porta fontium nenalezena"
+                 + (f" (soudní okres {okres})" if okres else "")
+                 + ". Zkus jiný tvar názvu, německý název nebo obec, pod kterou osada patřila; sčítání je jen pro okresy "
+                   "z přehledu (portafontium.py scitani).")
+    for rok, nazev, domu, prvni, souhrn, kde in sorted(nalez):
+        print(rok, "|", nazev, "|", f"{domu} domů" if domu else "jen souhrn", "|", prvni or "–", "|",
+              f"souhrn {souhrn}" if souhrn else "–", "|", kde)
+    roky_okresu = sorted({r for *_, roky in okresy for r in roky})
+    chybi = [r for r in roky_okresu if r not in {x[0] for x in nalez}]
+    if chybi:
+        print("Okres má sady i z let", ", ".join(map(str, chybi)), "– obec v nich není (nedochováno, nebo jiný název).")
+    print("Domy sady: portafontium.py domy <id prvního domu>")
+
+
+def domy(id_):
+    _, page = kniha_page(id_)
+    cp = _cislo_domu(page)
+    seznam = [(cp, id_)] if cp else []
+    seznam += [(c.strip(), i) for i, c in re.findall(r'<a href="/iipimage/(\d+)[^"]*">\s*Nr\.\s*([^<]+)</a>', page)]
+    if not seznam:
+        sys.exit(f"Stránka {id_} nemá seznam domů – je to opravdu stránka domu ze sčítání (id z „scitani“)?")
+    klic = lambda c: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", c[0])]
+    for cp, i in sorted(dict(seznam).items(), key=klic):
+        print(f"čp. {cp} | {i}")
+    roky = re.findall(r'<a href="/iipimage/(\d+)[^"]*">\s*(\d{4})\s*</a>', page)
+    if roky:
+        print(f"Tentýž dům (čp. {seznam[0][0]}) v jiných letech:", ", ".join(f"{r} -> {i}" for i, r in roky))
+
+
 def svazek(kniha):
     kniha, fields, scans, _ = info(kniha)
     path = os.path.join(ROOT, "data", "svazky.json")
     d = json.load(open(path, encoding="utf-8-sig")) if os.path.exists(path) else {}
-    sig = fields.get("Signatura", kniha)
-    popis = "; ".join(x for x in (fields.get("Místo", ""), fields.get("Text desky", "")) if x)
-    d[f"pf_{kniha}"] = {"archiv": "SOA Plzeň – Sbírka matrik západních Čech", "portal": "Porta fontium",
-                        "svazek": f"{sig}, {fields.get('Typ', '')}".strip(", "), "popis": popis[:300],
-                        "snimku": len(scans), "url": f"{BASE}/register/{ARCHIV}/{kniha}"}
+    if kniha.isdigit():   # dům ze sčítání lidu
+        kod = scans[0].split("/")[1] if scans and scans[0].count("/") > 1 else ""
+        d[f"pf_{kniha}"] = {"archiv": f"{ARCHIVY_SCITANI.get(kod, 'SOA Plzeň')} – sčítací operáty",
+                            "portal": "Porta fontium",
+                            "svazek": re.sub(r"^Census", "Sčítání lidu", fields.get("Název", kniha)).replace("Nr.", "čp."),
+                            "popis": fields.get("Okres", ""), "snimku": len(scans), "url": f"{BASE}/iipimage/{kniha}"}
+    else:
+        sig = fields.get("Signatura", kniha)
+        popis = "; ".join(x for x in (fields.get("Místo", ""), fields.get("Text desky", "")) if x)
+        d[f"pf_{kniha}"] = {"archiv": "SOA Plzeň – Sbírka matrik západních Čech", "portal": "Porta fontium",
+                            "svazek": f"{sig}, {fields.get('Typ', '')}".strip(", "), "popis": popis[:300],
+                            "snimku": len(scans), "url": f"{BASE}/register/{ARCHIV}/{kniha}"}
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(d, f, ensure_ascii=False, indent=1)
     print(f"pf_{kniha} ->", d[f"pf_{kniha}"]["svazek"])
@@ -290,5 +432,12 @@ if __name__ == "__main__":
         print(BASE + scan(a[1], a[2])[3])
     elif a[0] == "svazek" and len(a) > 1:
         svazek(a[1])
+    elif a[0] == "scitani" and len(a) == 1:
+        for arch, o, roky in scitani_prehled():
+            print(arch, "|", o.replace("okres-", ""), "|", ", ".join(map(str, roky)))
+    elif a[0] == "scitani" and len(a) in (2, 3):
+        scitani(a[1], a[2] if len(a) > 2 else None)
+    elif a[0] == "domy" and len(a) > 1 and a[1].isdigit():
+        domy(a[1])
     else:
         sys.exit(__doc__)

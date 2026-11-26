@@ -54,7 +54,8 @@ P = {
   "odkaz": "https://aron.vychodoceskearchivy.cz/apu/…/dao/…/file/…"}]
 ```
 - `klic`: malá písmena bez diakritiky, `obec_druh_kdo_rok` (druh: krest, snatek, umrti, index, scitani…). Je to i název obrázku.
-- `druh`: N, O, Z, I (index/rejstřík), S (sčítání), J (jiný pramen).
+- `druh`: N, O, Z, I (index/rejstřík), S (sčítání – jeden zápis na sčítací arch, klíč v `r` všech členů domácnosti;
+  vzor přepisu v `scitani.md`), J (jiný pramen).
 - `datum` jako v češtině („14. 2. 1890“, „3/1867“, „1797“) – web podle něj řadí.
 
 ## `svazky.json`

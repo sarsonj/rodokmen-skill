@@ -13,6 +13,8 @@ Použití (z kořene projektu):
                 (další snímky téže knihy mají stejnou cestu, liší se jen číslem obrázku)
     adresa    = celá adresa obrázku začínající https:// (s „/ImageProperties.xml“ na konci i bez), např.
                 https://images.soalitomerice.cz/ximage/matriky/zoomify/cz/archives/CZ-214000010/NAD-<číslo>/dao/images/<složka>/<uuid>.jpg
+                nebo sčítací operáty (reference/scitani.md):
+                https://images.soalitomerice.cz/ximage/operaty/zoomify/cz/archives/CZ-224106010/operaty/dao/images/<složka>/<uuid>.jpg
     zmenseni  = 0 plné rozlišení (na čtení a výřez), 1 poloviční (na orientaci), 2 čtvrtinové
 POZOR: aplikace digi.soalitomerice.cz po ~100 rychlých požadavcích zablokuje přístup na 30 minut. Prohlížečem jen
 najdi knihu a cestu k obrázkům, snímky pak stahuj tímto nástrojem po jednom.
