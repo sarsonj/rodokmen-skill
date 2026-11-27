@@ -31,6 +31,23 @@ def slova_obce(fakty):
     return list(dict.fromkeys(OBEC_RE.findall(" ".join(fakty))))[:4]
 
 
+# Křestní jména, u kterých koncovka -a/-e neurčí pohlaví (mužská na -a, ženská bez -a/-e).
+JMENA_MUZ = {"Ilja", "Nikola", "Saša", "Luca", "Kuba", "Honza", "Jura", "Mirka", "Míla", "Jirka", "Sáva", "Toma"}
+JMENA_ZENA = {"Elisabeth", "Agnes", "Ruth", "Gertrud", "Edith", "Judith", "Miriam", "Ingrid", "Dagmar", "Carmen", "Margareth"}
+
+
+def vypada_na_zenu(jmeno):
+    """Podle prvního křestního jména: True žena, False muž, None nejde poznat (zkratka, „N. N.“, „neuveden“)."""
+    slova = re.sub(r"\(.*?\)", "", jmeno or "").split()
+    if not slova or "neuveden" in jmeno or not slova[0].isalpha() or len(slova[0]) < 2:
+        return None
+    if slova[0] in JMENA_MUZ:
+        return False
+    if slova[0] in JMENA_ZENA:
+        return True
+    return slova[0][-1] in "aeáé"   # Anna, Marie, Kateřina × Jan, Jiří, Matěj
+
+
 def main():
     err, warn, info = [], [], []
     ns = {}
@@ -55,6 +72,10 @@ def main():
             continue
         if k > 1 and k // 2 not in P and k not in SAME:
             warn.append(f"osoba {k} ({p.get('n')}): v rodokmenu chybí její dítě {k // 2} – je číslo správně?")
+        zena = vypada_na_zenu(p.get("n", "")) if k > 1 else None
+        if zena is not None and zena != (k % 2 == 1):
+            warn.append(f"osoba {k} ({p.get('n')}): sudé číslo je otec, liché matka, ale jméno vypadá na "
+                        f"{'ženu' if zena else 'muže'} – nejsou rodiče prohození?")
         st = p.get("st", "unk")
         if st not in ("doc", "prob", "fam", "mh", "unk"):
             err.append(f"osoba {k}: neznámý stav '{st}'")
