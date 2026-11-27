@@ -178,13 +178,15 @@ def main():
             vzory += [re.compile(e.get("re") or re.escape(n))] if "lat" in e else []
         except re.error:   # špatný výraz hlásí kontrola míst níž
             pass
+    bez_obce_ok = set(jload("web.json", {}).get("mapa_bez_obce_schvaleno") or [])   # obec v zápisu nejistá
     bez_mista = [k for k, p in sorted(P.items()) if isinstance(k, int) and p.get("st") == "doc" and p.get("f")
-                 and not any(rx.search(" ".join(p["f"])) for rx in vzory)]
+                 and k not in bez_obce_ok and not any(rx.search(" ".join(p["f"])) for rx in vzory)]
     if bez_mista:   # mapa na webu ukáže jen obce z data/mista.json
         ukazka = ", ".join(f"{k} {P[k].get('n', '?')}" + (f" [{', '.join(s)}]" if (s := slova_obce(P[k]["f"])) else "")
                            for k in bez_mista[:3])
         warn.append(f"mapa: {len(bez_mista)} doložených předků nemá v údajích žádnou obec z data/mista.json (např. {ukazka})"
-                    " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py")
+                    " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py; když obec v zápisu"
+                    " nejde určit, přidej číslo osoby do web.json → mapa_bez_obce_schvaleno")
 
     def kmeny(s):   # první 4 písmena slov bez diakritiky; text v závorce se nepočítá
         s = "".join(c for c in unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", s).lower())
