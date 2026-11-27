@@ -25,17 +25,19 @@ exec(open(os.path.join(ROOT, "data", "osoby.py"), encoding="utf-8-sig").read(), 
 P, LINES = ns["P"], ns.get("LINES", {})
 WEBCFG = json.load(open(os.path.join(ROOT, "data", "web.json"), encoding="utf-8-sig")) if os.path.exists(os.path.join(ROOT, "data", "web.json")) else {}
 
-W, H = (4520, 4520) if WEB else (4600, 5650)
-CX, CY = (2260, 2260) if WEB else (W / 2, 2760)
+W, H = (5200, 5200) if WEB else (4600, 5650)
+CX, CY = (2600, 2600) if WEB else (W / 2, 2760)
 RINGS = [(0, 240), (240, 440), (440, 650), (650, 880), (880, 1100), (1100, 1380),
          (1380, 1640), (1640, 1870), (1870, 2010), (2010, 2130), (2130, 2240)]
+if WEB:   # web lze přibližovat – generace 11–13 v tenkých prstencích s drobným písmem
+    RINGS += [(2240, 2370), (2370, 2480), (2480, 2580)]
 BASE = {8: "#EFB45F", 9: "#F09A78", 10: "#E58AA6", 11: "#B99AE0",
         12: "#86B8E8", 13: "#6FCBB9", 14: "#9CD17A", 15: "#D3D46A"}
-LIGHT = {3: 0.0, 4: 0.18, 5: 0.32, 6: 0.44, 7: 0.55, 8: 0.64, 9: 0.72, 10: 0.78}
+LIGHT = {3: 0.0, 4: 0.18, 5: 0.32, 6: 0.44, 7: 0.55, 8: 0.64, 9: 0.72, 10: 0.78, 11: 0.82, 12: 0.85, 13: 0.88}
 SIDE_COL = {0: "#E9DFCF", 1: "#D6E2EC"}          # father / mother half, generations 1–2
 EMPTY, FONT = "#ECE8E0", "Helvetica Neue, Helvetica, Arial, sans-serif"
-MINF = {5: 15, 6: 13, 7: 11, 8: 9.5, 9: 8.5, 10: 7.5}
-MAXF = {5: 26, 6: 22, 7: 18, 8: 14, 9: 11, 10: 9}
+MINF = {5: 15, 6: 13, 7: 11, 8: 9.5, 9: 8.5, 10: 7.5, 11: 0.5, 12: 0.4, 13: 0.3}
+MAXF = {5: 26, 6: 22, 7: 18, 8: 14, 9: 11, 10: 9, 11: 7, 12: 6, 13: 5}
 
 
 def mix(hex_, t):
@@ -120,8 +122,8 @@ def fit(text, avail, fmax, fmin):
 
 
 paths, defs, texts, links = [], [], [], []
-slots = sorted({k for k in P if gen(k) < len(RINGS)} |   # vějíř má 11 prstenců (generace 0–10); starší předky vynech
-               {c for k in P for c in (2 * k, 2 * k + 1) if gen(c) <= 10 and k in P})
+slots = sorted({k for k in P if gen(k) < len(RINGS)} |   # starší předky než poslední prstenec vynech
+               {c for k in P for c in (2 * k, 2 * k + 1) if gen(c) < len(RINGS) and k in P})
 for k in slots:
     g = gen(k)
     r0, r1 = RINGS[g]
@@ -129,7 +131,7 @@ for k in slots:
     if g == 0:
         paths.append(f'<circle cx="{CX}" cy="{CY}" r="{r1}" fill="{fill(k)}" stroke="#fff" stroke-width="3"/>')
     else:
-        paths.append(f'<path d="{sector(r0, r1, a0, a1)}" fill="{fill(k)}" stroke="#FBF8F2" stroke-width="{3 if g < 6 else 1.6}"/>')
+        paths.append(f'<path d="{sector(r0, r1, a0, a1)}" fill="{fill(k)}" stroke="#FBF8F2" stroke-width="{3 if g < 6 else 1.6 if g < 11 else 0.4}"/>')
     p = P.get(k)
     if not p:
         continue
@@ -210,8 +212,6 @@ title = (f'<text x="{W / 2}" y="250" text-anchor="middle" font-family="Georgia, 
 lx, ly = 300, CY + 2240 + 170
 legend = []
 items = [(k, LINES[k][0]) for k in range(8, 16) if k in LINES]
-
-
 def popis_rodu(text, jmeno):
     """První věta popisu rodu, zkrácená na celé slovo, aby se vešla do sloupce legendy.
     Tečka končí větu jen před velkým písmenem nebo na konci a po slově s aspoň 4 znaky – „čp. 41“, „roz. Nová“,
@@ -227,6 +227,7 @@ def popis_rodu(text, jmeno):
     if len(t) > limit:
         t = t[:limit].rsplit(" ", 1)[0].rstrip(",;:–- ") + "…"
     return t
+
 
 
 desc = {k: popis_rodu(LINES[k][1], nm) for k, nm in items}
