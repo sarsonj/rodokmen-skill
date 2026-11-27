@@ -277,7 +277,8 @@ def main():
         dolozena = set().union(*(cisla_zaz.get(r, set()) | cisla_domu(str(prep.get(r, {}).get("orig", "")))
                                  | cisla_domu(str(prep.get(r, {}).get("cs", ""))) for r in zapisy))
         fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
-                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
+                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin|pozemkov|kronik|PK \d|kniha|literatur)"
+                                   r"|\([NOZ] [^)]*\b(?:pag|str|sn)\.", f, re.I)]
         for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))) - dolozena, key=int):
             warn.append(f"osoba {k} ({p.get('n')}): čp. {c} není v žádném citovaném zápisu – ověřit, "
                         "nebo označit zdroj (strom, vyprávění)")
