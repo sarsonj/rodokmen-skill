@@ -33,7 +33,8 @@ P = {
   Sňatek jmenuje partnera (`× 1919 Holice Josefa Pokorná`); `kontrola.py` hlásí, když žádný sňatek nejmenuje osobu
   na sousedním čísle (manžel 2k, manželka 2k+1, i přes `SAME`). U `doc` hlásí `čp.`, které není v žádném citovaném
   zápisu (`shrnuti`, přepis) jako číslo domu (`čp. 23`, `No 23`, `N. 23`, `[Dům] 23`, `z Ostřetína 23`; datum, věk ani
-  číslo zápisu, strany či snímku neplatí); číslo převzaté odjinud označ ve faktu zdrojem: `* 1862 Ostřetín čp. 23 (podle stromu)`.
+  číslo zápisu, strany či snímku neplatí); číslo převzaté odjinud označ ve faktu zdrojem: `* 1862 Ostřetín čp. 23 (podle stromu)`; za zdroj platí
+  i pozemková kniha, kronika, kniha či literatura v závorce a citace matriky `(N … pag./str./sn. …)`.
 - `ged`, `uid` – ID osoby v původním stromu (GEDCOM z MyHeritage…) a jeho `_UID`; doplňuje `ged_import.py`
   (`--osoby`, `--ged-id`) nebo `zapis.py ged`, ručně je neměň.
 - `r` klíče zápisů ze `zaznamy.json`; přidávej je `python3 -I tools/zapis.py odkaz <číslo> <klíč> [<klíč> …]` (u `SIDE`

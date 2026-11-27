@@ -31,6 +31,23 @@ def slova_obce(fakty):
     return list(dict.fromkeys(OBEC_RE.findall(" ".join(fakty))))[:4]
 
 
+# Křestní jména, u kterých koncovka -a/-e neurčí pohlaví (mužská na -a, ženská bez -a/-e).
+JMENA_MUZ = {"Ilja", "Nikola", "Saša", "Luca", "Kuba", "Honza", "Jura", "Mirka", "Míla", "Jirka", "Sáva", "Toma"}
+JMENA_ZENA = {"Elisabeth", "Agnes", "Ruth", "Gertrud", "Edith", "Judith", "Miriam", "Ingrid", "Dagmar", "Carmen", "Margareth"}
+
+
+def vypada_na_zenu(jmeno):
+    """Podle prvního křestního jména: True žena, False muž, None nejde poznat (zkratka, „N. N.“, „neuveden“)."""
+    slova = re.sub(r"\(.*?\)", "", jmeno or "").split()
+    if not slova or "neuveden" in jmeno or not slova[0].isalpha() or len(slova[0]) < 2:
+        return None
+    if slova[0] in JMENA_MUZ:
+        return False
+    if slova[0] in JMENA_ZENA:
+        return True
+    return slova[0][-1] in "aeáé"   # Anna, Marie, Kateřina × Jan, Jiří, Matěj
+
+
 def main():
     err, warn, info = [], [], []
     ns = {}
@@ -39,6 +56,14 @@ def main():
     except Exception as e:  # noqa: BLE001
         sys.exit(f"CHYBA: data/osoby.py nejde načíst: {e}")
     P, SIDE, LINES, SAME = ns.get("P", {}), ns.get("SIDE", []), ns.get("LINES", {}), ns.get("SAME", {})
+    src = open(os.path.join(DATA, "osoby.py"), encoding="utf-8-sig").read()
+    m = re.search(r"^P\s*=\s*(?:\{|dict\()", src, re.M)
+    blok = src[m.end():] if m else ""
+    konec = re.search(r"^[})]", blok, re.M)
+    cisla = re.findall(r"^\s{1,8}(\d+)\s*:", blok[:konec.start()] if konec else blok, re.M)
+    dvoji = sorted({c for c in cisla if cisla.count(c) > 1}, key=int)
+    if dvoji:
+        err.append(f"osoba je v data/osoby.py dvakrát (druhý zápis tiše přepíše první): {', '.join(dvoji)}")
     zaz = jload("zaznamy.json", [])
     svazky, prep, hl = jload("svazky.json", {}), jload("prepisy.json", {}), jload("zvyrazneni.json", {})
     keys = [z.get("klic") for z in zaz]
@@ -55,6 +80,10 @@ def main():
             continue
         if k > 1 and k // 2 not in P and k not in SAME:
             warn.append(f"osoba {k} ({p.get('n')}): v rodokmenu chybí její dítě {k // 2} – je číslo správně?")
+        zena = vypada_na_zenu(p.get("n", "")) if k > 1 else None
+        if zena is not None and zena != (k % 2 == 1):
+            warn.append(f"osoba {k} ({p.get('n')}): sudé číslo je otec, liché matka, ale jméno vypadá na "
+                        f"{'ženu' if zena else 'muže'} – nejsou rodiče prohození?")
         st = p.get("st", "unk")
         if st not in ("doc", "prob", "fam", "mh", "unk"):
             err.append(f"osoba {k}: neznámý stav '{st}'")
@@ -149,13 +178,15 @@ def main():
             vzory += [re.compile(e.get("re") or re.escape(n))] if "lat" in e else []
         except re.error:   # špatný výraz hlásí kontrola míst níž
             pass
+    bez_obce_ok = set(jload("web.json", {}).get("mapa_bez_obce_schvaleno") or [])   # obec v zápisu nejistá
     bez_mista = [k for k, p in sorted(P.items()) if isinstance(k, int) and p.get("st") == "doc" and p.get("f")
-                 and not any(rx.search(" ".join(p["f"])) for rx in vzory)]
+                 and k not in bez_obce_ok and not any(rx.search(" ".join(p["f"])) for rx in vzory)]
     if bez_mista:   # mapa na webu ukáže jen obce z data/mista.json
         ukazka = ", ".join(f"{k} {P[k].get('n', '?')}" + (f" [{', '.join(s)}]" if (s := slova_obce(P[k]["f"])) else "")
                            for k in bez_mista[:3])
         warn.append(f"mapa: {len(bez_mista)} doložených předků nemá v údajích žádnou obec z data/mista.json (např. {ukazka})"
-                    " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py")
+                    " – přidej jejich obce: tools/mista.py pridej \"Obec\", pak tools/mista.py; když obec v zápisu"
+                    " nejde určit, přidej číslo osoby do web.json → mapa_bez_obce_schvaleno")
 
     def kmeny(s):   # první 4 písmena slov bez diakritiky; text v závorce se nepočítá
         s = "".join(c for c in unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", s).lower())
@@ -248,7 +279,8 @@ def main():
         dolozena = set().union(*(cisla_zaz.get(r, set()) | cisla_domu(str(prep.get(r, {}).get("orig", "")))
                                  | cisla_domu(str(prep.get(r, {}).get("cs", ""))) for r in zapisy))
         fakta = [f for f in p.get("f", []) if isinstance(f, str)   # „(podle stromu)“, „(z vyprávění)“ = zdroj označený
-                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin)", f, re.I)]
+                 and not re.search(r"\([^)]*\b(?:strom|vyprávění|rodin|pozemkov|kronik|PK \d|kniha|literatur)"
+                                   r"|\([NOZ] [^)]*\b(?:pag|str|sn)\.", f, re.I)]
         for c in sorted(set(re.findall(r"čp\.\s*(\d+)", " ".join(fakta))) - dolozena, key=int):
             warn.append(f"osoba {k} ({p.get('n')}): čp. {c} není v žádném citovaném zápisu – ověřit, "
                         "nebo označit zdroj (strom, vyprávění)")

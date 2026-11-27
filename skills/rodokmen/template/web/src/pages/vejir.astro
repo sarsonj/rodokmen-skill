@@ -37,7 +37,7 @@ const names = [...new Set(Object.values(people).filter((p) => p.k > 1).map((p) =
     const zoomAt = (f: number, cx?: number, cy?: number) => {
       const r = svg.getBoundingClientRect();
       const p = toSvg(cx ?? r.left + r.width / 2, cy ?? r.top + r.height / 2);
-      const w = Math.min(home.w * 1.2, Math.max(home.w / 40, vb.w / f));
+      const w = Math.min(home.w * 1.2, Math.max(home.w / 400, vb.w / f));
       const k = w / vb.w;
       vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w, h: vb.h * k };
       apply();

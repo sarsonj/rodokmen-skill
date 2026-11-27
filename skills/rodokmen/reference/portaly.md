@@ -209,7 +209,9 @@ svazek, výstup JavaScriptu bez parametrů v Claude in Chrome).
   Složka v cestě (`…/images/0046/…`, `…/NAD-856/dao/images/0701/…`) se liší mezi knihami i uvnitř jedné knihy –
   adresu nikdy neskládej, vždy celou z výstupu.
 - Snímky stahuj nástrojem: `python3 -I tools/soal_zoomify.py "<celá adresa>" 0 pracovni/x.jpg` (0 = plné rozlišení,
-  1 = poloviční, 2 = čtvrtinové na orientaci). Obrázkový server images.soalitomerice.cz neomezuje a cookies nepotřebuje.
+  1 = poloviční, 2 = čtvrtinové na orientaci). Obrázkový server images.soalitomerice.cz cookies nepotřebuje, ale **omezuje**: po sérii snímků bez pauzy vrací 429,
+  jednou i první požadavek hned po vypršení dvouhodinové blokace dostal 503 (blokace pak 8 h) – jak dlouho si server
+  adresu pamatuje, nevíme. Stahovat po jednom snímku s pauzou ≥ 8 s; po vypršení blokace začít jedním snímkem a pak pomalu.
 - **POZOR na blokaci aplikace** (obrázky ne): přijde už po 25–100 rychlých krocích (listování výsledky, Zpět, rychlé
   `fetch`). Ohlásí ji stránka „!“ s **HTTP 200** (asi 116 bajtů) – kontroluj obsah, ne stavový kód. Dotazy jen postupně
   (žádné `Promise.all`), pauza aspoň 3 s, vždy jen jedna smyčka; po blokaci 35 minut nic (další pokusy ji prodlužují).
