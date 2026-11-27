@@ -3,12 +3,12 @@
 // Boxes in the last column show how many more known generations continue behind them.
 import { byK, href } from '../lib/data.js';
 const { k } = Astro.props;
-const cols = [0, 1, 2, 3].map((d) => {
-  const n = 2 ** d;
-  return Array.from({ length: n }, (_, i) => ({ k: k * n + i, span: 8 / n, row: 1 + i * (8 / n) }));
-});
-const depth = (kk) => (byK[2 * kk] || byK[2 * kk + 1] ? 1 + Math.max(depth(2 * kk), depth(2 * kk + 1)) : 0);
-const known = (kk) => (byK[kk] ? 1 + known(2 * kk) + known(2 * kk + 1) : 0);
+const canon = (kk) => byK[kk]?.k ?? kk;
+const cols = [[k]];
+for (let d = 1; d < 4; d++) cols.push(cols[d - 1].flatMap((kk) => [2 * canon(kk), 2 * canon(kk) + 1]));
+cols.forEach((col, d) => (cols[d] = col.map((kk, i) => ({ k: kk, span: 8 / 2 ** d, row: 1 + i * (8 / 2 ** d) }))));
+const depth = (kk) => ((kk = canon(kk)), byK[2 * kk] || byK[2 * kk + 1] ? 1 + Math.max(depth(2 * kk), depth(2 * kk + 1)) : 0);
+const known = (kk) => (byK[kk] ? 1 + known(2 * canon(kk)) + known(2 * canon(kk) + 1) : 0);
 const genWord = (n) => (n === 1 ? 'generace' : n < 5 ? 'generace' : 'generací');
 ---
 <div class="pedigree" role="list" aria-label="Rodokmen tři generace nazpět">

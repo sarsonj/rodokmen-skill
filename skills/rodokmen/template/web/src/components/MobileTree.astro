@@ -7,7 +7,10 @@ const levels = [
   ['Prarodiče', 4],
   ['Praprarodiče', 8],
 ];
-const depth = (kk) => (byK[2 * kk] || byK[2 * kk + 1] ? 1 + Math.max(depth(2 * kk), depth(2 * kk + 1)) : 0);
+const canon = (kk) => byK[kk]?.k ?? kk;
+const ids = [[2 * k, 2 * k + 1]];
+for (let d = 1; d < levels.length; d++) ids.push(ids[d - 1].flatMap((kk) => [2 * canon(kk), 2 * canon(kk) + 1]));
+const depth = (kk) => ((kk = canon(kk)), byK[2 * kk] || byK[2 * kk + 1] ? 1 + Math.max(depth(2 * kk), depth(2 * kk + 1)) : 0);
 const genWord = (n) => (n < 5 ? 'generace' : 'generací');
 ---
 <div class="mtree">
@@ -15,8 +18,7 @@ const genWord = (n) => (n < 5 ? 'generace' : 'generací');
     <section>
       <h3>{label}</h3>
       <div class="mtree-grid">
-        {Array.from({ length: n }, (_, i) => {
-          const kk = k * n + i;
+        {ids[li].map((kk) => {
           const p = byK[kk];
           const line = p?.line ? lineByK[p.line] : null;
           const more = li === levels.length - 1 && p ? depth(kk) : 0;
