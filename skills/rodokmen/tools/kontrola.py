@@ -56,6 +56,14 @@ def main():
     except Exception as e:  # noqa: BLE001
         sys.exit(f"CHYBA: data/osoby.py nejde načíst: {e}")
     P, SIDE, LINES, SAME = ns.get("P", {}), ns.get("SIDE", []), ns.get("LINES", {}), ns.get("SAME", {})
+    src = open(os.path.join(DATA, "osoby.py"), encoding="utf-8-sig").read()
+    m = re.search(r"^P\s*=\s*(?:\{|dict\()", src, re.M)
+    blok = src[m.end():] if m else ""
+    konec = re.search(r"^[})]", blok, re.M)
+    cisla = re.findall(r"^\s{1,8}(\d+)\s*:", blok[:konec.start()] if konec else blok, re.M)
+    dvoji = sorted({c for c in cisla if cisla.count(c) > 1}, key=int)
+    if dvoji:
+        err.append(f"osoba je v data/osoby.py dvakrát (druhý zápis tiše přepíše první): {', '.join(dvoji)}")
     zaz = jload("zaznamy.json", [])
     svazky, prep, hl = jload("svazky.json", {}), jload("prepisy.json", {}), jload("zvyrazneni.json", {})
     keys = [z.get("klic") for z in zaz]
